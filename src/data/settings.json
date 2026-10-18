@@ -1,0 +1,58 @@
+{
+  "site_url": "https://nay-art.pages.dev",
+  "brand": "NAY ART",
+  "tagline": {
+    "en": "Art meets a calmer mind",
+    "ar": "الفن يلتقي بعقل أهدأ"
+  },
+  "currency": "EGP",
+  "delivery_fee": 120,
+  "default_price": 750,
+  "default_compare_price": 1000,
+  "canvas_size": "40×50 cm",
+  "colours": 24,
+  "custom_sizes": [
+    {
+      "label": "40×50 cm",
+      "price": 1800
+    },
+    {
+      "label": "50×60 cm",
+      "price": 2200
+    },
+    {
+      "label": "60×75 cm",
+      "price": 2800
+    }
+  ],
+  "custom_example": {
+    "finished": "/media/products/couple/fin.webp",
+    "numbered": "/media/products/couple/num.webp",
+    "reference": "/media/products/couple/ref.webp",
+    "halfway": "/media/products/couple/prog.webp"
+  },
+  "phone_display": "0127 082 0513",
+  "phone_intl": "201270820513",
+  "whatsapp_intl": "201270820513",
+  "email": "",
+  "instapay": "",
+  "vodafone_cash": "",
+  "payments": {
+    "cod": true,
+    "instapay": true,
+    "vodafone_cash": true
+  },
+  "orders_endpoint": "",
+  "analytics": {
+    "ga4_id": "",
+    "clarity_id": "",
+    "meta_pixel_id": "",
+    "google_site_verification": ""
+  },
+  "social": {
+    "instagram": "",
+    "facebook": "",
+    "tiktok": ""
+  },
+  "launch_offer": true
+}

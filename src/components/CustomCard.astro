@@ -1,0 +1,15 @@
+---
+import { useT, href, settings } from '../lib/site.js';
+const { lang = 'en' } = Astro.props;
+const t = useT(lang);
+---
+<a class="card custom" href={href(lang, '/custom')}>
+  <div class="media">
+    <div class="cc-frame"><img src={settings.custom_example.finished} alt={t('custom_card_tag')} loading="lazy" /></div>
+    <div class="cc-pol"><img src={settings.custom_example.numbered} alt="" loading="lazy" /></div>
+    <span class="cc-tag">{t('custom_card_tag')}</span>
+  </div>
+  <span class="lvl">{t('custom_card_lvl')}</span>
+  <h3>{t('custom_card_title')}</h3>
+  <div class="sub">{t('custom_card_sub')}</div>
+</a>

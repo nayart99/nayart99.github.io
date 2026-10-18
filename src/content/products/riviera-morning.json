@@ -1,0 +1,62 @@
+{
+  "slug": "riviera-morning",
+  "order": 3,
+  "orientation": "portrait",
+  "badge": {
+    "en": "",
+    "ar": ""
+  },
+  "level": {
+    "en": "Intermediate",
+    "ar": "متوسط"
+  },
+  "name": {
+    "en": "Riviera Morning",
+    "ar": "صباح على البحر"
+  },
+  "blurb": {
+    "en": "A sunny terrace above a turquoise bay: an iron chair, a little table, boats in the harbour and pink bougainvillea spilling over warm stone.",
+    "ar": "تراس مشمس فوق خليج تركوازي: كرسي حديد وترابيزة صغيرة ومراكب في الميناء وورد جهنمية وردي على الحجر الدافي."
+  },
+  "about": {
+    "en": "Big open areas of sky and sea to relax into, and flower clusters full of small details on both sides. A summer holiday you can paint, one colour at a time.",
+    "ar": "مساحات واسعة من السما والبحر تريّح أعصابك، وعناقيد ورد مليانة تفاصيل صغيرة على الجانبين. إجازة صيفية تلوّنها لون لون."
+  },
+  "images": {
+    "finished": "/media/products/riviera/fin.webp",
+    "numbered": "/media/products/riviera/num.webp",
+    "reference": "/media/products/riviera/ref.webp",
+    "halfway": "/media/products/riviera/prog.webp",
+    "wall": "/media/products/riviera/wall.webp",
+    "timelapse_map": "/media/products/riviera/tm.png"
+  },
+  "palette": [
+    "#201b1f",
+    "#3f221f",
+    "#2b503b",
+    "#732a24",
+    "#357d7a",
+    "#1f9dc9",
+    "#837f66",
+    "#b93033",
+    "#2fb3e0",
+    "#2fb3e1",
+    "#2fb3e2",
+    "#2fb4e3",
+    "#ca684b",
+    "#b27c7c",
+    "#8d9da2",
+    "#58c2e9",
+    "#ba9e93",
+    "#f7b77d",
+    "#a1d5ea",
+    "#efc79e",
+    "#d6e2e2",
+    "#faecca",
+    "#d0ebf7",
+    "#fbfcfb"
+  ],
+  "price": 750,
+  "compare_price": 1000,
+  "active": true
+}

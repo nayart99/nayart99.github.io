@@ -1,0 +1,62 @@
+{
+  "slug": "starry-hollow",
+  "order": 2,
+  "orientation": "landscape",
+  "badge": {
+    "en": "Halloween",
+    "ar": "هالوين"
+  },
+  "level": {
+    "en": "Intermediate",
+    "ar": "متوسط"
+  },
+  "name": {
+    "en": "Starry Hollow",
+    "ar": "ليلة النجوم"
+  },
+  "blurb": {
+    "en": "Swirling golden moons over a lonely house on the hill, a moonlit path winding home, and glowing jack-o'-lanterns waiting at the end.",
+    "ar": "أقمار ذهبية دوّارة فوق بيت وحيد على التل، وطريق منوّر بالقمر، وفوانيس قرع مضيئة في آخره."
+  },
+  "about": {
+    "en": "Paint the sky ring by ring in blues and gold, follow the path down the hill, then light up the pumpkins last. A cozy autumn piece and a perfect Halloween gift.",
+    "ar": "لوّن السما دايرة دايرة بالأزرق والدهبي، وانزل مع الطريق من على التل، وفي الآخر نوّر القرع. لوحة خريفية دافية وهدية مثالية للهالوين."
+  },
+  "images": {
+    "finished": "/media/products/hollow/fin.webp",
+    "numbered": "/media/products/hollow/num.webp",
+    "reference": "/media/products/hollow/ref.webp",
+    "halfway": "/media/products/hollow/prog.webp",
+    "wall": "/media/products/hollow/wall.webp",
+    "timelapse_map": "/media/products/hollow/tm.png"
+  },
+  "palette": [
+    "#1d1c20",
+    "#1c1d20",
+    "#1c1e21",
+    "#1c1e22",
+    "#1c1e23",
+    "#1d1e23",
+    "#19202a",
+    "#1c242f",
+    "#1b293a",
+    "#152d41",
+    "#143045",
+    "#13354c",
+    "#1f485d",
+    "#5f2d21",
+    "#244e63",
+    "#315d70",
+    "#386a7d",
+    "#7c5745",
+    "#3e7487",
+    "#407789",
+    "#4e7c85",
+    "#8fa387",
+    "#97b49c",
+    "#f2ce60"
+  ],
+  "price": 750,
+  "compare_price": 1000,
+  "active": true
+}

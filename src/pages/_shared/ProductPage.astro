@@ -1,0 +1,32 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Product from '../../components/views/Product.astro';
+import { pick, href, absolute, settings, useT } from '../../lib/site.js';
+const { lang, p } = Astro.props;
+const t = useT(lang);
+const name = pick(p.name, lang);
+const path = `/products/${p.slug}`;
+const jsonld = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: `${name} – ${t('pbn')} ${settings.canvas_size}`,
+    description: pick(p.blurb, lang),
+    image: [absolute(p.images.finished), absolute(p.images.numbered)],
+    brand: { '@type': 'Brand', name: settings.brand },
+    sku: p.slug,
+    offers: { '@type': 'Offer', url: absolute(href(lang, path)), priceCurrency: 'EGP', price: p.price, availability: 'https://schema.org/InStock', itemCondition: 'https://schema.org/NewCondition' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: t('crumb_home'), item: absolute(href(lang, '/')) },
+      { '@type': 'ListItem', position: 2, name, item: absolute(href(lang, path)) },
+    ],
+  },
+];
+---
+<Layout lang={lang} path={path} title={`${name} · ${t('pbn')} ${settings.canvas_size}`} description={pick(p.blurb, lang)} image={p.images.finished} jsonld={jsonld} bodyClass="is-product">
+  <Product lang={lang} p={p} />
+</Layout>

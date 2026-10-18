@@ -1,0 +1,175 @@
+---
+import '../styles/global.css';
+import { settings, useT, href, altPath, absolute, getProducts, pick, STRINGS } from '../lib/site.js';
+
+const { lang = 'en', title, description, path = '/', image = '/media/brand/og.jpg', jsonld = [], bodyClass = '' } = Astro.props;
+const t = useT(lang);
+const dir = lang === 'ar' ? 'rtl' : 'ltr';
+const canonical = absolute(href(lang, path));
+const enUrl = absolute(href('en', path));
+const arUrl = absolute(href('ar', path));
+const fullTitle = title ? `${title} | ${settings.brand}` : `${settings.brand} | ${pick(settings.tagline, lang)}`;
+const desc = description || t('hero_lead');
+const a = settings.analytics || {};
+const products = getProducts();
+
+// Data the browser scripts need (cart, checkout, support).
+const store = {
+  lang,
+  base: href(lang, '/'),
+  t: STRINGS[lang],
+  products: products.map((p) => ({ slug: p.slug, name: pick(p.name, lang), img: p.images.finished, price: p.price })),
+  settings: {
+    delivery_fee: settings.delivery_fee,
+    custom_sizes: settings.custom_sizes,
+    orders_endpoint: settings.orders_endpoint,
+    whatsapp_intl: settings.whatsapp_intl,
+    phone_display: settings.phone_display,
+    instapay: settings.instapay,
+    vodafone_cash: settings.vodafone_cash,
+    payments: settings.payments,
+    custom_example_num: settings.custom_example.numbered,
+  },
+};
+const ld = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: settings.brand,
+    url: settings.site_url,
+    logo: absolute('/media/brand/logo.png'),
+    contactPoint: [{ '@type': 'ContactPoint', telephone: '+' + settings.phone_intl, contactType: 'customer support', areaServed: 'EG', availableLanguage: ['English', 'Arabic'] }],
+    sameAs: Object.values(settings.social || {}).filter(Boolean),
+  },
+  ...jsonld,
+];
+const fontsUrl = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@300;400;500;600' + (lang === 'ar' ? '&family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600' : '') + '&display=swap';
+---
+<!doctype html>
+<html lang={lang} dir={dir}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{fullTitle}</title>
+  <meta name="description" content={desc} />
+  <link rel="canonical" href={canonical} />
+  <link rel="alternate" hreflang="en" href={enUrl} />
+  <link rel="alternate" hreflang="ar" href={arUrl} />
+  <link rel="alternate" hreflang="x-default" href={enUrl} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content={settings.brand} />
+  <meta property="og:title" content={fullTitle} />
+  <meta property="og:description" content={desc} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={absolute(image)} />
+  <meta property="og:locale" content={lang === 'ar' ? 'ar_EG' : 'en_US'} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#7A1F2B" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  {a.google_site_verification && <meta name="google-site-verification" content={a.google_site_verification} />}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href={fontsUrl} />
+  {ld.map((item) => <script type="application/ld+json" set:html={JSON.stringify(item)} />)}
+
+  {a.ga4_id && <script async src={`https://www.googletagmanager.com/gtag/js?id=${a.ga4_id}`}></script>}
+  {a.ga4_id && <script is:inline define:vars={{ id: a.ga4_id }}>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config',id);</script>}
+  {a.clarity_id && <script is:inline define:vars={{ id: a.clarity_id }}>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script",id);</script>}
+  {a.meta_pixel_id && <script is:inline define:vars={{ id: a.meta_pixel_id }}>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init',id);fbq('track','PageView');</script>}
+</head>
+<body class={bodyClass}>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="announce"><div class="wrap">
+    {settings.launch_offer && <span><b>{t('announce_offer')}</b></span>}
+    <span>{t('announce_cod')}</span>
+  </div></div>
+
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href={href(lang, '/')} aria-label={settings.brand}><img src="/media/brand/mark.png" alt="" width="120" height="26" /><span>NAY ART</span></a>
+      <nav class="links" aria-label="Main">
+        <a href={href(lang, '/') + '#shop'}>{t('nav_shop')}</a>
+        <a href={href(lang, '/custom')}>{t('nav_custom')}</a>
+        <a href={href(lang, '/') + '#how'}>{t('nav_how')}</a>
+        <a href={href(lang, '/') + '#faq'}>{t('nav_faq')}</a>
+      </nav>
+      <div class="bar-r">
+        <a class="lang-btn" href={altPath(lang, path)} hreflang={lang === 'ar' ? 'en' : 'ar'} lang={lang === 'ar' ? 'en' : 'ar'}>{t('lang_switch')}</a>
+        <button class="cart-btn" id="cartBtn" aria-label={t('cart')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.2 11H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span class="cart-word">{t('cart')}</span> <span class="count" id="cartCount">0</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main"><slot /></main>
+
+  <section class="news">
+    <div class="wrap">
+      <div><span class="eyebrow">{t('news_eyebrow')}</span><h2>{t('news_title')}</h2><p>{t('news_lead')}</p></div>
+      <form id="newsForm" novalidate>
+        <input id="newsEmail" type="email" placeholder={t('news_ph')} aria-label={t('news_ph')} autocomplete="email" />
+        <button class="btn btn-primary" type="submit">{t('news_btn')}</button>
+        <span class="msg" id="newsMsg" hidden></span>
+      </form>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="f-top">
+        <div>
+          <img class="logo" src="/media/brand/logo.png" alt={`${settings.brand}, ${pick(settings.tagline, 'en')}`} width="240" height="90" loading="lazy" />
+          <p>{t('foot_about')}</p>
+          <div class="f-social">
+            {settings.social?.instagram && <a href={settings.social.instagram} target="_blank" rel="noopener">Instagram</a>}
+            {settings.social?.facebook && <a href={settings.social.facebook} target="_blank" rel="noopener">Facebook</a>}
+            {settings.social?.tiktok && <a href={settings.social.tiktok} target="_blank" rel="noopener">TikTok</a>}
+          </div>
+        </div>
+        <div class="f-col"><h4>{t('foot_shop')}</h4><ul>
+          {products.map((p) => <li><a href={href(lang, `/products/${p.slug}`)}>{pick(p.name, lang)}</a></li>)}
+          <li><a href={href(lang, '/custom')}>{t('custom_card_title')}</a></li>
+        </ul></div>
+        <div class="f-col"><h4>{t('foot_help')}</h4><ul>
+          <li><a href={href(lang, '/') + '#how'}>{t('nav_how')}</a></li>
+          <li><a href={href(lang, '/') + '#faq'}>{t('nav_faq')}</a></li>
+          <li><a href={href(lang, '/') + '#faq'}>{t('foot_ship')}</a></li>
+          <li><a href={href(lang, '/') + '#faq'}>{t('foot_pay')}</a></li>
+        </ul></div>
+        <div class="f-col"><h4>{t('foot_support')}</h4>
+          <p class="f-sup">{t('foot_support_p')}</p>
+          <div class="sup-num"><span class="num" dir="ltr">{settings.phone_display}</span><button class="sup-copy" data-copy={'0' + settings.phone_intl.slice(2)}>{t('copy')}</button></div>
+          <div class="sup-links"><a href={`tel:+${settings.phone_intl}`}>{t('call')}</a><a href={`https://wa.me/${settings.whatsapp_intl}`} target="_blank" rel="noopener">{t('whatsapp')}</a></div>
+          {settings.email && <p class="f-sup" style="margin-top:10px!important">{settings.email}</p>}
+        </div>
+      </div>
+      <div class="f-bottom"><span>© {new Date().getFullYear()} {settings.brand}. {t('rights')}</span>
+        <div class="pays">{settings.payments.cod && <span>{t('pay_cod')}</span>}{settings.payments.instapay && <span>InstaPay</span>}{settings.payments.vodafone_cash && <span>{t('pay_vodafone')}</span>}</div>
+      </div>
+    </div>
+  </footer>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-label={t('your_cart')} aria-hidden="true">
+    <div class="drawer-head"><h2 id="drawerTitle">{t('your_cart')}</h2><button class="x" id="closeDrawer" aria-label={t('close')}>×</button></div>
+    <div class="drawer-body" id="drawerBody"></div>
+    <div class="drawer-foot" id="drawerFoot"></div>
+  </aside>
+  <div class="toast" id="toast" role="status"></div>
+
+  <button class="sup-fab" id="supFab" aria-expanded="false" aria-controls="supPanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg><span>{t('support')}</span></button>
+  <div class="sup-panel" id="supPanel" hidden role="dialog" aria-label={t('support')}>
+    <div class="sup-head"><b>{t('need_help')}</b><button class="x" id="supClose" aria-label={t('close')}>×</button></div>
+    <p>{t('support_p')}</p>
+    <div class="sup-num big"><span class="num" dir="ltr">{settings.phone_display}</span><button class="sup-copy" data-copy={'0' + settings.phone_intl.slice(2)}>{t('copy')}</button></div>
+    <div class="sup-actions">
+      <a class="btn btn-primary" href={`tel:+${settings.phone_intl}`}>{t('call_us')}</a>
+      <a class="btn" href={`https://wa.me/${settings.whatsapp_intl}`} target="_blank" rel="noopener">{t('whatsapp')}</a>
+    </div>
+    <small>{t('support_note')}</small>
+  </div>
+
+  <script id="store-data" type="application/json" set:html={JSON.stringify(store)} />
+  <script>import '../scripts/app.js';</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+---
+import { useT, pick, faq } from '../lib/site.js';
+const { lang = 'en' } = Astro.props;
+const t = useT(lang);
+---
+<div class="wrap faq">
+  <div class="sec-head"><div class="l"><span class="eyebrow">{t('faq_eyebrow')}</span><h2>{t('faq_title')}</h2></div></div>
+  {faq.map((f) => <details><summary>{pick(f.q, lang)}</summary><p>{pick(f.a, lang)}</p></details>)}
+</div>

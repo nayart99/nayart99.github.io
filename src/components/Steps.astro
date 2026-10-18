@@ -1,0 +1,11 @@
+---
+import { useT } from '../lib/site.js';
+const { lang = 'en', num, prog, fin } = Astro.props;
+const t = useT(lang);
+const steps = [[1, num], [2, prog || num], [3, fin]];
+---
+<div class="steps">
+  {steps.map(([n, img]) => (
+    <div class="step"><img src={img} alt="" loading="lazy" /><span class="n">{t(`step${n}_n`)}</span><h3>{t(`step${n}_t`)}</h3><p>{t(`step${n}_p`)}</p></div>
+  ))}
+</div>

@@ -1,0 +1,19 @@
+---
+import { useT, pick, href } from '../lib/site.js';
+const { p, lang = 'en' } = Astro.props;
+const t = useT(lang);
+const badge = pick(p.badge, lang);
+const soft = (p.badge?.en || '').toLowerCase() === 'new';
+---
+<a class="card" href={href(lang, `/products/${p.slug}`)}>
+  <div class="media">
+    {badge && <span class={`badge${soft ? ' soft' : ''}`}>{badge}</span>}
+    <div class={`frame ${p.landscape ? 'land' : 'port'}`}>
+      <img src={p.images.finished} alt={pick(p.name, lang)} loading="lazy" />
+      <img class="alt" src={p.images.numbered} alt="" loading="lazy" />
+    </div>
+  </div>
+  <span class="lvl">{pick(p.level, lang)}</span>
+  <h3>{pick(p.name, lang)}</h3>
+  <div class="sub">{t('card_sub')}</div>
+</a>

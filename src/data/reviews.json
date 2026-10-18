@@ -1,0 +1,39 @@
+{
+  "show": true,
+  "sample": true,
+  "items": [
+    {
+      "stars": 5,
+      "text": {
+        "en": "I painted a little every night for a week. Best part of my day.",
+        "ar": "كنت بلوّن شوية كل ليلة لمدة أسبوع. أحلى جزء في يومي."
+      },
+      "who": {
+        "en": "Rose Reverie",
+        "ar": "حلم الورد"
+      }
+    },
+    {
+      "stars": 5,
+      "text": {
+        "en": "The custom canvas of our photo is now in the living room. Everyone asks where we bought it.",
+        "ar": "لوحة الكستم بصورتنا بقت في الريسبشن، وكل اللي بيشوفها بيسأل جبناها منين."
+      },
+      "who": {
+        "en": "Custom 50×60",
+        "ar": "كستم ٥٠×٦٠"
+      }
+    },
+    {
+      "stars": 5,
+      "text": {
+        "en": "Colours matched the reference sheet exactly. The numbers are easy to read.",
+        "ar": "الألوان مطابقة للريفرنس شيت بالظبط، والأرقام واضحة وسهلة."
+      },
+      "who": {
+        "en": "Starry Hollow",
+        "ar": "ليلة النجوم"
+      }
+    }
+  ]
+}

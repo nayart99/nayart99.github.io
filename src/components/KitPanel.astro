@@ -1,0 +1,22 @@
+---
+import { useT } from '../lib/site.js';
+const { lang = 'en', num, ref } = Astro.props;
+const t = useT(lang);
+const items = [
+  ['bx-box', '/media/kit/box.webp', t('kit_box'), t('kit_box_s')],
+  ['bx-paints', '/media/kit/paints.webp', t('kit_paints'), t('kit_paints_s')],
+  ['bx-canvas', num, t('kit_canvas'), t('kit_canvas_s')],
+  ['bx-brushes', '/media/kit/brushes.webp', t('kit_brushes'), ''],
+  ['bx-ref', ref, t('kit_ref'), ''],
+  ['bx-hooks', '/media/kit/hooks.webp', t('kit_hooks'), t('kit_hooks_s')],
+  ['bx-guide', '/media/kit/guide.webp', t('kit_guide'), ''],
+];
+---
+<div class="boxpanel">
+  <div class="boxpanel-head">{t('kit_head')}</div>
+  <div class="boxgrid">
+    {items.map(([cls, img, b, sm]) => (
+      <div class={`bx ${cls}`}><div class="im"><img src={img} alt={b} loading="lazy" /></div><b>{b}</b>{sm && <small>{sm}</small>}</div>
+    ))}
+  </div>
+</div>

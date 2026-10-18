@@ -1,0 +1,62 @@
+{
+  "slug": "umbrella-town",
+  "order": 5,
+  "orientation": "landscape",
+  "badge": {
+    "en": "",
+    "ar": ""
+  },
+  "level": {
+    "en": "Intermediate",
+    "ar": "متوسط"
+  },
+  "name": {
+    "en": "Umbrella Town",
+    "ar": "مدينة الشماسي"
+  },
+  "blurb": {
+    "en": "A whimsical little town under a sky full of floating umbrellas, with glowing windows, dark winding trees and a colourful reflection below.",
+    "ar": "مدينة صغيرة خيالية تحت سما مليانة شماسي طايرة، بشبابيك منوّرة وشجر داكن ملفوف وانعكاس ملوّن تحت."
+  },
+  "about": {
+    "en": "Pink, lime, orange and gold umbrellas, a sky of swirls and dots, and little houses with lit windows. Playful, bright and full of small surprises to paint.",
+    "ar": "شماسي وردي وليموني وبرتقالي ودهبي، وسما مليانة دواير ونقط، وبيوت صغيرة شبابيكها منوّرة. لوحة مبهجة ومليانة مفاجآت صغيرة تلوّنها."
+  },
+  "images": {
+    "finished": "/media/products/umbrella/fin.webp",
+    "numbered": "/media/products/umbrella/num.webp",
+    "reference": "/media/products/umbrella/ref.webp",
+    "halfway": "/media/products/umbrella/prog.webp",
+    "wall": "/media/products/umbrella/wall.webp",
+    "timelapse_map": "/media/products/umbrella/tm.png"
+  },
+  "palette": [
+    "#1b1a21",
+    "#221a1f",
+    "#1f1c21",
+    "#1f1e24",
+    "#262026",
+    "#2b2a32",
+    "#294253",
+    "#43393c",
+    "#6b2620",
+    "#4a5e5f",
+    "#326478",
+    "#7a3b44",
+    "#b33d24",
+    "#438494",
+    "#93754b",
+    "#ca4c27",
+    "#cf4d25",
+    "#c44f30",
+    "#e57430",
+    "#6eadaa",
+    "#d5556e",
+    "#ebac46",
+    "#afbb78",
+    "#e7c891"
+  ],
+  "price": 750,
+  "compare_price": 1000,
+  "active": true
+}

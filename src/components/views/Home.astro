@@ -1,0 +1,118 @@
+---
+import { useT, pick, href, getProducts, settings, reviews, hero, cm } from '../../lib/site.js';
+import ProductCard from '../ProductCard.astro';
+import CustomCard from '../CustomCard.astro';
+import Compare from '../Compare.astro';
+import KitPanel from '../KitPanel.astro';
+import Steps from '../Steps.astro';
+import Faq from '../Faq.astro';
+const { lang = 'en' } = Astro.props;
+const t = useT(lang);
+const products = getProducts();
+const clipLink = (l) => (l.startsWith('#') ? href(lang, '/') + l : href(lang, '/' + l.replace(/^\//, '')));
+const clips = hero.map((c) => ({ src: c.video, poster: c.poster, txt: pick(c.caption, lang), href: clipLink(c.link || '#shop') }));
+const first = clips[0];
+const cmpDefault = products.find((p) => p.slug === 'starry-hollow') || products[0];
+const kitP = products[0];
+const howP = products.find((p) => p.slug === 'umbrella-town') || products[0];
+const ex = settings.custom_example;
+---
+<section class="hv" id="heroVid" aria-label={settings.brand}>
+  <div class="hv-bg" id="hvBg" style={`background-image:url('${first.poster}')`}></div>
+  <div class="hv-shade"></div>
+  <div class="wrap hv-in">
+    <div class="hv-copy">
+      <span class="eyebrow">{t('hero_eyebrow')}</span>
+      <h1>{t('hero_title_1')}<br /><em>{t('hero_title_2')}</em></h1>
+      <p class="lead">{t('hero_lead')}</p>
+      {settings.launch_offer && <div class="offer"><span class="save">{t('announce_offer')}</span></div>}
+      <div class="ctas">
+        <a class="btn btn-primary" href="#shop">{t('hero_cta_shop')}</a>
+        <a class="btn hv-ghost" href={href(lang, '/custom')}>{t('hero_cta_custom')}</a>
+      </div>
+    </div>
+    <div class="hv-phone" id="hvPhone">
+      <video id="hvVid" muted playsinline autoplay preload="metadata" poster={first.poster} aria-label={first.txt}></video>
+      <canvas id="hvCanvas" hidden aria-hidden="true"></canvas>
+      <a class="hv-chip" id="hvLink" href={first.href}><i></i><span id="hvTxt">{first.txt}</span></a>
+      <div class="hv-dots" id="hvDots" role="group" aria-label="Clips">
+        {clips.map((c, i) => <button data-clip={i} aria-label={c.txt}><i></i></button>)}
+      </div>
+    </div>
+  </div>
+  <script type="application/json" id="hero-clips" set:html={JSON.stringify(clips)} />
+  <script type="application/json" id="hero-fallback" set:html={JSON.stringify(products.map((p) => ({ name: pick(p.name, lang), href: href(lang, `/products/${p.slug}`), fin: p.images.finished, num: p.images.numbered, tm: p.images.timelapse_map || '' })))} />
+</section>
+
+<section class="trust" aria-label="Why NAY ART">
+  <div class="wrap">
+    {[1, 2, 3, 4].map((n) => <div><b>{t(`trust_${n}_t`)}</b><span>{t(`trust_${n}_s`)}</span></div>)}
+  </div>
+</section>
+
+<section class="sec" id="shop">
+  <div class="wrap">
+    <div class="sec-head"><div class="l"><span class="eyebrow">{t('shop_eyebrow')}</span><h2>{t('shop_title')}</h2></div><p>{t('shop_lead')}</p></div>
+    <div class="grid">
+      {products.map((p) => <ProductCard p={p} lang={lang} />)}
+      <CustomCard lang={lang} />
+    </div>
+  </div>
+</section>
+
+<section class="sec" style="padding-top:0" id="magic">
+  <div class="wrap cmp-wrap">
+    <div class="copy">
+      <span class="eyebrow">{t('magic_eyebrow')}</span>
+      <h2 style="font-size:clamp(2rem,3.8vw,2.8rem)">{t('magic_title')}</h2>
+      <p>{t('magic_lead')}</p>
+      <div class="cmp-pick" id="cmpPick">
+        {products.map((p) => <button data-pick-fin={p.images.finished} data-pick-num={p.images.numbered} data-pick-land={p.landscape ? '1' : '0'} aria-pressed={p.slug === cmpDefault.slug ? 'true' : 'false'}>{pick(p.name, lang)}</button>)}
+      </div>
+    </div>
+    <div class="cmp-stage" id="cmpHome"><Compare lang={lang} fin={cmpDefault.images.finished} num={cmpDefault.images.numbered} land={cmpDefault.landscape} /></div>
+  </div>
+</section>
+
+<section class="sec kit" id="kit">
+  <div class="wrap">
+    <div class="sec-head"><div class="l"><span class="eyebrow">{t('kit_eyebrow')}</span><h2>{t('kit_title')}</h2></div></div>
+    <KitPanel lang={lang} num={kitP.images.numbered} ref={kitP.images.reference} />
+  </div>
+</section>
+
+<section class="sec" id="how">
+  <div class="wrap">
+    <div class="sec-head"><div class="l"><span class="eyebrow">{t('how_eyebrow')}</span><h2>{t('how_title')}</h2></div></div>
+    <Steps lang={lang} num={howP.images.numbered} prog={howP.images.halfway} fin={howP.images.finished} />
+  </div>
+</section>
+
+<section class="band2" id="customBand">
+  <div class="wrap band2-in">
+    <div class="cmp-stage"><Compare lang={lang} fin={ex.finished} num={ex.numbered} land={false} /></div>
+    <div class="band2-copy">
+      <span class="eyebrow">{t('band_eyebrow')}</span>
+      <h2>{t('band_title')}</h2>
+      <p>{t('band_lead')}</p>
+      <ol class="band2-steps">
+        {[1, 2, 3].map((n) => <li><b>{t(`band_s${n}_t`)}</b><span>{t(`band_s${n}_s`)}</span></li>)}
+      </ol>
+      <div class="band2-sizes"><span>{t('band_sizes')}</span>{settings.custom_sizes.map((s) => <i>{cm(s.label, lang)}</i>)}</div>
+      <a class="btn" href={href(lang, '/custom')}>{t('band_cta')}</a>
+    </div>
+  </div>
+</section>
+
+{reviews.show && (
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><div class="l"><span class="eyebrow">{t('reviews_eyebrow')}</span><h2>{t('reviews_title')}</h2></div>{reviews.sample && <span class="sample">{t('reviews_sample')}</span>}</div>
+      <div class="reviews">
+        {reviews.items.map((r) => <div class="review"><span class="stars">{'★'.repeat(r.stars)}{'☆'.repeat(5 - r.stars)}</span><q>{pick(r.text, lang)}</q><small>{reviews.sample ? t('sample') + ' · ' : ''}{pick(r.who, lang)}</small></div>)}
+      </div>
+    </div>
+  </section>
+)}
+
+<section class="sec kit" id="faq"><Faq lang={lang} /></section>

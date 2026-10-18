@@ -1,0 +1,62 @@
+{
+  "slug": "rose-reverie",
+  "order": 1,
+  "orientation": "landscape",
+  "badge": {
+    "en": "Best seller",
+    "ar": "الأكثر مبيعًا"
+  },
+  "level": {
+    "en": "Intermediate",
+    "ar": "متوسط"
+  },
+  "name": {
+    "en": "Rose Reverie",
+    "ar": "حلم الورد"
+  },
+  "blurb": {
+    "en": "A woman lost in a quiet daydream, wrapped in roses of crimson, coral, blush and amber against a deep teal night.",
+    "ar": "فتاة سارحة في حلم هادئ، يحيط بها ورد قرمزي ومرجاني ووردي وكهرماني على خلفية ليل تركوازي عميق."
+  },
+  "about": {
+    "en": "Every corner has a new petal to paint, and the dark teal background is calm to fill between the details. The face is the last part most people paint, and the moment the whole canvas comes together. A showpiece for your wall.",
+    "ar": "في كل ركن بتلة جديدة تلوّنها، والخلفية التركوازي الداكنة هادئة وانت بتملاها بين التفاصيل. الوجه هو آخر جزء بيلوّنه أغلب الناس، وساعتها اللوحة كلها بتكتمل. قطعة مميزة لحيطة بيتك."
+  },
+  "images": {
+    "finished": "/media/products/rose/fin.webp",
+    "numbered": "/media/products/rose/num.webp",
+    "reference": "/media/products/rose/ref.webp",
+    "halfway": "/media/products/rose/prog.webp",
+    "wall": "/media/products/rose/wall.webp",
+    "timelapse_map": "/media/products/rose/tm.png"
+  },
+  "palette": [
+    "#211c1f",
+    "#241a1c",
+    "#1a2227",
+    "#281c1d",
+    "#132a31",
+    "#152930",
+    "#172d34",
+    "#2f1f20",
+    "#3e1e1d",
+    "#1a454e",
+    "#20454d",
+    "#1a4c55",
+    "#48312e",
+    "#62241d",
+    "#4c4541",
+    "#29636c",
+    "#8e2820",
+    "#794938",
+    "#bd2d23",
+    "#c15038",
+    "#dd3026",
+    "#b48655",
+    "#a76767",
+    "#e9b492"
+  ],
+  "price": 750,
+  "compare_price": 1000,
+  "active": true
+}

@@ -1,0 +1,113 @@
+---
+import { useT, pick, href, getProducts, settings, money, cm } from '../../lib/site.js';
+import ProductCard from '../ProductCard.astro';
+import CustomCard from '../CustomCard.astro';
+import Compare from '../Compare.astro';
+import KitPanel from '../KitPanel.astro';
+import Steps from '../Steps.astro';
+import Faq from '../Faq.astro';
+const { lang = 'en', p } = Astro.props;
+const t = useT(lang);
+const im = p.images;
+const name = pick(p.name, lang);
+const gallery = [
+  { type: 'reveal', src: im.numbered, cap: t('g_timelapse') },
+  { src: im.finished, cap: t('g_finished') },
+  im.wall && { src: im.wall, cap: t('g_wall') },
+  { src: im.numbered, cap: t('g_numbered') },
+  im.halfway && { src: im.halfway, cap: t('g_halfway') },
+  im.reference && { src: im.reference, cap: t('g_ref') },
+  { src: '/media/kit/kitbox.webp', cap: t('g_box') },
+].filter(Boolean);
+const saving = p.compare_price > p.price ? p.compare_price - p.price : 0;
+const others = getProducts().filter((x) => x.slug !== p.slug).slice(0, 2);
+---
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href={href(lang, '/')}>{t('crumb_home')}</a><span>/</span><a href={href(lang, '/') + '#shop'}>{t('crumb_canvases')}</a><span>/</span><span>{name}</span></nav>
+  <div class="pdp" id="pdp" data-slug={p.slug} data-name={name} data-price={p.price}>
+    <div class="gallery">
+      <div class={`g-main${p.landscape ? ' land' : ''}`} id="gBox" data-fin={im.finished} data-num={im.numbered} data-tm={im.timelapse_map || ''}>
+        <img id="gMain" src={gallery[1].src} alt={`${name}, ${gallery[1].cap}`} hidden />
+        <canvas id="gReveal"></canvas>
+        <span class="live" id="gLive"><i></i><span id="gLiveTxt">{t('g_timelapse')}</span></span>
+        <span class="live-bar" id="gBar"><i></i></span>
+        <span class="cap" id="gCap" hidden></span>
+        <button class="g-nav prev" id="gPrev" aria-label={t('g_prev')}>‹</button><button class="g-nav next" id="gNext" aria-label={t('g_next')}>›</button>
+      </div>
+      <div class="thumbs" id="gThumbs">
+        {gallery.map((g, i) => (
+          <button data-g={i} data-src={g.type === 'reveal' ? 'reveal' : g.src} data-cap={g.cap} aria-label={`${t('g_show')} ${g.cap}`} aria-current={i === 0 ? 'true' : 'false'}>
+            <img src={g.src} alt="" loading="lazy" />{g.type === 'reveal' && <span class="play">▶</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+    <div class="buy">
+      <h1>{name}<small>{t('pbn')} · {cm(settings.canvas_size, lang)}</small></h1>
+      <div class="rating-line"><span>{pick(p.level, lang)}</span></div>
+      <div class="price-line"><span class="now price">{money(p.price, lang)}</span>{saving > 0 && <span class="was price">{money(p.compare_price, lang)}</span>}{saving > 0 && <span class="save">{t('save')} {money(saving, lang)}</span>}</div>
+      <p class="blurb">{pick(p.blurb, lang)}</p>
+      <div class="specs-chips">
+        <div class="chip"><b>40×50</b>{t('chip_canvas')}</div>
+        <div class="chip"><b>24</b>{t('chip_colours')}</div>
+        <div class="chip"><b>3</b>{t('chip_brushes')}</div>
+        <div class="chip"><b>1</b>{t('chip_ref')}</div>
+      </div>
+      {p.palette?.length > 0 && <div class="palette"><span>{t('palette_title')}</span><div class="swatches">{p.palette.map((c) => <i style={`background:${c}`}></i>)}</div></div>}
+      <div class="opt-group"><span>{t('size')}: <b>{cm(settings.canvas_size, lang)}</b></span><div class="opts"><button class="opt" aria-pressed="true">{cm(settings.canvas_size, lang)}<small>{t('full_kit')}</small></button></div></div>
+      <div class="buy-row">
+        <div class="qty"><button id="pDec" aria-label={t('dec')}>−</button><span id="pQty">1</span><button id="pInc" aria-label={t('inc')}>+</button></div>
+        <button class="btn btn-primary" id="pAdd">{t('add_to_cart')} · {money(p.price, lang)}</button>
+      </div>
+      <button class="btn btn-block" id="pBuyNow">{t('buy_now')}</button>
+      <div class="eta"><b id="pEta">{t('eta_order')} …</b><span>{t('eta_areas')}</span></div>
+      <ul class="assure"><li>{t('assure_1')}</li><li>{t('assure_2')}</li><li>{t('assure_3')}</li><li>{t('assure_4')}</li></ul>
+      <div class="pays">{settings.payments.cod && <span>{t('pay_cod')}</span>}{settings.payments.instapay && <span>InstaPay</span>}{settings.payments.vodafone_cash && <span>{t('pay_vodafone')}</span>}</div>
+    </div>
+  </div>
+</div>
+
+<section class="sec"><div class="wrap cmp-wrap">
+  <div class="copy"><span class="eyebrow">{t('ba_eyebrow')}</span><h2 style="font-size:clamp(2rem,3.8vw,2.8rem)">{t('ba_title')}</h2><p>{t('ba_lead')}</p></div>
+  <div class="cmp-stage"><Compare lang={lang} fin={im.finished} num={im.numbered} land={p.landscape} /></div>
+</div></section>
+
+<section class="sec kit"><div class="wrap">
+  <div class="sec-head"><div class="l"><span class="eyebrow">{t('why_eyebrow')}</span><h2>{t('why_title')}</h2></div></div>
+  <div class="why">{[1, 2, 3, 4].map((n) => <div><b>{t(`why${n}_t`)}</b><span>{t(`why${n}_p`)}</span></div>)}</div>
+</div></section>
+
+<section class="sec"><div class="wrap">
+  <KitPanel lang={lang} num={im.numbered} ref={im.reference || im.finished} />
+</div></section>
+
+<section class="sec" style="padding-top:0"><div class="wrap">
+  <div class="sec-head"><div class="l"><span class="eyebrow">{t('how_eyebrow')}</span><h2>{t('pdp_steps_title')}</h2></div></div>
+  <Steps lang={lang} num={im.numbered} prog={im.halfway} fin={im.finished} />
+</div></section>
+
+<section class="sec" style="padding-top:0"><div class="wrap two">
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <span class="eyebrow">{t('about_eyebrow')}</span>
+    <h2 style="font-size:clamp(1.9rem,3.4vw,2.5rem)">{name}</h2>
+    <p style="color:var(--ink-soft)">{pick(p.about, lang)}</p>
+    <p style="color:var(--ink-soft)">{t('ideal_for')}</p>
+    <ul style="margin:0;padding-inline-start:20px;color:var(--ink-soft);display:grid;gap:4px"><li>{t('ideal_1')}</li><li>{t('ideal_2')}</li><li>{t('ideal_3')}</li></ul>
+  </div>
+  <div class="size-box">
+    <svg viewBox="0 0 200 240" aria-hidden="true"><rect x="20" y="20" width="160" height="200" fill="none" stroke="#7A1F2B" stroke-width="1.5"/><text x="100" y="128" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="22" fill="#7A1F2B">40 × 50</text><text x="100" y="150" text-anchor="middle" font-family="Jost,sans-serif" font-size="11" fill="#6E5A57">cm</text></svg>
+    <dl><dt>{t('spec_canvas')}</dt><dd>{cm(settings.canvas_size, lang)}</dd><dt>{t('spec_colours')}</dt><dd>{t('spec_colours_v')}</dd><dt>{t('spec_brushes')}</dt><dd>{t('spec_brushes_v')}</dd><dt>{t('spec_guide')}</dt><dd>{t('spec_guide_v')}</dd></dl>
+  </div>
+</div></section>
+
+<section class="sec kit"><Faq lang={lang} /></section>
+
+<section class="sec"><div class="wrap">
+  <div class="sec-head"><div class="l"><span class="eyebrow">{t('also_eyebrow')}</span><h2>{t('also_title')}</h2></div></div>
+  <div class="grid">{others.map((o) => <ProductCard p={o} lang={lang} />)}<CustomCard lang={lang} /></div>
+</div></section>
+
+<div class="sticky-buy" id="stickyBuy" aria-hidden="true">
+  <div class="t"><img src={im.finished} alt="" /><div style="min-width:0"><div class="nm">{name}</div><div class="pp price">{money(p.price, lang)}</div></div></div>
+  <button class="btn btn-primary" id="sbAdd">{t('add_to_cart')}</button>
+</div>

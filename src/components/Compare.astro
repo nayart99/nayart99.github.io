@@ -1,0 +1,12 @@
+---
+import { useT } from '../lib/site.js';
+const { lang = 'en', fin, num, land = true, id } = Astro.props;
+const t = useT(lang);
+---
+<div class={`compare ${land ? 'land' : 'port'}`} style="--x:50%" id={id} data-compare>
+  <img src={fin} alt={t('g_finished')} loading="lazy" />
+  <div class="top"><img src={num} alt={t('g_numbered')} loading="lazy" /></div>
+  <span class="tag l">{t('cmp_left')}</span><span class="tag r">{t('cmp_right')}</span>
+  <span class="handle"></span>
+  <input type="range" min="0" max="100" value="50" aria-label={t('cmp_aria')} />
+</div>

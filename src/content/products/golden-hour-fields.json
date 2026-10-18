@@ -1,0 +1,62 @@
+{
+  "slug": "golden-hour-fields",
+  "order": 4,
+  "orientation": "portrait",
+  "badge": {
+    "en": "New",
+    "ar": "جديد"
+  },
+  "level": {
+    "en": "Beginner-friendly",
+    "ar": "مناسب للمبتدئين"
+  },
+  "name": {
+    "en": "Golden Hour Fields",
+    "ar": "حقول الغروب"
+  },
+  "blurb": {
+    "en": "A field of sunflowers facing the setting sun, under a sky of fire red, orange and gold.",
+    "ar": "حقل عباد شمس في وش الشمس وهي بتغرب، تحت سما أحمر ناري وبرتقالي ودهبي."
+  },
+  "about": {
+    "en": "Big bold petals up front and a glowing horizon behind. The large shapes make it a good first canvas, and it is the warmest piece in the collection.",
+    "ar": "بتلات كبيرة وواضحة قدام، وأفق منوّر ورا. المساحات الكبيرة بتخليها لوحة مناسبة لأول مرة، وهي أدفى لوحة في المجموعة."
+  },
+  "images": {
+    "finished": "/media/products/golden/fin.webp",
+    "numbered": "/media/products/golden/num.webp",
+    "reference": "/media/products/golden/ref.webp",
+    "halfway": "/media/products/golden/prog.webp",
+    "wall": "/media/products/golden/wall.webp",
+    "timelapse_map": "/media/products/golden/tm.png"
+  },
+  "palette": [
+    "#1b191f",
+    "#1f1c1f",
+    "#1b1c20",
+    "#1c2020",
+    "#1f1c20",
+    "#211c20",
+    "#1f1c21",
+    "#1e1e20",
+    "#122c31",
+    "#3e2b1c",
+    "#4c5043",
+    "#7b2921",
+    "#a22d2b",
+    "#587682",
+    "#d44324",
+    "#d73a24",
+    "#ec6b20",
+    "#ea5822",
+    "#ec6221",
+    "#e94d24",
+    "#f39122",
+    "#f8c12f",
+    "#fcd133",
+    "#fce272"
+  ],
+  "price": 750,
+  "compare_price": 1000,
+  "active": true
+}

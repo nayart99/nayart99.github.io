@@ -1,0 +1,69 @@
+---
+import { useT, href, settings, money, cm } from '../../lib/site.js';
+import Compare from '../Compare.astro';
+import Faq from '../Faq.astro';
+const { lang = 'en' } = Astro.props;
+const t = useT(lang);
+const sizes = settings.custom_sizes;
+const ex = settings.custom_example;
+---
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href={href(lang, '/')}>{t('crumb_home')}</a><span>/</span><span>{t('custom_crumb')}</span></nav>
+  <div class="pdp" id="customPage">
+    <div class="gallery">
+      <label class="upload" id="drop" for="photo">
+        <input type="file" id="photo" accept="image/*" />
+        <div class="empty-state" id="upEmpty">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>
+          <b>{t('upload_t')}</b><span>{t('upload_s')}</span>
+        </div>
+        <canvas id="pv" hidden></canvas>
+      </label>
+      <div class="mode-toggle" id="modeToggle" hidden>
+        <button data-mode="photo" aria-pressed="false">{t('mode_photo')}</button>
+        <button data-mode="num" aria-pressed="true">{t('mode_num')}</button>
+        <button data-mode="paint" aria-pressed="false">{t('mode_paint')}</button>
+        <button data-mode="change">{t('mode_change')}</button>
+      </div>
+      <p class="preview-note" id="pvNote" hidden>{t('pv_note')}</p>
+    </div>
+    <div class="buy">
+      <h1>{t('custom_title')}<small>{t('custom_sub')}</small></h1>
+      <div class="price-line"><span class="now price" id="cPrice">{money(sizes[0].price, lang)}</span></div>
+      <p class="blurb">{t('custom_blurb')}</p>
+      <div class="opt-group"><span>{t('size')}: <b id="cSizeLbl">{cm(sizes[0].label, lang)}</b></span>
+        <div class="opts" id="cSizes">
+          {sizes.map((s, i) => <button class="opt" data-size={i} aria-pressed={i === 0 ? 'true' : 'false'} style="min-width:110px">{cm(s.label, lang)}<small>{money(s.price, lang)}</small></button>)}
+        </div>
+      </div>
+      <div class="opt-group"><span>{t('orientation')}: <b id="cOrLbl">{t('portrait')}</b></span>
+        <div class="opts" id="cOrient">
+          <button class="opt" data-or="Portrait" data-or-label={t('portrait')} aria-pressed="true" style="min-width:110px">{t('portrait')}</button>
+          <button class="opt" data-or="Landscape" data-or-label={t('landscape')} aria-pressed="false" style="min-width:110px">{t('landscape')}</button>
+        </div>
+      </div>
+      <div class="field"><label for="cNote">{t('notes_label')}</label><textarea id="cNote" rows="2" placeholder={t('notes_ph')}></textarea></div>
+      <div class="buy-row">
+        <div class="qty"><button id="cDec" aria-label={t('dec')}>−</button><span id="cQty">1</span><button id="cInc" aria-label={t('inc')}>+</button></div>
+        <button class="btn btn-primary" id="cAdd" disabled>{t('add_to_cart')} · {money(sizes[0].price, lang)}</button>
+      </div>
+      <p class="need" id="cNeed">{t('need_photo')}</p>
+      <div class="eta"><b>{t('custom_eta_t')}</b><span>{t('custom_eta_s')}</span></div>
+      <div class="tips">{[1, 2, 3, 4].map((n) => <div class="tip"><b>{t(`tip${n}_t`)}</b>{t(`tip${n}_s`)}</div>)}</div>
+    </div>
+  </div>
+</div>
+
+<section class="sec"><div class="wrap">
+  <div class="sec-head"><div class="l"><span class="eyebrow">{t('ex_eyebrow')}</span><h2>{t('ex_title')}</h2></div><p>{t('ex_lead')}</p></div>
+  <div class="cmp-wrap">
+    <div class="ex-trio">
+      <figure><img src={ex.numbered} alt="" loading="lazy" /><figcaption>{t('ex_num')}</figcaption></figure>
+      <figure><img src={ex.reference} alt="" loading="lazy" /><figcaption>{t('ex_ref')}</figcaption></figure>
+      <figure><img src={ex.finished} alt="" loading="lazy" /><figcaption>{t('ex_fin')}</figcaption></figure>
+    </div>
+    <div class="cmp-stage"><Compare lang={lang} fin={ex.finished} num={ex.numbered} land={false} /></div>
+  </div>
+</div></section>
+
+<section class="sec kit"><Faq lang={lang} /></section>

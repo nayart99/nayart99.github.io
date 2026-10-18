@@ -1,0 +1,7 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Custom from '../components/views/Custom.astro';
+import { useT, settings } from '../lib/site.js';
+const t = useT('en');
+---
+<Layout lang="en" path="/custom" title={t('custom_title')} description={t('custom_blurb')} image={settings.custom_example.finished}><Custom lang="en" /></Layout>

@@ -1,0 +1,684 @@
+# Pages CMS configuration – the client edits the site at https://app.pagescms.org
+media:
+  input: public/media
+  output: /media
+content:
+  - name: products
+    label: "Paintings"
+    type: collection
+    path: src/content/products
+    format: json
+    filename: '{fields.slug}.json'
+    view:
+      fields: [slug, price, order, active]
+    fields:
+      - { name: slug, label: "Link name (lowercase, dashes, no spaces)", type: string, required: true }
+      - { name: active, label: "Show on website", type: boolean, default: true }
+      - { name: order, label: "Position in the shop (1 = first)", type: number }
+      - name: name
+        label: "Painting name"
+        type: object
+        fields:
+          - { name: en, label: "English", type: string }
+          - { name: ar, label: "Arabic", type: string }
+      - name: badge
+        label: "Badge (e.g. New, Best seller) – leave empty for none"
+        type: object
+        fields:
+          - { name: en, label: "English", type: string }
+          - { name: ar, label: "Arabic", type: string }
+      - name: level
+        label: "Level (e.g. Intermediate)"
+        type: object
+        fields:
+          - { name: en, label: "English", type: string }
+          - { name: ar, label: "Arabic", type: string }
+      - name: blurb
+        label: "Short description"
+        type: object
+        fields:
+          - { name: en, label: "English", type: text }
+          - { name: ar, label: "Arabic", type: text }
+      - name: about
+        label: "Long description"
+        type: object
+        fields:
+          - { name: en, label: "English", type: text }
+          - { name: ar, label: "Arabic", type: text }
+      - { name: price, label: "Price (EGP)", type: number }
+      - { name: compare_price, label: "Old price before discount (EGP) – leave 0 for none", type: number }
+      - name: orientation
+        label: "Orientation"
+        type: select
+        options: { values: [landscape, portrait] }
+      - name: images
+        label: "Images"
+        type: object
+        fields:
+          - { name: finished, label: "Finished painting (required)", type: image }
+          - { name: numbered, label: "Numbered canvas (required)", type: image }
+          - { name: reference, label: "Reference sheet", type: image }
+          - { name: halfway, label: "Halfway painted (optional)", type: image }
+          - { name: wall, label: "Painting on a wall (optional)", type: image }
+          - { name: timelapse_map, label: "Timelapse map (optional, made automatically if empty)", type: image }
+      - { name: palette, label: "Colour swatches (hex codes like #7A1F2B)", type: string, list: true }
+  - name: settings
+    label: "Store settings"
+    type: file
+    path: src/data/settings.json
+    format: json
+    fields:
+      - { name: site_url, label: "Website address (with https://)", type: string }
+      - { name: brand, label: "Brand name", type: string }
+      - name: tagline
+        label: "Tagline"
+        type: object
+        fields:
+          - { name: en, label: "English", type: string }
+          - { name: ar, label: "Arabic", type: string }
+      - { name: currency, label: "Currency", type: string }
+      - { name: delivery_fee, label: "Delivery fee (EGP)", type: number }
+      - { name: default_price, label: "Default canvas price (EGP)", type: number }
+      - { name: default_compare_price, label: "Default old price (EGP)", type: number }
+      - { name: canvas_size, label: "Canvas size text", type: string }
+      - { name: colours, label: "Number of colours", type: number }
+      - name: custom_sizes
+        label: "Custom canvas sizes and prices"
+        type: object
+        list: true
+        fields:
+          - { name: label, label: "Size", type: string }
+          - { name: price, label: "Price (EGP)", type: number }
+      - name: custom_example
+        label: "Custom canvas example images"
+        type: object
+        fields:
+          - { name: finished, label: "Finished", type: image }
+          - { name: numbered, label: "Numbered", type: image }
+          - { name: reference, label: "Reference", type: image }
+          - { name: halfway, label: "Halfway", type: image }
+      - { name: phone_display, label: "Support phone (as shown)", type: string }
+      - { name: phone_intl, label: "Support phone, international without + (e.g. 201270820513)", type: string }
+      - { name: whatsapp_intl, label: "WhatsApp number, international without +", type: string }
+      - { name: email, label: "Store email", type: string }
+      - { name: instapay, label: "InstaPay address shown after an InstaPay order", type: string }
+      - { name: vodafone_cash, label: "Vodafone Cash number shown after a Vodafone Cash order", type: string }
+      - name: payments
+        label: "Payment methods"
+        type: object
+        fields:
+          - { name: cod, label: "Cash on delivery", type: boolean }
+          - { name: instapay, label: "InstaPay", type: boolean }
+          - { name: vodafone_cash, label: "Vodafone Cash", type: boolean }
+      - { name: orders_endpoint, label: "Orders web app link (from Google Apps Script)", type: string }
+      - name: analytics
+        label: "Analytics and tracking"
+        type: object
+        fields:
+          - { name: ga4_id, label: "Google Analytics ID (G-XXXXXXX)", type: string }
+          - { name: clarity_id, label: "Microsoft Clarity project ID", type: string }
+          - { name: meta_pixel_id, label: "Meta Pixel ID", type: string }
+          - { name: google_site_verification, label: "Google Search Console verification code", type: string }
+      - name: social
+        label: "Social media links"
+        type: object
+        fields:
+          - { name: instagram, label: "Instagram", type: string }
+          - { name: facebook, label: "Facebook", type: string }
+          - { name: tiktok, label: "TikTok", type: string }
+      - { name: launch_offer, label: "Show the launch offer banner", type: boolean }
+  - name: hero
+    label: "Home page videos"
+    type: file
+    path: src/data/hero.json
+    format: json
+    list: true
+    fields:
+      - { name: video, label: "Video path without extension (upload .mp4 and .webm with the same name)", type: string }
+      - { name: poster, label: "Cover image", type: image }
+      - name: caption
+        label: "Caption"
+        type: object
+        fields:
+          - { name: en, label: "English", type: string }
+          - { name: ar, label: "Arabic", type: string }
+      - { name: link, label: "Link (e.g. products/starry-hollow or #kit)", type: string }
+  - name: faq
+    label: "Questions (FAQ)"
+    type: file
+    path: src/data/faq.json
+    format: json
+    list: true
+    fields:
+      - name: q
+        label: "Question"
+        type: object
+        fields:
+          - { name: en, label: "English", type: text }
+          - { name: ar, label: "Arabic", type: text }
+      - name: a
+        label: "Answer"
+        type: object
+        fields:
+          - { name: en, label: "English", type: text }
+          - { name: ar, label: "Arabic", type: text }
+  - name: reviews
+    label: "Customer reviews"
+    type: file
+    path: src/data/reviews.json
+    format: json
+    fields:
+      - { name: show, label: "Show reviews section", type: boolean }
+      - { name: sample, label: "Mark as sample reviews", type: boolean }
+      - name: items
+        label: "Reviews"
+        type: object
+        list: true
+        fields:
+          - { name: stars, label: "Stars (1-5)", type: number }
+          - name: text
+            label: "Review"
+            type: object
+            fields:
+              - { name: en, label: "English", type: text }
+              - { name: ar, label: "Arabic", type: text }
+          - name: who
+            label: "Painting or customer"
+            type: object
+            fields:
+              - { name: en, label: "English", type: text }
+              - { name: ar, label: "Arabic", type: text }
+  - name: text_en
+    label: "Website text – English"
+    type: file
+    path: src/i18n/en.json
+    format: json
+    fields:
+      - { name: lang_switch, label: "عربي", type: string }
+      - { name: nav_shop, label: "Shop canvases", type: string }
+      - { name: nav_custom, label: "Custom from your photo", type: string }
+      - { name: nav_how, label: "How it works", type: string }
+      - { name: nav_faq, label: "FAQ", type: string }
+      - { name: cart, label: "Cart", type: string }
+      - { name: announce_offer, label: "Launch offer on every canvas", type: string }
+      - { name: announce_cod, label: "Cash on delivery across Egypt", type: string }
+      - { name: hero_eyebrow, label: "Art meets a calmer mind", type: string }
+      - { name: hero_title_1, label: "Stop scrolling.", type: string }
+      - { name: hero_title_2, label: "Start creating.", type: string }
+      - { name: hero_lead, label: "A numbered canvas, 24 colours, 3 brushes and an evening to yourself. P", type: text }
+      - { name: hero_cta_shop, label: "Shop the canvases", type: string }
+      - { name: hero_cta_custom, label: "Use my photo", type: string }
+      - { name: trust_1_t, label: "Everything included", type: string }
+      - { name: trust_1_s, label: "Open the box and start", type: string }
+      - { name: trust_2_t, label: "Framed canvas", type: string }
+      - { name: trust_2_s, label: "Ready to hang when it dries", type: string }
+      - { name: trust_3_t, label: "Cash on delivery", type: string }
+      - { name: trust_3_s, label: "InstaPay and Vodafone Cash too", type: string }
+      - { name: trust_4_t, label: "Free paint refill", type: string }
+      - { name: trust_4_s, label: "If a colour runs out", type: string }
+      - { name: shop_eyebrow, label: "The collection", type: string }
+      - { name: shop_title, label: "Pick your canvas", type: string }
+      - { name: shop_lead, label: "All five come in 40×50 cm with 24 colours. Hover a canvas to see the n", type: text }
+      - { name: card_sub, label: "40×50 cm · 24 colours · framed canvas", type: string }
+      - { name: custom_card_tag, label: "Made from your photo", type: string }
+      - { name: custom_card_lvl, label: "Made for you", type: string }
+      - { name: custom_card_title, label: "Custom Canvas", type: string }
+      - { name: custom_card_sub, label: "Your photo · 40×50, 50×60 or 60×75 cm", type: string }
+      - { name: magic_eyebrow, label: "Drag to see it", type: string }
+      - { name: magic_title, label: "From numbers to a piece you made", type: string }
+      - { name: magic_lead, label: "This is the canvas you get, and this is what it becomes. Drag the hand", type: text }
+      - { name: cmp_left, label: "Numbered", type: string }
+      - { name: cmp_right, label: "Painted", type: string }
+      - { name: cmp_aria, label: "Compare the numbered canvas with the finished painting", type: string }
+      - { name: kit_eyebrow, label: "In every box", type: string }
+      - { name: kit_title, label: "Everything you need, in one box", type: string }
+      - { name: kit_head, label: "What's in the box", type: string }
+      - { name: kit_box, label: "The NAY ART box", type: string }
+      - { name: kit_box_s, label: "Made in Egypt", type: string }
+      - { name: kit_paints, label: "24 acrylic paints", type: string }
+      - { name: kit_paints_s, label: "Numbered to match your canvas", type: string }
+      - { name: kit_canvas, label: "Numbered canvas", type: string }
+      - { name: kit_canvas_s, label: "40×50 cm, stretched on a wooden frame", type: string }
+      - { name: kit_brushes, label: "3 paint brushes", type: string }
+      - { name: kit_ref, label: "Reference sheet", type: string }
+      - { name: kit_hooks, label: "Hanging kit", type: string }
+      - { name: kit_hooks_s, label: "Hooks and screws", type: string }
+      - { name: kit_guide, label: "Easy instructions", type: string }
+      - { name: how_eyebrow, label: "How it works", type: string }
+      - { name: how_title, label: "Three steps, at your own pace", type: string }
+      - { name: step1_n, label: "Step one", type: string }
+      - { name: step1_t, label: "Set up", type: string }
+      - { name: step1_p, label: "Lay out the canvas, open the pots and keep the reference sheet next to", type: string }
+      - { name: step2_n, label: "Step two", type: string }
+      - { name: step2_t, label: "Paint by number", type: string }
+      - { name: step2_p, label: "Match each number on the canvas to the pot with the same number. Many ", type: text }
+      - { name: step3_n, label: "Step three", type: string }
+      - { name: step3_t, label: "Hang it", type: string }
+      - { name: step3_p, label: "When every area is filled, let it dry overnight. Then it is ready for ", type: string }
+      - { name: band_eyebrow, label: "Custom canvas", type: string }
+      - { name: band_title, label: "Your photo, as a canvas to paint", type: string }
+      - { name: band_lead, label: "The people you love, your pet, the place you met. Send us the photo an", type: text }
+      - { name: band_s1_t, label: "Upload your photo", type: string }
+      - { name: band_s1_s, label: "Any clear photo from your phone.", type: string }
+      - { name: band_s2_t, label: "Approve your design", type: string }
+      - { name: band_s2_s, label: "We send it to you on WhatsApp before we print.", type: string }
+      - { name: band_s3_t, label: "Paint it and hang it", type: string }
+      - { name: band_s3_s, label: "Same full kit, in the size you choose.", type: string }
+      - { name: band_sizes, label: "Three sizes", type: string }
+      - { name: band_cta, label: "Upload your photo", type: string }
+      - { name: reviews_eyebrow, label: "Reviews", type: string }
+      - { name: reviews_title, label: "What painters are saying", type: string }
+      - { name: reviews_sample, label: "Sample reviews for layout preview", type: string }
+      - { name: faq_eyebrow, label: "Questions", type: string }
+      - { name: faq_title, label: "Frequently asked", type: string }
+      - { name: news_eyebrow, label: "The calm letter", type: string }
+      - { name: news_title, label: "New canvases, first", type: string }
+      - { name: news_lead, label: "One message when a new design drops. No spam.", type: string }
+      - { name: news_ph, label: "Your email", type: string }
+      - { name: news_btn, label: "Subscribe", type: string }
+      - { name: news_ok, label: "Thanks, you are on the list.", type: string }
+      - { name: news_bad, label: "Enter a valid email address.", type: string }
+      - { name: foot_about, label: "Paint-by-numbers canvases for a slower, screen-free evening.", type: string }
+      - { name: foot_shop, label: "Shop", type: string }
+      - { name: foot_help, label: "Help", type: string }
+      - { name: foot_ship, label: "Shipping & returns", type: string }
+      - { name: foot_pay, label: "Payment methods", type: string }
+      - { name: foot_support, label: "Support", type: string }
+      - { name: foot_support_p, label: "Questions about a kit, an order or a custom canvas? Call or message us", type: string }
+      - { name: rights, label: "All rights reserved.", type: string }
+      - { name: copy, label: "Copy", type: string }
+      - { name: copied, label: "Copied", type: string }
+      - { name: copy_fallback, label: "Number selected. Copy it from your keyboard menu.", type: string }
+      - { name: call, label: "Call", type: string }
+      - { name: call_us, label: "Call us", type: string }
+      - { name: whatsapp, label: "WhatsApp", type: string }
+      - { name: support, label: "Support", type: string }
+      - { name: need_help, label: "Need help?", type: string }
+      - { name: support_p, label: "Talk to the NAY ART team about a kit, your order or a custom canvas.", type: string }
+      - { name: support_note, label: "If the call button does not open your phone app, copy the number and d", type: string }
+      - { name: close, label: "Close", type: string }
+      - { name: crumb_home, label: "Home", type: string }
+      - { name: crumb_canvases, label: "Canvases", type: string }
+      - { name: pbn, label: "Paint by numbers", type: string }
+      - { name: reviews_word, label: "reviews", type: string }
+      - { name: sample, label: "sample", type: string }
+      - { name: save, label: "Save", type: string }
+      - { name: chip_canvas, label: "cm canvas", type: string }
+      - { name: chip_colours, label: "colours", type: string }
+      - { name: chip_brushes, label: "brushes", type: string }
+      - { name: chip_ref, label: "reference sheet", type: string }
+      - { name: palette_title, label: "The 24 colours in this kit", type: string }
+      - { name: size, label: "Size", type: string }
+      - { name: full_kit, label: "Full kit · 24 colours", type: string }
+      - { name: add_to_cart, label: "Add to cart", type: string }
+      - { name: buy_now, label: "Buy it now", type: string }
+      - { name: dec, label: "Decrease quantity", type: string }
+      - { name: inc, label: "Increase quantity", type: string }
+      - { name: eta_order, label: "Order today, arrives", type: string }
+      - { name: eta_areas, label: "Cairo and Giza 2–4 working days · other governorates 3–6", type: string }
+      - { name: assure_1, label: "Everything in one box", type: string }
+      - { name: assure_2, label: "Cash on delivery", type: string }
+      - { name: assure_3, label: "Free refill if a colour runs out", type: string }
+      - { name: assure_4, label: "14-day returns, unopened", type: string }
+      - { name: g_timelapse, label: "Timelapse", type: string }
+      - { name: g_finished, label: "Finished painting", type: string }
+      - { name: g_wall, label: "On your wall", type: string }
+      - { name: g_numbered, label: "Numbered canvas", type: string }
+      - { name: g_halfway, label: "Halfway there", type: string }
+      - { name: g_ref, label: "Reference sheet", type: string }
+      - { name: g_box, label: "The NAY ART box", type: string }
+      - { name: g_prev, label: "Previous image", type: string }
+      - { name: g_next, label: "Next image", type: string }
+      - { name: g_show, label: "Show", type: string }
+      - { name: live_painting, label: "Painting colour {n} of 24", type: string }
+      - { name: live_done, label: "Finished · 24 of 24 colours", type: string }
+      - { name: ba_eyebrow, label: "Before and after", type: string }
+      - { name: ba_title, label: "Drag to see your canvas come to life", type: string }
+      - { name: ba_lead, label: "On one side, the numbered canvas that arrives in your box. On the othe", type: text }
+      - { name: why_eyebrow, label: "Why you'll love it", type: string }
+      - { name: why_title, label: "More than a painting", type: string }
+      - { name: why1_t, label: "No experience needed", type: string }
+      - { name: why1_p, label: "If you can match a number to a pot, you can paint this.", type: string }
+      - { name: why2_t, label: "A real break from screens", type: string }
+      - { name: why2_p, label: "An hour with a brush instead of a phone. Your mind slows down with you", type: string }
+      - { name: why3_t, label: "Made by you", type: string }
+      - { name: why3_p, label: "A piece for your wall that you painted yourself, colour by colour.", type: string }
+      - { name: why4_t, label: "A gift that lasts", type: string }
+      - { name: why4_p, label: "The box, then the evenings painting, then the finished canvas on the w", type: string }
+      - { name: pdp_steps_title, label: "From numbers to a finished piece", type: string }
+      - { name: about_eyebrow, label: "About this canvas", type: string }
+      - { name: ideal_for, label: "Ideal for:", type: string }
+      - { name: ideal_1, label: "A quiet evening away from your phone", type: string }
+      - { name: ideal_2, label: "A gift for someone who says they cannot paint", type: string }
+      - { name: ideal_3, label: "Something you made yourself on the wall", type: string }
+      - { name: spec_canvas, label: "Canvas", type: string }
+      - { name: spec_colours, label: "Colours", type: string }
+      - { name: spec_colours_v, label: "24 numbered pots", type: string }
+      - { name: spec_brushes, label: "Brushes", type: string }
+      - { name: spec_brushes_v, label: "3 (fine, medium, broad)", type: string }
+      - { name: spec_guide, label: "Guide", type: string }
+      - { name: spec_guide_v, label: "Reference sheet and instructions", type: string }
+      - { name: also_eyebrow, label: "Keep painting", type: string }
+      - { name: also_title, label: "You may also like", type: string }
+      - { name: custom_crumb, label: "Custom canvas", type: string }
+      - { name: custom_title, label: "Custom Canvas", type: string }
+      - { name: custom_sub, label: "Paint by numbers from your photo", type: string }
+      - { name: custom_blurb, label: "Your favourite photo, as a canvas you paint yourself. We turn it into ", type: text }
+      - { name: orientation, label: "Orientation", type: string }
+      - { name: portrait, label: "Portrait", type: string }
+      - { name: landscape, label: "Landscape", type: string }
+      - { name: notes_label, label: "Notes for our designer (optional)", type: string }
+      - { name: notes_ph, label: "e.g. Remove the background, keep the blue scarf", type: string }
+      - { name: upload_t, label: "Upload your photo", type: string }
+      - { name: upload_s, label: "Tap to choose a photo, or drag one here. JPG or PNG. You will see a ro", type: text }
+      - { name: mode_photo, label: "Your photo", type: string }
+      - { name: mode_num, label: "Numbered canvas", type: string }
+      - { name: mode_paint, label: "Painted", type: string }
+      - { name: mode_change, label: "Change photo", type: string }
+      - { name: pv_note, label: "Rough automatic preview. Our designer prepares the final canvas by han", type: text }
+      - { name: need_photo, label: "Upload a photo to continue.", type: string }
+      - { name: custom_eta_t, label: "Design preview on WhatsApp within 48 hours", type: string }
+      - { name: custom_eta_s, label: "We print after you approve. Delivery 5–8 working days after approval.", type: string }
+      - { name: tip1_t, label: "Good light", type: string }
+      - { name: tip1_s, label: "Daylight photos give truer colours.", type: string }
+      - { name: tip2_t, label: "Sharp and close", type: string }
+      - { name: tip2_s, label: "Faces should fill a good part of the frame.", type: string }
+      - { name: tip3_t, label: "Simple background", type: string }
+      - { name: tip3_s, label: "Busy scenes lose detail on the canvas.", type: string }
+      - { name: tip4_t, label: "Big file", type: string }
+      - { name: tip4_s, label: "Send the original, not a screenshot.", type: string }
+      - { name: ex_eyebrow, label: "A real custom canvas", type: string }
+      - { name: ex_title, label: "One couple's photo, start to finish", type: string }
+      - { name: ex_lead, label: "This canvas was made from a customer's selfie. Drag to compare the num", type: text }
+      - { name: ex_num, label: "Numbered", type: string }
+      - { name: ex_ref, label: "Reference", type: string }
+      - { name: ex_fin, label: "Finished", type: string }
+      - { name: bad_file, label: "Choose an image file (JPG or PNG)", type: string }
+      - { name: your_cart, label: "Your cart", type: string }
+      - { name: cart_empty, label: "Your cart is empty.", type: string }
+      - { name: see_canvases, label: "See the canvases", type: string }
+      - { name: remove, label: "Remove", type: string }
+      - { name: subtotal, label: "Subtotal", type: string }
+      - { name: delivery, label: "Delivery", type: string }
+      - { name: total, label: "Total", type: string }
+      - { name: checkout, label: "Checkout", type: string }
+      - { name: added, label: "added to cart", type: string }
+      - { name: custom_added, label: "Custom canvas added to cart", type: string }
+      - { name: delivery_details, label: "Delivery details", type: string }
+      - { name: back_cart, label: "Back to cart", type: string }
+      - { name: f_name, label: "Full name", type: string }
+      - { name: f_phone, label: "Mobile number", type: string }
+      - { name: f_phone_wa, label: "Mobile number (WhatsApp, for your design preview)", type: string }
+      - { name: f_city, label: "Governorate", type: string }
+      - { name: f_addr, label: "Full address", type: string }
+      - { name: f_pay, label: "Payment method", type: string }
+      - { name: f_note, label: "Order notes (optional)", type: string }
+      - { name: pay_cod, label: "Cash on delivery", type: string }
+      - { name: pay_instapay, label: "InstaPay", type: string }
+      - { name: pay_vodafone, label: "Vodafone Cash", type: string }
+      - { name: place_order, label: "Place order", type: string }
+      - { name: placing, label: "Sending your order…", type: string }
+      - { name: err_name, label: "Enter your full name", type: string }
+      - { name: err_phone, label: "Use an 11-digit number starting with 010, 011, 012 or 015", type: string }
+      - { name: err_addr, label: "Add more detail to the address", type: string }
+      - { name: order_placed, label: "Order placed", type: string }
+      - { name: thanks, label: "Thank you, {name}", type: string }
+      - { name: thanks_kit, label: "Your order is in. We will call you to confirm delivery.", type: string }
+      - { name: thanks_custom, label: "We will send your custom design on WhatsApp within 48 hours.", type: string }
+      - { name: pay_after_insta, label: "Send the total by InstaPay to {id}, then send us the screenshot on Wha", type: string }
+      - { name: pay_after_voda, label: "Send the total by Vodafone Cash to {id}, then send us the screenshot o", type: text }
+      - { name: send_wa, label: "Send the order on WhatsApp", type: string }
+      - { name: order_fail, label: "We could not send your order online. Send it to us on WhatsApp and we ", type: text }
+      - { name: back_shop, label: "Back to the shop", type: string }
+      - { name: payment, label: "Payment", type: string }
+      - { name: gov, label: "Governorates", type: string, list: true }
+      - { name: notfound_t, label: "Page not found", type: string }
+      - { name: notfound_p, label: "This page does not exist. Have a look at the canvases instead.", type: string }
+      - { name: price_from, label: "From", type: string }
+  - name: text_ar
+    label: "Website text – Arabic"
+    type: file
+    path: src/i18n/ar.json
+    format: json
+    fields:
+      - { name: lang_switch, label: "عربي", type: string }
+      - { name: nav_shop, label: "Shop canvases", type: string }
+      - { name: nav_custom, label: "Custom from your photo", type: string }
+      - { name: nav_how, label: "How it works", type: string }
+      - { name: nav_faq, label: "FAQ", type: string }
+      - { name: cart, label: "Cart", type: string }
+      - { name: announce_offer, label: "Launch offer on every canvas", type: string }
+      - { name: announce_cod, label: "Cash on delivery across Egypt", type: string }
+      - { name: hero_eyebrow, label: "Art meets a calmer mind", type: string }
+      - { name: hero_title_1, label: "Stop scrolling.", type: string }
+      - { name: hero_title_2, label: "Start creating.", type: string }
+      - { name: hero_lead, label: "A numbered canvas, 24 colours, 3 brushes and an evening to yourself. P", type: text }
+      - { name: hero_cta_shop, label: "Shop the canvases", type: string }
+      - { name: hero_cta_custom, label: "Use my photo", type: string }
+      - { name: trust_1_t, label: "Everything included", type: string }
+      - { name: trust_1_s, label: "Open the box and start", type: string }
+      - { name: trust_2_t, label: "Framed canvas", type: string }
+      - { name: trust_2_s, label: "Ready to hang when it dries", type: string }
+      - { name: trust_3_t, label: "Cash on delivery", type: string }
+      - { name: trust_3_s, label: "InstaPay and Vodafone Cash too", type: string }
+      - { name: trust_4_t, label: "Free paint refill", type: string }
+      - { name: trust_4_s, label: "If a colour runs out", type: string }
+      - { name: shop_eyebrow, label: "The collection", type: string }
+      - { name: shop_title, label: "Pick your canvas", type: string }
+      - { name: shop_lead, label: "All five come in 40×50 cm with 24 colours. Hover a canvas to see the n", type: text }
+      - { name: card_sub, label: "40×50 cm · 24 colours · framed canvas", type: string }
+      - { name: custom_card_tag, label: "Made from your photo", type: string }
+      - { name: custom_card_lvl, label: "Made for you", type: string }
+      - { name: custom_card_title, label: "Custom Canvas", type: string }
+      - { name: custom_card_sub, label: "Your photo · 40×50, 50×60 or 60×75 cm", type: string }
+      - { name: magic_eyebrow, label: "Drag to see it", type: string }
+      - { name: magic_title, label: "From numbers to a piece you made", type: string }
+      - { name: magic_lead, label: "This is the canvas you get, and this is what it becomes. Drag the hand", type: string }
+      - { name: cmp_left, label: "Numbered", type: string }
+      - { name: cmp_right, label: "Painted", type: string }
+      - { name: cmp_aria, label: "Compare the numbered canvas with the finished painting", type: string }
+      - { name: kit_eyebrow, label: "In every box", type: string }
+      - { name: kit_title, label: "Everything you need, in one box", type: string }
+      - { name: kit_head, label: "What's in the box", type: string }
+      - { name: kit_box, label: "The NAY ART box", type: string }
+      - { name: kit_box_s, label: "Made in Egypt", type: string }
+      - { name: kit_paints, label: "24 acrylic paints", type: string }
+      - { name: kit_paints_s, label: "Numbered to match your canvas", type: string }
+      - { name: kit_canvas, label: "Numbered canvas", type: string }
+      - { name: kit_canvas_s, label: "40×50 cm, stretched on a wooden frame", type: string }
+      - { name: kit_brushes, label: "3 paint brushes", type: string }
+      - { name: kit_ref, label: "Reference sheet", type: string }
+      - { name: kit_hooks, label: "Hanging kit", type: string }
+      - { name: kit_hooks_s, label: "Hooks and screws", type: string }
+      - { name: kit_guide, label: "Easy instructions", type: string }
+      - { name: how_eyebrow, label: "How it works", type: string }
+      - { name: how_title, label: "Three steps, at your own pace", type: string }
+      - { name: step1_n, label: "Step one", type: string }
+      - { name: step1_t, label: "Set up", type: string }
+      - { name: step1_p, label: "Lay out the canvas, open the pots and keep the reference sheet next to", type: string }
+      - { name: step2_n, label: "Step two", type: string }
+      - { name: step2_t, label: "Paint by number", type: string }
+      - { name: step2_p, label: "Match each number on the canvas to the pot with the same number. Many ", type: string }
+      - { name: step3_n, label: "Step three", type: string }
+      - { name: step3_t, label: "Hang it", type: string }
+      - { name: step3_p, label: "When every area is filled, let it dry overnight. Then it is ready for ", type: string }
+      - { name: band_eyebrow, label: "Custom canvas", type: string }
+      - { name: band_title, label: "Your photo, as a canvas to paint", type: string }
+      - { name: band_lead, label: "The people you love, your pet, the place you met. Send us the photo an", type: text }
+      - { name: band_s1_t, label: "Upload your photo", type: string }
+      - { name: band_s1_s, label: "Any clear photo from your phone.", type: string }
+      - { name: band_s2_t, label: "Approve your design", type: string }
+      - { name: band_s2_s, label: "We send it to you on WhatsApp before we print.", type: string }
+      - { name: band_s3_t, label: "Paint it and hang it", type: string }
+      - { name: band_s3_s, label: "Same full kit, in the size you choose.", type: string }
+      - { name: band_sizes, label: "Three sizes", type: string }
+      - { name: band_cta, label: "Upload your photo", type: string }
+      - { name: reviews_eyebrow, label: "Reviews", type: string }
+      - { name: reviews_title, label: "What painters are saying", type: string }
+      - { name: reviews_sample, label: "Sample reviews for layout preview", type: string }
+      - { name: faq_eyebrow, label: "Questions", type: string }
+      - { name: faq_title, label: "Frequently asked", type: string }
+      - { name: news_eyebrow, label: "The calm letter", type: string }
+      - { name: news_title, label: "New canvases, first", type: string }
+      - { name: news_lead, label: "One message when a new design drops. No spam.", type: string }
+      - { name: news_ph, label: "Your email", type: string }
+      - { name: news_btn, label: "Subscribe", type: string }
+      - { name: news_ok, label: "Thanks, you are on the list.", type: string }
+      - { name: news_bad, label: "Enter a valid email address.", type: string }
+      - { name: foot_about, label: "Paint-by-numbers canvases for a slower, screen-free evening.", type: string }
+      - { name: foot_shop, label: "Shop", type: string }
+      - { name: foot_help, label: "Help", type: string }
+      - { name: foot_ship, label: "Shipping & returns", type: string }
+      - { name: foot_pay, label: "Payment methods", type: string }
+      - { name: foot_support, label: "Support", type: string }
+      - { name: foot_support_p, label: "Questions about a kit, an order or a custom canvas? Call or message us", type: string }
+      - { name: rights, label: "All rights reserved.", type: string }
+      - { name: copy, label: "Copy", type: string }
+      - { name: copied, label: "Copied", type: string }
+      - { name: copy_fallback, label: "Number selected. Copy it from your keyboard menu.", type: string }
+      - { name: call, label: "Call", type: string }
+      - { name: call_us, label: "Call us", type: string }
+      - { name: whatsapp, label: "WhatsApp", type: string }
+      - { name: support, label: "Support", type: string }
+      - { name: need_help, label: "Need help?", type: string }
+      - { name: support_p, label: "Talk to the NAY ART team about a kit, your order or a custom canvas.", type: string }
+      - { name: support_note, label: "If the call button does not open your phone app, copy the number and d", type: string }
+      - { name: close, label: "Close", type: string }
+      - { name: crumb_home, label: "Home", type: string }
+      - { name: crumb_canvases, label: "Canvases", type: string }
+      - { name: pbn, label: "Paint by numbers", type: string }
+      - { name: reviews_word, label: "reviews", type: string }
+      - { name: sample, label: "sample", type: string }
+      - { name: save, label: "Save", type: string }
+      - { name: chip_canvas, label: "cm canvas", type: string }
+      - { name: chip_colours, label: "colours", type: string }
+      - { name: chip_brushes, label: "brushes", type: string }
+      - { name: chip_ref, label: "reference sheet", type: string }
+      - { name: palette_title, label: "The 24 colours in this kit", type: string }
+      - { name: size, label: "Size", type: string }
+      - { name: full_kit, label: "Full kit · 24 colours", type: string }
+      - { name: add_to_cart, label: "Add to cart", type: string }
+      - { name: buy_now, label: "Buy it now", type: string }
+      - { name: dec, label: "Decrease quantity", type: string }
+      - { name: inc, label: "Increase quantity", type: string }
+      - { name: eta_order, label: "Order today, arrives", type: string }
+      - { name: eta_areas, label: "Cairo and Giza 2–4 working days · other governorates 3–6", type: string }
+      - { name: assure_1, label: "Everything in one box", type: string }
+      - { name: assure_2, label: "Cash on delivery", type: string }
+      - { name: assure_3, label: "Free refill if a colour runs out", type: string }
+      - { name: assure_4, label: "14-day returns, unopened", type: string }
+      - { name: g_timelapse, label: "Timelapse", type: string }
+      - { name: g_finished, label: "Finished painting", type: string }
+      - { name: g_wall, label: "On your wall", type: string }
+      - { name: g_numbered, label: "Numbered canvas", type: string }
+      - { name: g_halfway, label: "Halfway there", type: string }
+      - { name: g_ref, label: "Reference sheet", type: string }
+      - { name: g_box, label: "The NAY ART box", type: string }
+      - { name: g_prev, label: "Previous image", type: string }
+      - { name: g_next, label: "Next image", type: string }
+      - { name: g_show, label: "Show", type: string }
+      - { name: live_painting, label: "Painting colour {n} of 24", type: string }
+      - { name: live_done, label: "Finished · 24 of 24 colours", type: string }
+      - { name: ba_eyebrow, label: "Before and after", type: string }
+      - { name: ba_title, label: "Drag to see your canvas come to life", type: string }
+      - { name: ba_lead, label: "On one side, the numbered canvas that arrives in your box. On the othe", type: text }
+      - { name: why_eyebrow, label: "Why you'll love it", type: string }
+      - { name: why_title, label: "More than a painting", type: string }
+      - { name: why1_t, label: "No experience needed", type: string }
+      - { name: why1_p, label: "If you can match a number to a pot, you can paint this.", type: string }
+      - { name: why2_t, label: "A real break from screens", type: string }
+      - { name: why2_p, label: "An hour with a brush instead of a phone. Your mind slows down with you", type: string }
+      - { name: why3_t, label: "Made by you", type: string }
+      - { name: why3_p, label: "A piece for your wall that you painted yourself, colour by colour.", type: string }
+      - { name: why4_t, label: "A gift that lasts", type: string }
+      - { name: why4_p, label: "The box, then the evenings painting, then the finished canvas on the w", type: string }
+      - { name: pdp_steps_title, label: "From numbers to a finished piece", type: string }
+      - { name: about_eyebrow, label: "About this canvas", type: string }
+      - { name: ideal_for, label: "Ideal for:", type: string }
+      - { name: ideal_1, label: "A quiet evening away from your phone", type: string }
+      - { name: ideal_2, label: "A gift for someone who says they cannot paint", type: string }
+      - { name: ideal_3, label: "Something you made yourself on the wall", type: string }
+      - { name: spec_canvas, label: "Canvas", type: string }
+      - { name: spec_colours, label: "Colours", type: string }
+      - { name: spec_colours_v, label: "24 numbered pots", type: string }
+      - { name: spec_brushes, label: "Brushes", type: string }
+      - { name: spec_brushes_v, label: "3 (fine, medium, broad)", type: string }
+      - { name: spec_guide, label: "Guide", type: string }
+      - { name: spec_guide_v, label: "Reference sheet and instructions", type: string }
+      - { name: also_eyebrow, label: "Keep painting", type: string }
+      - { name: also_title, label: "You may also like", type: string }
+      - { name: custom_crumb, label: "Custom canvas", type: string }
+      - { name: custom_title, label: "Custom Canvas", type: string }
+      - { name: custom_sub, label: "Paint by numbers from your photo", type: string }
+      - { name: custom_blurb, label: "Your favourite photo, as a canvas you paint yourself. We turn it into ", type: text }
+      - { name: orientation, label: "Orientation", type: string }
+      - { name: portrait, label: "Portrait", type: string }
+      - { name: landscape, label: "Landscape", type: string }
+      - { name: notes_label, label: "Notes for our designer (optional)", type: string }
+      - { name: notes_ph, label: "e.g. Remove the background, keep the blue scarf", type: string }
+      - { name: upload_t, label: "Upload your photo", type: string }
+      - { name: upload_s, label: "Tap to choose a photo, or drag one here. JPG or PNG. You will see a ro", type: text }
+      - { name: mode_photo, label: "Your photo", type: string }
+      - { name: mode_num, label: "Numbered canvas", type: string }
+      - { name: mode_paint, label: "Painted", type: string }
+      - { name: mode_change, label: "Change photo", type: string }
+      - { name: pv_note, label: "Rough automatic preview. Our designer prepares the final canvas by han", type: text }
+      - { name: need_photo, label: "Upload a photo to continue.", type: string }
+      - { name: custom_eta_t, label: "Design preview on WhatsApp within 48 hours", type: string }
+      - { name: custom_eta_s, label: "We print after you approve. Delivery 5–8 working days after approval.", type: string }
+      - { name: tip1_t, label: "Good light", type: string }
+      - { name: tip1_s, label: "Daylight photos give truer colours.", type: string }
+      - { name: tip2_t, label: "Sharp and close", type: string }
+      - { name: tip2_s, label: "Faces should fill a good part of the frame.", type: string }
+      - { name: tip3_t, label: "Simple background", type: string }
+      - { name: tip3_s, label: "Busy scenes lose detail on the canvas.", type: string }
+      - { name: tip4_t, label: "Big file", type: string }
+      - { name: tip4_s, label: "Send the original, not a screenshot.", type: string }
+      - { name: ex_eyebrow, label: "A real custom canvas", type: string }
+      - { name: ex_title, label: "One couple's photo, start to finish", type: string }
+      - { name: ex_lead, label: "This canvas was made from a customer's selfie. Drag to compare the num", type: text }
+      - { name: ex_num, label: "Numbered", type: string }
+      - { name: ex_ref, label: "Reference", type: string }
+      - { name: ex_fin, label: "Finished", type: string }
+      - { name: bad_file, label: "Choose an image file (JPG or PNG)", type: string }
+      - { name: your_cart, label: "Your cart", type: string }
+      - { name: cart_empty, label: "Your cart is empty.", type: string }
+      - { name: see_canvases, label: "See the canvases", type: string }
+      - { name: remove, label: "Remove", type: string }
+      - { name: subtotal, label: "Subtotal", type: string }
+      - { name: delivery, label: "Delivery", type: string }
+      - { name: total, label: "Total", type: string }
+      - { name: checkout, label: "Checkout", type: string }
+      - { name: added, label: "added to cart", type: string }
+      - { name: custom_added, label: "Custom canvas added to cart", type: string }
+      - { name: delivery_details, label: "Delivery details", type: string }
+      - { name: back_cart, label: "Back to cart", type: string }
+      - { name: f_name, label: "Full name", type: string }
+      - { name: f_phone, label: "Mobile number", type: string }
+      - { name: f_phone_wa, label: "Mobile number (WhatsApp, for your design preview)", type: string }
+      - { name: f_city, label: "Governorate", type: string }
+      - { name: f_addr, label: "Full address", type: string }
+      - { name: f_pay, label: "Payment method", type: string }
+      - { name: f_note, label: "Order notes (optional)", type: string }
+      - { name: pay_cod, label: "Cash on delivery", type: string }
+      - { name: pay_instapay, label: "InstaPay", type: string }
+      - { name: pay_vodafone, label: "Vodafone Cash", type: string }
+      - { name: place_order, label: "Place order", type: string }
+      - { name: placing, label: "Sending your order…", type: string }
+      - { name: err_name, label: "Enter your full name", type: string }
+      - { name: err_phone, label: "Use an 11-digit number starting with 010, 011, 012 or 015", type: string }
+      - { name: err_addr, label: "Add more detail to the address", type: string }
+      - { name: order_placed, label: "Order placed", type: string }
+      - { name: thanks, label: "Thank you, {name}", type: string }
+      - { name: thanks_kit, label: "Your order is in. We will call you to confirm delivery.", type: string }
+      - { name: thanks_custom, label: "We will send your custom design on WhatsApp within 48 hours.", type: string }
+      - { name: pay_after_insta, label: "Send the total by InstaPay to {id}, then send us the screenshot on Wha", type: string }
+      - { name: pay_after_voda, label: "Send the total by Vodafone Cash to {id}, then send us the screenshot o", type: string }
+      - { name: send_wa, label: "Send the order on WhatsApp", type: string }
+      - { name: order_fail, label: "We could not send your order online. Send it to us on WhatsApp and we ", type: string }
+      - { name: back_shop, label: "Back to the shop", type: string }
+      - { name: payment, label: "Payment", type: string }
+      - { name: gov, label: "Governorates", type: string, list: true }
+      - { name: notfound_t, label: "Page not found", type: string }
+      - { name: notfound_p, label: "This page does not exist. Have a look at the canvases instead.", type: string }
+      - { name: price_from, label: "From", type: string }

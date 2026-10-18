@@ -1,0 +1,47 @@
+[
+  {
+    "video": "/media/video/nay1",
+    "poster": "/media/video/nay1.webp",
+    "caption": {
+      "en": "Every colour numbered and ready",
+      "ar": "كل لون مرقّم وجاهز"
+    },
+    "link": "#kit"
+  },
+  {
+    "video": "/media/video/nay2",
+    "poster": "/media/video/nay2.webp",
+    "caption": {
+      "en": "Painting Starry Hollow",
+      "ar": "بنلوّن ليلة النجوم"
+    },
+    "link": "products/starry-hollow"
+  },
+  {
+    "video": "/media/video/web3",
+    "poster": "/media/video/web3.webp",
+    "caption": {
+      "en": "One colour at a time",
+      "ar": "لون ورا لون"
+    },
+    "link": "products/starry-hollow"
+  },
+  {
+    "video": "/media/video/box",
+    "poster": "/media/video/box.webp",
+    "caption": {
+      "en": "Your kit arrives ready to paint",
+      "ar": "الكيت بيوصلك جاهز للتلوين"
+    },
+    "link": "#kit"
+  },
+  {
+    "video": "/media/video/easel",
+    "poster": "/media/video/easel.webp",
+    "caption": {
+      "en": "Starry Hollow on the easel",
+      "ar": "ليلة النجوم على الحامل"
+    },
+    "link": "products/starry-hollow"
+  }
+]

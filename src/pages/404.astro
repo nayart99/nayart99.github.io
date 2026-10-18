@@ -1,0 +1,8 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { useT } from '../lib/site.js';
+const t = useT('en');
+---
+<Layout lang="en" path="/404" title={t('notfound_t')}>
+  <div class="wrap nf"><h1>{t('notfound_t')}</h1><p>{t('notfound_p')}</p><a class="btn btn-primary" href="/#shop">{t('see_canvases')}</a></div>
+</Layout>

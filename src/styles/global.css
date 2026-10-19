@@ -459,8 +459,13 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .skip:focus{clip-path:none;width:auto;height:auto}
 .order-note{background:var(--sand);border-radius:var(--radius);padding:10px 12px;font-size:.86rem;color:var(--ink)}
 .wa-btn{background:#1f7a4d!important;border-color:#1f7a4d!important;color:#fff!important}
-.f-social{display:flex;gap:12px;margin-top:10px}
-.f-social a{color:var(--ink-soft);font-size:.88rem}
+.social{display:flex;gap:10px}
+.social a{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);color:var(--ink);transition:background .2s,color .2s,border-color .2s}
+.social a:hover,.social a:focus-visible{background:var(--burgundy);border-color:var(--burgundy);color:var(--cream)}
+.social svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.f-social{margin-top:16px}
+.sup-follow{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;font-size:.88rem;color:var(--ink-soft)}
+.sup-follow .social a{width:34px;height:34px}
 .nf{padding-block:120px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center}
 .nf h1{font-size:clamp(2.4rem,5vw,3.6rem)}
 .nf p{color:var(--ink-soft)}

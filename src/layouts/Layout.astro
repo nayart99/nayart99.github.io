@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { settings, useT, href, altPath, absolute, getProducts, pick, STRINGS } from '../lib/site.js';
+import Social from '../components/Social.astro';
 
 const { lang = 'en', title, description, path = '/', image = '/media/brand/og.jpg', jsonld = [], bodyClass = '' } = Astro.props;
 const t = useT(lang);
@@ -120,11 +121,7 @@ const fontsUrl = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:it
         <div>
           <img class="logo" src="/media/brand/logo.png" alt={`${settings.brand}, ${pick(settings.tagline, 'en')}`} width="240" height="90" loading="lazy" />
           <p>{t('foot_about')}</p>
-          <div class="f-social">
-            {settings.social?.instagram && <a href={settings.social.instagram} target="_blank" rel="noopener">Instagram</a>}
-            {settings.social?.facebook && <a href={settings.social.facebook} target="_blank" rel="noopener">Facebook</a>}
-            {settings.social?.tiktok && <a href={settings.social.tiktok} target="_blank" rel="noopener">TikTok</a>}
-          </div>
+          <Social cls="social f-social" />
         </div>
         <div class="f-col"><h4>{t('foot_shop')}</h4><ul>
           {products.map((p) => <li><a href={href(lang, `/products/${p.slug}`)}>{pick(p.name, lang)}</a></li>)}
@@ -167,6 +164,7 @@ const fontsUrl = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:it
       <a class="btn" href={`https://wa.me/${settings.whatsapp_intl}`} target="_blank" rel="noopener">{t('whatsapp')}</a>
     </div>
     <small>{t('support_note')}</small>
+    {Object.values(settings.social || {}).some(Boolean) && <div class="sup-follow"><span>{t('follow_us')}</span><Social /></div>}
   </div>
 
   <script id="store-data" type="application/json" set:html={JSON.stringify(store)} />

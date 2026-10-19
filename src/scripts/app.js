@@ -148,7 +148,7 @@ function showDone(o, sent) {
   const hasCustom = o.items.some((i) => i.custom);
   const first = o.customer.name.split(' ')[0];
   $('drawerTitle').textContent = tr('order_placed');
-  const payNote = o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : '';
+  const payNote = o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : o.payment !== 'cod' ? tr('pay_after_wa') : '';
   const rows = o.items.map((i) => `<div class="row"><span>${i.name} (${i.display}) × ${i.qty}</span><span class="price">${money(i.line)}</span></div>`).join('');
   $('drawerBody').innerHTML = `<div class="done-box"><img src="/media/brand/mark.png" alt=""><h2 style="font-size:2rem">${tr('thanks', { name: first })}</h2>
     <p style="color:var(--ink-soft)">${sent ? (hasCustom ? tr('thanks_custom') : tr('thanks_kit')) : tr('order_fail')}</p><span class="ord">${o.id}</span></div>

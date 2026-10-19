@@ -268,5 +268,6 @@
   "notfound_t": "Page not found",
   "notfound_p": "This page does not exist. Have a look at the canvases instead.",
   "price_from": "From",
-  "follow_us": "Follow us"
+  "follow_us": "Follow us",
+  "pay_after_wa": "We'll send you the payment number on WhatsApp to transfer the total."
 }

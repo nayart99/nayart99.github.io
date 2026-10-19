@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Product from '../../components/views/Product.astro';
-import { pick, href, absolute, settings, useT } from '../../lib/site.js';
+import { pick, href, absolute, settings, useT, cm } from '../../lib/site.js';
 const { lang, p } = Astro.props;
 const t = useT(lang);
 const name = pick(p.name, lang);
@@ -10,7 +10,7 @@ const jsonld = [
   {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: `${name} – ${t('pbn')} ${settings.canvas_size}`,
+    name: `${name} – ${t('pbn')} ${cm(settings.canvas_size, lang)}`,
     description: pick(p.blurb, lang),
     image: [absolute(p.images.finished), absolute(p.images.numbered)],
     brand: { '@type': 'Brand', name: settings.brand },
@@ -27,6 +27,6 @@ const jsonld = [
   },
 ];
 ---
-<Layout lang={lang} path={path} title={`${name} · ${t('pbn')} ${settings.canvas_size}`} description={pick(p.blurb, lang)} image={p.images.finished} jsonld={jsonld} bodyClass="is-product">
+<Layout lang={lang} path={path} title={`${name} · ${t('pbn')} ${cm(settings.canvas_size, lang)}`} description={pick(p.blurb, lang)} image={p.images.finished} jsonld={jsonld} bodyClass="is-product">
   <Product lang={lang} p={p} />
 </Layout>

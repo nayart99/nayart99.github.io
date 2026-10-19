@@ -4,18 +4,11 @@
 
 ---
 
-## ١. النشر على Cloudflare Pages (مجاني)
-1. ادخل **dash.cloudflare.com** واعمل حساب بإيميل المتجر.
-2. من القايمة: **Workers & Pages** ← **Create** ← تبويب **Pages** ← **Connect to Git**.
-3. اربط حساب GitHub واختار الـ repository `nay-art`.
-4. الإعدادات:
-   - Framework preset: **Astro**
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-5. دوس **Save and Deploy**. بعد دقيقتين هيبقى الموقع شغال على لينك زي `nay-art.pages.dev`.
-6. لو اللينك طلع مختلف، غيّر `site_url` في `src/data/settings.json` (أو من لوحة التحكم ← Store settings).
-
-> أي تعديل يتعمل على GitHub (أو من لوحة التحكم) بيتنشر لوحده خلال دقيقة.
+## ١. النشر (GitHub Pages – مجاني)
+الموقع بيتنشر لوحده من GitHub على: **https://nayart99.github.io**
+- الـ repository: `nayart99/nayart99.github.io` (لازم يفضل Public).
+- Settings ← Pages ← Source: **GitHub Actions**.
+- أي تعديل يتعمل على GitHub (أو من لوحة التحكم) بيتنشر لوحده خلال ١–٢ دقيقة. تقدر تتابع النشر من تبويب **Actions**.
 
 ---
 
@@ -77,7 +70,7 @@
 
 ## ٦. الدومين (بعدين)
 1. اشتري الدومين باسم العميل (Namecheap / GoDaddy / Cloudflare Registrar).
-2. Cloudflare Pages ← المشروع ← **Custom domains** ← Set up a domain ← اتبع الخطوات.
+2. GitHub ← الـ repo ← Settings ← Pages ← **Custom domain** ← اكتب الدومين، وبعدين في شركة الدومين ضيف سجلات DNS اللي GitHub بيقولك عليها، وفعّل **Enforce HTTPS**.
 3. غيّر `site_url` في الإعدادات للدومين الجديد.
 4. في Search Console ضيف الدومين الجديد وابعت الـ sitemap تاني.
 
@@ -85,5 +78,5 @@
 
 ## ٧. لوحة التحكم للعميل
 1. ادخل **app.pagescms.org** ← Sign in with GitHub (بحساب المتجر).
-2. اختار الـ repository `nay-art`. هتظهر الأقسام: Paintings، Store settings، Home page videos، FAQ، Customer reviews، Website text.
+2. اختار الـ repository `nayart99.github.io`. هتظهر الأقسام: Paintings، Store settings، Home page videos، FAQ، Customer reviews، Website text.
 3. لما تسلّم للعميل: GitHub ← الـ repo ← Settings ← Collaborators ← ضيفه، أو انقل ملكية الحساب كله له.

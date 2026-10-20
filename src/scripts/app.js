@@ -107,7 +107,7 @@ function renderDrawer() {
 
 function orderText(o) {
   const lines = o.items.map((i) => `• ${i.name} (${i.display}) × ${i.qty} = ${money(i.line)}`).join('\n');
-  return `${lang === "ar" ? "طلب NAY ART رقم" : "NAY ART order"} ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}\n\n${o.customer.name}\n${o.customer.phone}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(هبعتلكم صورة الكستم في الشات ده)' : '(I will send the custom photo in this chat)') : ''}`;
+  return `${lang === "ar" ? "طلب NAY ART رقم" : "NAY ART order"} ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}\n\n${o.customer.name}\n${o.customer.phone}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(سأرسل لكم الصورة المطلوبة للوحة في هذه المحادثة)' : '(I will send the custom photo in this chat)') : ''}`;
 }
 const waLink = (text) => `https://wa.me/${S.whatsapp_intl}?text=${encodeURIComponent(text)}`;
 

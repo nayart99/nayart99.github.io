@@ -42,7 +42,7 @@
     "instapay": true,
     "vodafone_cash": true
   },
-  "orders_endpoint": "",
+  "orders_endpoint": "https://script.google.com/macros/s/AKfycbxR7_09rc82jUX4oQgKoIFSWtoYr6ms234x_rBclJmon0jzfWTj2Lg2nFrKDFO0mmIO/exec",
   "analytics": {
     "ga4_id": "",
     "clarity_id": "",

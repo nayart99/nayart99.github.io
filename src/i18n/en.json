@@ -175,12 +175,12 @@
   "notes_label": "Notes for our designer (optional)",
   "notes_ph": "e.g. Remove the background, keep the blue scarf",
   "upload_t": "Upload your photo",
-  "upload_s": "Tap to choose a photo, or drag one here. JPG or PNG. You will see a rough preview of your canvas right away.",
+  "upload_s": "Tap to choose a photo, or drag it here. JPG or PNG, the original photo (not a screenshot) gives the best result.",
   "mode_photo": "Your photo",
   "mode_num": "Numbered canvas",
   "mode_paint": "Painted",
   "mode_change": "Change photo",
-  "pv_note": "Rough automatic preview. Our designer prepares the final canvas by hand and sends it to you to approve.",
+  "pv_note": "Our designer prepares your numbered canvas by hand and sends you the design on WhatsApp to approve before printing.",
   "need_photo": "Upload a photo to continue.",
   "custom_eta_t": "Design preview on WhatsApp within 48 hours",
   "custom_eta_s": "We print after you approve. Delivery 5–8 working days after approval.",
@@ -270,5 +270,6 @@
   "price_from": "From",
   "follow_us": "Follow us",
   "pay_after_wa": "We'll send you the payment number on WhatsApp to transfer the total.",
-  "order_wa_step": "One last step: tap the button below to send your order on WhatsApp, and we'll confirm it right away."
+  "order_wa_step": "One last step: tap the button below to send your order on WhatsApp, and we'll confirm it right away.",
+  "photo_ok": "Photo uploaded"
 }

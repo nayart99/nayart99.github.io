@@ -377,7 +377,12 @@ details ul{margin:0;padding-left:20px}
 .upload .empty-state svg{width:44px;height:44px;stroke:var(--burgundy);fill:none;stroke-width:1.3}
 .upload .empty-state b{font-family:var(--font-display);font-size:1.6rem;font-weight:500}
 .upload .empty-state span{font-size:.88rem;color:var(--ink-soft)}
-.upload canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--sand)}
+.upload img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--sand)}
+.upload.has-photo{border-style:solid;cursor:default}
+.up-done{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.up-done .ok{display:inline-flex;align-items:center;gap:8px;font-weight:500;color:#1f7a4d}
+.up-done .ok svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2}
+.up-done .btn{padding:8px 18px;font-size:.88rem}
 .upload input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
 .mode-toggle{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .mode-toggle button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 16px;font-size:.85rem}

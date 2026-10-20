@@ -17,13 +17,11 @@ const ex = settings.custom_example;
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>
           <b>{t('upload_t')}</b><span>{t('upload_s')}</span>
         </div>
-        <canvas id="pv" hidden></canvas>
+        <img id="pvImg" alt="" hidden />
       </label>
-      <div class="mode-toggle" id="modeToggle" hidden>
-        <button data-mode="photo" aria-pressed="false">{t('mode_photo')}</button>
-        <button data-mode="num" aria-pressed="true">{t('mode_num')}</button>
-        <button data-mode="paint" aria-pressed="false">{t('mode_paint')}</button>
-        <button data-mode="change">{t('mode_change')}</button>
+      <div class="up-done" id="upDone" hidden>
+        <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>{t('photo_ok')}</span>
+        <button type="button" class="btn" id="changePhoto">{t('mode_change')}</button>
       </div>
       <p class="preview-note" id="pvNote" hidden>{t('pv_note')}</p>
     </div>

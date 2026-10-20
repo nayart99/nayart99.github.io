@@ -43,7 +43,15 @@ function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on
 
 /* ---------- cart ---------- */
 let cart = store.get('nay-cart', []).filter((c) => c.kind === 'custom' ? S.custom_sizes[c.size] : PRODUCTS.some((p) => p.slug === c.slug));
-const photos = {}; // custom photos kept in memory when storage is full
+const photos = {}; // custom photos kept in memory as a fallback
+// Custom photos are large, so they live in IndexedDB (survives page changes), not localStorage.
+const photoDB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => { try { const r = indexedDB.open('nay-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }));
+  const run = (mode, fn) => open().then((db) => new Promise((res, rej) => { const tx = db.transaction('p', mode); const q = fn(tx.objectStore('p')); tx.oncomplete = () => res(q && q.result); tx.onerror = () => rej(tx.error); })).catch(() => null);
+  return { put: (k, v) => run('readwrite', (s) => s.put(v, k)), get: (k) => run('readonly', (s) => s.get(k)), del: (k) => run('readwrite', (s) => s.delete(k)) };
+})();
+const dropPhoto = (k) => { delete photos[k]; store.del('nay-photo-' + k); photoDB.del(k); };
 const productBySlug = (s) => PRODUCTS.find((p) => p.slug === s);
 function lineInfo(c) {
   if (c.kind === 'custom') {
@@ -124,9 +132,9 @@ async function placeOrder(btn) {
   const cityIdx = $('f-city').value;
   const customer = { name: $('f-name').value.trim(), phone: $('f-phone').value.replace(/\s/g, ''), city: T.gov[cityIdx], address: $('f-addr').value.trim(), notes: $('f-note').value.trim() };
   store.set('nay-customer', { name: customer.name, phone: customer.phone, city: cityIdx, addr: customer.address });
-  const items = cart.map((c) => { const l = lineInfo(c); return { slug: c.kind === 'custom' ? 'custom' : c.slug, name: l.name, option: l.option, display: l.display, qty: c.q, price: l.price, line: l.price * c.q, custom: c.kind === 'custom', note: c.note || '', key: c.key }; });
+  const items = cart.map((c) => { const l = lineInfo(c); return { slug: c.kind === 'custom' ? 'custom' : c.slug, name: l.name, option: l.option, display: l.display, qty: c.q, price: l.price, line: l.price * c.q, custom: c.kind === 'custom', note: c.note || '', key: c.key, thumb: c.kind === 'custom' ? c.thumb || '' : '' }; });
   const order = { type: 'order', id, created: d.toISOString(), lang, customer, payment: payV, payment_label: payLabel, items, subtotal: t.sub, delivery: t.ship, total: t.total, source: source(), page: location.href };
-  const photoList = cart.filter((c) => c.kind === 'custom').map((c) => ({ key: c.key, name: c.file || 'photo.jpg', data: photos[c.key] || store.get('nay-photo-' + c.key, '') })).filter((p) => p.data);
+  const photoList = (await Promise.all(cart.filter((c) => c.kind === 'custom').map(async (c) => ({ key: c.key, name: c.file || 'photo.jpg', data: photos[c.key] || (await photoDB.get(c.key)) || store.get('nay-photo-' + c.key, '') })))).filter((p) => p.data);
 
   btn.disabled = true; btn.textContent = tr('placing');
   let sent = false;
@@ -139,7 +147,7 @@ async function placeOrder(btn) {
   }
   showDone(order, sent);
   track('purchase', { transaction_id: id, currency: 'EGP', value: t.total, shipping: t.ship, items: gaItems() });
-  cart.forEach((c) => c.kind === 'custom' && store.del('nay-photo-' + c.key));
+  cart.forEach((c) => c.kind === 'custom' && dropPhoto(c.key));
   cart = []; save(); counts();
 }
 
@@ -155,7 +163,7 @@ function showDone(o, sent) {
     ${payNote ? `<p class="order-note">${payNote}</p>` : ''}
     <div class="summary-mini">${rows}<div class="row"><span>${tr('delivery')}</span><span class="price">${money(o.delivery)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(o.total)}</span></div><div class="row"><span>${tr('payment')}</span><span>${o.payment_label}</span></div></div>`;
   const wa = `<a class="btn wa-btn${sent ? '' : ' btn-primary'}" href="${waLink(orderText(o))}" target="_blank" rel="noopener">${tr('send_wa')}</a>`;
-  $('drawerFoot').innerHTML = (!sent || hasCustom || payNote ? wa : '') + `<a class="btn" href="${DATA.base}#shop" data-close>${tr('back_shop')}</a>`;
+  $('drawerFoot').innerHTML = (!sent || payNote ? wa : '') + `<a class="btn" href="${DATA.base}#shop" data-close>${tr('back_shop')}</a>`;
 }
 
 /* ---------- compare sliders ---------- */
@@ -290,48 +298,28 @@ if (pick) pick.addEventListener('click', (e) => {
 });
 
 /* ---------- custom page ---------- */
+// The customer only uploads a photo. No generated preview: the designer prepares the canvas by hand.
 const customPage = $('customPage');
 if (customPage) {
-  let srcImg = null, mode = 'num', pv = null, cSize = 0, cOr = 'Portrait', cOrLabel = tr('portrait'), cQty = 1, cThumb = null, cPhoto = null, cFile = '';
-  const cv = $('pv');
+  let has = false, cSize = 0, cOr = 'Portrait', cOrLabel = tr('portrait'), cQty = 1, cThumb = null, cPhoto = null, cFile = '';
+  const MAX_ORIGINAL = 6 * 1024 * 1024; // send the original up to 6 MB, otherwise a high-quality copy
   function loadPhoto(file) {
     if (!file || !file.type.startsWith('image/')) { toast(tr('bad_file')); return; }
     cFile = file.name; const r = new FileReader();
-    r.onload = () => { const im = new Image(); im.onload = () => { srcImg = im; makeUpload(im); build(); track('generate_lead', { method: 'custom_photo' }); }; im.src = r.result; };
+    r.onload = () => { const im = new Image(); im.onload = () => {
+      cPhoto = file.size <= MAX_ORIGINAL && /jpe?g|png|webp/i.test(file.type) ? r.result : shrink(im, 3200, 0.9);
+      cThumb = shrink(im, 160, 0.75);
+      const img = $('pvImg'); img.src = shrink(im, 1200, 0.85); img.hidden = false;
+      $('upEmpty').hidden = true; $('drop').classList.add('has-photo'); $('upDone').hidden = false; $('pvNote').hidden = false;
+      has = true; upd(); track('generate_lead', { method: 'custom_photo' });
+    }; im.src = r.result; };
     r.readAsDataURL(file);
   }
-  // a compressed copy of the photo to send with the order
-  function makeUpload(im) { const m = 1600, s = Math.min(1, m / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); cPhoto = c.toDataURL('image/jpeg', 0.82); }
-  function build() {
-    const land = cOr === 'Landscape', W = land ? 500 : 400, H = land ? 400 : 500;
-    cv.width = W; cv.height = H; const ctx = cv.getContext('2d', { willReadFrequently: true });
-    const s = Math.max(W / srcImg.width, H / srcImg.height), w = srcImg.width * s, h = srcImg.height * s;
-    ctx.drawImage(srcImg, (W - w) / 2, (H - h) / 2, w, h);
-    const photo = ctx.getImageData(0, 0, W, H);
-    const sw = Math.round(W / 3), sh = Math.round(H / 3), sc = document.createElement('canvas'); sc.width = sw; sc.height = sh;
-    const sx = sc.getContext('2d'); sx.filter = 'blur(1.2px)'; sx.drawImage(cv, 0, 0, sw, sh); const d = sx.getImageData(0, 0, sw, sh).data;
-    const K = [12, 16, 20][cSize] || 16, n = sw * sh; let cen = []; for (let k = 0; k < K; k++) { const i = Math.floor((k + 0.5) / K * n) * 4; cen.push([d[i], d[i + 1], d[i + 2]]); }
-    const lab = new Uint8Array(n);
-    for (let it = 0; it < 8; it++) { const sum = cen.map(() => [0, 0, 0, 0]); for (let p = 0; p < n; p++) { const i = p * 4; let b = 0, bd = 1e9; for (let k = 0; k < K; k++) { const c = cen[k], dd = (d[i] - c[0]) ** 2 + (d[i + 1] - c[1]) ** 2 + (d[i + 2] - c[2]) ** 2; if (dd < bd) { bd = dd; b = k; } } lab[p] = b; const q = sum[b]; q[0] += d[i]; q[1] += d[i + 1]; q[2] += d[i + 2]; q[3]++; } cen = cen.map((c, k) => (sum[k][3] ? [sum[k][0] / sum[k][3], sum[k][1] / sum[k][3], sum[k][2] / sum[k][3]] : c)); }
-    const sm = new Uint8Array(n);
-    for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) { const cnt = {}; let best = lab[y * sw + x], bc = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const xx = Math.min(sw - 1, Math.max(0, x + dx)), yy = Math.min(sh - 1, Math.max(0, y + dy)), v = lab[yy * sw + xx]; cnt[v] = (cnt[v] || 0) + 1; if (cnt[v] > bc) { bc = cnt[v]; best = v; } } sm[y * sw + x] = best; }
-    const paint = ctx.createImageData(W, H), num = ctx.createImageData(W, H);
-    const L = (x, y) => sm[Math.min(sh - 1, Math.floor(y / 3)) * sw + Math.min(sw - 1, Math.floor(x / 3))];
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = (y * W + x) * 4, v = L(x, y), c = cen[v]; paint.data[i] = c[0]; paint.data[i + 1] = c[1]; paint.data[i + 2] = c[2]; paint.data[i + 3] = 255; const edge = (x < W - 1 && L(x + 1, y) !== v) || (y < H - 1 && L(x, y + 1) !== v); num.data[i] = edge ? 150 : 246; num.data[i + 1] = edge ? 138 : 242; num.data[i + 2] = edge ? 128 : 235; num.data[i + 3] = 255; }
-    pv = { photo, paint, num, W, H, L };
-    const tc = document.createElement('canvas'); tc.width = 80; tc.height = Math.round(80 * H / W); tc.getContext('2d').drawImage(cv, 0, 0, tc.width, tc.height); cThumb = tc.toDataURL('image/jpeg', 0.7);
-    draw(); $('upEmpty').hidden = true; cv.hidden = false; $('modeToggle').hidden = false; $('pvNote').hidden = false; upd();
-  }
-  function draw() {
-    if (!pv) return; const ctx = cv.getContext('2d'), { W, H, L } = pv; ctx.putImageData(pv[mode], 0, 0);
-    if (mode === 'num') { ctx.fillStyle = '#968a80'; ctx.font = '9px Jost, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      for (let y = 14; y < H - 6; y += 22) for (let x = 12 + ((y / 22 | 0) % 2) * 11; x < W - 6; x += 22) { const v = L(x, y); let ok = true; for (const [dx, dy] of [[-7, 0], [7, 0], [0, -6], [0, 6]]) if (L(Math.max(0, Math.min(W - 1, x + dx)), Math.max(0, Math.min(H - 1, y + dy))) !== v) ok = false; if (ok) ctx.fillText(String(v + 1), x, y); } }
-    document.querySelectorAll('#modeToggle [data-mode]').forEach((b) => { if (b.dataset.mode !== 'change') b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'); });
-  }
+  function shrink(im, m, q) { const s = Math.min(1, m / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', q); }
   function upd() {
     const s = S.custom_sizes[cSize];
     $('cPrice').textContent = money(s.price); $('cSizeLbl').textContent = cmL(s.label); $('cOrLbl').textContent = cOrLabel; $('cQty').textContent = cQty;
-    $('cAdd').textContent = `${tr('add_to_cart')} · ${money(s.price * cQty)}`; $('cAdd').disabled = !srcImg; $('cNeed').hidden = !!srcImg;
+    $('cAdd').textContent = `${tr('add_to_cart')} · ${money(s.price * cQty)}`; $('cAdd').disabled = !has; $('cNeed').hidden = has;
     document.querySelectorAll('#cSizes .opt').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.size === cSize ? 'true' : 'false'));
     document.querySelectorAll('#cOrient .opt').forEach((b) => b.setAttribute('aria-pressed', b.dataset.or === cOr ? 'true' : 'false'));
   }
@@ -340,15 +328,15 @@ if (customPage) {
   ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('drag'); }));
   ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('drag'); }));
   drop.addEventListener('drop', (e) => loadPhoto(e.dataTransfer.files[0]));
-  drop.addEventListener('click', (e) => { if (srcImg && e.target.id === 'pv') e.preventDefault(); });
-  document.querySelectorAll('#modeToggle [data-mode]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.mode === 'change') $('photo').click(); else { mode = b.dataset.mode; draw(); } }));
-  document.querySelectorAll('#cSizes .opt').forEach((b) => b.addEventListener('click', () => { cSize = +b.dataset.size; upd(); if (srcImg) build(); }));
-  document.querySelectorAll('#cOrient .opt').forEach((b) => b.addEventListener('click', () => { cOr = b.dataset.or; cOrLabel = b.dataset.orLabel; upd(); if (srcImg) build(); }));
+  drop.addEventListener('click', (e) => { if (has) e.preventDefault(); });
+  $('changePhoto').addEventListener('click', () => $('photo').click());
+  document.querySelectorAll('#cSizes .opt').forEach((b) => b.addEventListener('click', () => { cSize = +b.dataset.size; upd(); }));
+  document.querySelectorAll('#cOrient .opt').forEach((b) => b.addEventListener('click', () => { cOr = b.dataset.or; cOrLabel = b.dataset.orLabel; upd(); }));
   $('cDec').addEventListener('click', () => { cQty = Math.max(1, cQty - 1); upd(); });
   $('cInc').addEventListener('click', () => { cQty = Math.min(5, cQty + 1); upd(); });
-  $('cAdd').addEventListener('click', () => {
-    if (!srcImg) return; const key = 'custom-' + Date.now();
-    photos[key] = cPhoto; store.set('nay-photo-' + key, cPhoto);
+  $('cAdd').addEventListener('click', async () => {
+    if (!has) return; const key = 'custom-' + Date.now();
+    photos[key] = cPhoto; await photoDB.put(key, cPhoto);
     cart.push({ key, kind: 'custom', size: cSize, or: cOr, orLabel: cOrLabel, file: cFile, note: $('cNote').value.trim(), thumb: cThumb, q: cQty });
     save(); counts(); bump(); toast(tr('custom_added'));
     const s = S.custom_sizes[cSize]; track('add_to_cart', { currency: 'EGP', value: s.price * cQty, items: [{ item_id: 'custom-' + s.label, item_name: 'Custom Canvas', price: s.price, quantity: cQty }] });
@@ -376,8 +364,8 @@ document.addEventListener('click', (e) => {
   else if (t.id === 'toCheckout') { view = 'checkout'; renderDrawer(); track('begin_checkout', { currency: 'EGP', value: totals().total, items: gaItems() }); }
   else if (t.id === 'backCart') { view = 'cart'; renderDrawer(); }
   else if (t.id === 'placeOrder') placeOrder(t);
-  else if (d.inc || d.dec) { const c = cart.find((x) => x.key === (d.inc || d.dec)); if (!c) return; c.q += d.inc ? 1 : -1; if (c.q <= 0) { cart = cart.filter((x) => x !== c); store.del('nay-photo-' + c.key); } save(); counts(); renderDrawer(); }
-  else if (d.rm) { cart = cart.filter((x) => x.key !== d.rm); store.del('nay-photo-' + d.rm); save(); counts(); renderDrawer(); }
+  else if (d.inc || d.dec) { const c = cart.find((x) => x.key === (d.inc || d.dec)); if (!c) return; c.q += d.inc ? 1 : -1; if (c.q <= 0) { cart = cart.filter((x) => x !== c); dropPhoto(c.key); } save(); counts(); renderDrawer(); }
+  else if (d.rm) { cart = cart.filter((x) => x.key !== d.rm); dropPhoto(d.rm); save(); counts(); renderDrawer(); }
 });
 $('scrim').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDrawer(); $('supPanel').hidden = true; $('supFab').setAttribute('aria-expanded', 'false'); } });

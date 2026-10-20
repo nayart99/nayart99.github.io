@@ -1,0 +1,382 @@
+---
+// Owner dashboard: orders, statuses, customer photos. Data comes from the Google Apps Script backend.
+// Open with ?demo=1 to see it with sample orders.
+import { settings } from '../../lib/site.js';
+const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whatsapp_intl, brand: settings.brand };
+---
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>لوحة الطلبات | NAY ART</title>
+  <meta name="theme-color" content="#7A1F2B" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Cormorant+Garamond:wght@500;600&display=swap" />
+  <style is:inline>
+    :root{--cream:#F7F3EC;--paper:#FFFDF9;--sand:#EDE4D8;--ink:#3A1E22;--soft:#6E5A57;--line:#DCCFC0;--wine:#7A1F2B;--wine-d:#5C1620;--blush:#E2B8A8;
+      --s-new:#7A1F2B;--s-conf:#2F5D8A;--s-wait:#9A6A12;--s-prep:#6B4FA0;--s-ship:#1F6F78;--s-done:#2E7D4F;--s-cancel:#8C8580;color-scheme:light}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--cream);color:var(--ink);font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+    button,input,select,textarea{font:inherit;color:inherit}
+    button{cursor:pointer}
+    [hidden]{display:none!important}
+    .wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+    .num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+    /* login */
+    .login{min-height:100vh;display:grid;place-items:center;padding:24px}
+    .login form{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:32px 28px;width:min(380px,100%);display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px -30px rgba(58,30,34,.4)}
+    .login img{width:150px;margin:0 auto 4px}
+    .login h1{margin:0;text-align:center;font-size:1.25rem;font-weight:600}
+    .login p{margin:0;text-align:center;color:var(--soft);font-size:.9rem}
+    .in{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 14px}
+    .in:focus{outline:2px solid var(--wine);outline-offset:1px;border-color:transparent}
+    .btn{border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:10px 16px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--ink);white-space:nowrap}
+    .btn:hover{border-color:var(--ink)}
+    .btn.p{background:var(--wine);border-color:var(--wine);color:#fff}
+    .btn.p:hover{background:var(--wine-d)}
+    .btn.wa{background:#1f7a4d;border-color:#1f7a4d;color:#fff}
+    .btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .err{color:var(--wine);font-size:.88rem;text-align:center;min-height:1.2em}
+    .chk{display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--soft)}
+    /* top bar */
+    header{background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+    header .wrap{display:flex;align-items:center;gap:12px;height:64px}
+    header img{height:26px}
+    header h1{font-size:1.05rem;margin:0;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .live{font-size:.8rem;color:var(--soft);display:flex;align-items:center;gap:6px}
+    .live i{width:8px;height:8px;border-radius:50%;background:#2E7D4F;display:inline-block;box-shadow:0 0 0 3px rgba(46,125,79,.18)}
+    .icon-btn{border:1px solid var(--line);background:var(--paper);border-radius:10px;width:40px;height:40px;display:grid;place-items:center}
+    .icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}
+    .spin svg{animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(-360deg)}}
+    .demo{background:#FFF4D6;border-bottom:1px solid #EBD9A6;color:#6B5310;font-size:.88rem;text-align:center;padding:8px 16px}
+    main{padding:22px 0 60px}
+    /* KPIs */
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+    .kpi{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px}
+    .kpi span{display:block;color:var(--soft);font-size:.85rem}
+    .kpi b{display:block;font-size:1.7rem;font-weight:600;line-height:1.3;margin-top:4px}
+    .kpi small{color:var(--soft);font-size:.8rem}
+    .kpi.hot{border-color:var(--wine);background:linear-gradient(180deg,#fff,#FBF1EF)}
+    .kpi.hot b{color:var(--wine)}
+    /* tabs + search */
+    .tools{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+    .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;max-width:100%}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:7px 14px;font-size:.88rem;white-space:nowrap;display:flex;gap:6px;align-items:center}
+    .tab[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+    .tab em{font-style:normal;font-size:.78rem;background:rgba(0,0,0,.07);border-radius:999px;padding:0 7px}
+    .tab[aria-pressed=true] em{background:rgba(255,255,255,.2)}
+    .search{position:relative;flex:0 1 300px}
+    .search .in{padding-inline-start:38px}
+    .search svg{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;fill:none;stroke:var(--soft);stroke-width:1.8}
+    /* orders */
+    .list{display:flex;flex-direction:column;gap:10px}
+    .ord{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center;cursor:pointer;text-align:start;width:100%;transition:border-color .15s,box-shadow .15s}
+    .ord:hover{border-color:var(--ink);box-shadow:0 8px 24px -18px rgba(58,30,34,.5)}
+    .ord.fresh{border-color:var(--wine);box-shadow:0 0 0 3px rgba(122,31,43,.12)}
+    .th{width:56px;height:56px;border-radius:8px;background:var(--sand);display:grid;place-items:center;overflow:hidden}
+    .th img{width:100%;height:100%;object-fit:cover}
+    .th svg{width:24px;height:24px;fill:none;stroke:var(--soft);stroke-width:1.5}
+    .o-main{min-width:0}
+    .o-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .o-id{font-weight:600}
+    .o-time{color:var(--soft);font-size:.82rem}
+    .o-who{margin-top:2px}
+    .o-items{color:var(--soft);font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .o-end{text-align:end;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+    .o-total{font-weight:600;font-size:1.05rem}
+    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:.8rem;font-weight:500;color:var(--c);background:color-mix(in srgb,var(--c) 11%,#fff);border:1px solid color-mix(in srgb,var(--c) 28%,#fff);white-space:nowrap}
+    .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+    .tag{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--soft)}
+    .empty{text-align:center;padding:60px 20px;color:var(--soft);background:var(--paper);border:1px dashed var(--line);border-radius:12px}
+    .empty b{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:4px}
+    /* monthly */
+    .month{margin-top:28px;display:grid;grid-template-columns:1.3fr 1fr;gap:12px}
+    .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+    .card h2{font-size:1rem;margin:0 0 10px}
+    table{width:100%;border-collapse:collapse;font-size:.9rem}
+    th,td{text-align:start;padding:8px 6px;border-bottom:1px solid var(--line)}
+    th{color:var(--soft);font-weight:500;font-size:.82rem}
+    tr:last-child td{border-bottom:0}
+    /* detail */
+    .scrim{position:fixed;inset:0;background:rgba(40,20,22,.42);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
+    .scrim.on{opacity:1;pointer-events:auto}
+    .panel{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(560px,100%);background:var(--cream);z-index:41;transform:translateX(-100%);transition:transform .25s ease,visibility .25s;display:flex;flex-direction:column;visibility:hidden}
+    [dir=rtl] .panel{inset-inline-end:auto;left:0}
+    .panel.on{transform:none;visibility:visible;box-shadow:0 0 40px rgba(0,0,0,.18)}
+    .p-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--paper)}
+    .p-head h2{margin:0;font-size:1.1rem;flex:1}
+    .p-body{overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+    .sec{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+    .sec h3{margin:0 0 10px;font-size:.85rem;color:var(--soft);font-weight:500}
+    .kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;font-size:.93rem}
+    .kv dt{color:var(--soft)}
+    .kv dd{margin:0}
+    .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .line{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.93rem}
+    .line:last-child{border-bottom:0}
+    .line.t{font-weight:600;font-size:1rem}
+    .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+    .ph{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--sand)}
+    .ph .im{aspect-ratio:1;display:grid;place-items:center;background:var(--sand)}
+    .ph img{width:100%;height:100%;object-fit:contain;display:block}
+    .ph .a{display:flex;gap:6px;padding:8px;flex-wrap:wrap}
+    .ph .a .btn{padding:6px 10px;font-size:.8rem;flex:1}
+    .row2{display:flex;gap:8px}
+    .row2 select{flex:1}
+    textarea.in{min-height:80px;resize:vertical}
+    .saved{color:#2E7D4F;font-size:.85rem}
+    .toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:.9rem;opacity:0;transition:.2s;z-index:60;pointer-events:none}
+    .toast.on{opacity:1;transform:translate(-50%,0)}
+    .lightbox{position:fixed;inset:0;background:rgba(20,10,12,.88);z-index:70;display:grid;place-items:center;padding:20px}
+    .lightbox img{max-width:100%;max-height:86vh;border-radius:6px}
+    .lightbox .x{position:absolute;top:16px;left:16px}
+    @media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.month{grid-template-columns:1fr}}
+    @media (max-width:560px){
+      header h1{font-size:.95rem}.live span{display:none}
+      .ord{grid-template-columns:48px 1fr;gap:12px}.th{width:48px;height:48px}
+      .o-end{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center;border-top:1px dashed var(--line);padding-top:10px}
+      .kpi b{font-size:1.4rem}.search{flex:1 1 100%}.kv{grid-template-columns:95px 1fr}
+    }
+  </style>
+</head>
+<body>
+  <script type="application/json" id="cfg" set:html={JSON.stringify(cfg)} />
+
+  <section class="login" id="login" hidden>
+    <form id="loginForm">
+      <img src="/media/brand/logo.png" alt="NAY ART" />
+      <h1>لوحة الطلبات</h1>
+      <p>خاصة بإدارة NAY ART</p>
+      <input class="in" type="password" id="pw" placeholder="كلمة المرور" autocomplete="current-password" required />
+      <label class="chk"><input type="checkbox" id="remember" checked /> تذكّرني على هذا الجهاز</label>
+      <button class="btn p" type="submit" id="loginBtn">دخول</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <div class="demo" id="demoBar" hidden>وضع العرض: هذه طلبات تجريبية لمعاينة اللوحة فقط.</div>
+    <header><div class="wrap">
+      <img src="/media/brand/mark.png" alt="NAY ART" />
+      <h1>لوحة الطلبات</h1>
+      <div class="live"><i></i><span id="lastSync">متصل</span></div>
+      <button class="icon-btn" id="refresh" title="تحديث" aria-label="تحديث"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+      <button class="icon-btn" id="logout" title="خروج" aria-label="خروج"><svg viewBox="0 0 24 24"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg></button>
+    </div></header>
+
+    <main><div class="wrap">
+      <div class="kpis">
+        <div class="kpi hot"><span>طلبات جديدة</span><b class="num" id="kNew">0</b><small>بحاجة لتأكيد</small></div>
+        <div class="kpi"><span>قيد التنفيذ</span><b class="num" id="kWork">0</b><small>مؤكدة وقيد التجهيز</small></div>
+        <div class="kpi"><span>طلبات اليوم</span><b class="num" id="kToday">0</b><small id="kTodaySum">0 ج.م</small></div>
+        <div class="kpi"><span>مبيعات هذا الشهر</span><b class="num" id="kMonth">0</b><small id="kMonthN">0 طلب</small></div>
+      </div>
+
+      <div class="tools">
+        <div class="tabs" id="tabs"></div>
+        <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input class="in" id="q" type="search" placeholder="ابحث بالاسم أو الموبايل أو رقم الطلب" /></label>
+      </div>
+
+      <div class="list" id="list"></div>
+
+      <div class="month">
+        <div class="card"><h2>المبيعات الشهرية</h2><table><thead><tr><th>الشهر</th><th>الطلبات</th><th>المبيعات</th><th>متوسط الطلب</th></tr></thead><tbody id="mBody"></tbody></table></div>
+        <div class="card"><h2>الأكثر مبيعًا</h2><table><thead><tr><th>اللوحة</th><th>القطع</th><th>المبيعات</th></tr></thead><tbody id="tBody"></tbody></table></div>
+      </div>
+    </div></main>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="panel" id="panel" aria-hidden="true">
+    <div class="p-head"><h2 id="pTitle"></h2><button class="icon-btn" id="pClose" aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="p-body" id="pBody"></div>
+  </aside>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script is:inline>
+  (() => {
+    const CFG = JSON.parse(document.getElementById('cfg').textContent);
+    const $ = (id) => document.getElementById(id);
+    const DEMO = new URLSearchParams(location.search).has('demo');
+    const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
+    const COLOR = { 'جديد': 'var(--s-new)', 'تم التأكيد': 'var(--s-conf)', 'بانتظار موافقة التصميم': 'var(--s-wait)', 'قيد التجهيز': 'var(--s-prep)', 'تم الشحن': 'var(--s-ship)', 'تم التسليم': 'var(--s-done)', 'ملغي': 'var(--s-cancel)' };
+    const WORKING = ['تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن'];
+    const KEY = 'nay-admin-pw';
+    let pw = '', orders = [], filter = 'all', seen = new Set(), first = true, openId = null, timer = null;
+    const get = (k) => { try { return localStorage.getItem(k) || sessionStorage.getItem(k) || ''; } catch { return ''; } };
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const money = (n) => Number(n || 0).toLocaleString('en-US') + ' ج.م';
+    const toast = (m) => { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2200); };
+    const pill = (s) => `<span class="pill" style="--c:${COLOR[s] || 'var(--soft)'}">${esc(s)}</span>`;
+    const fmtDate = (iso) => { const d = new Date(iso); if (isNaN(d)) return ''; return d.toLocaleString('ar-EG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); };
+    const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); if (m < 1) return 'الآن'; if (m < 60) return `منذ ${m} دقيقة`; const h = Math.round(m / 60); if (h < 24) return `منذ ${h} ساعة`; return fmtDate(iso); };
+    const intlPhone = (p) => { p = String(p || '').replace(/\D/g, ''); return p.startsWith('0') ? '2' + p : p; };
+
+    async function api(action, extra = {}) {
+      if (DEMO) return demoApi(action, extra);
+      if (!CFG.endpoint) throw new Error('noendpoint');
+      const res = await fetch(CFG.endpoint, { method: 'POST', body: JSON.stringify({ type: 'admin', pw, action, ...extra }) });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'error');
+      return j;
+    }
+
+    /* ---------- login ---------- */
+    async function tryLogin(p, remember) {
+      pw = p;
+      try {
+        const j = await api('list');
+        try { (remember ? localStorage : sessionStorage).setItem(KEY, p); } catch {}
+        $('login').hidden = true; $('app').hidden = false; $('demoBar').hidden = !DEMO;
+        load(j.orders); timer = setInterval(sync, 45000);
+        return true;
+      } catch (e) {
+        const m = e.message;
+        $('loginErr').textContent = m === 'auth' ? 'كلمة المرور غير صحيحة.' : m === 'locked' ? 'محاولات كثيرة خاطئة. حاول بعد ١٠ دقائق.' : m === 'noendpoint' ? 'اللوحة لم تُربط بعد بقاعدة الطلبات.' : 'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.';
+        $('login').hidden = false; $('app').hidden = true;
+        return false;
+      }
+    }
+    $('loginForm').addEventListener('submit', async (e) => { e.preventDefault(); const b = $('loginBtn'); b.disabled = true; b.textContent = 'جارٍ الدخول…'; await tryLogin($('pw').value, $('remember').checked); b.disabled = false; b.textContent = 'دخول'; });
+    $('logout').addEventListener('click', () => { try { localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); } catch {} location.href = location.pathname; });
+
+    /* ---------- data ---------- */
+    async function sync(manual) {
+      const r = $('refresh'); r.classList.add('spin');
+      try { const j = await api('list'); load(j.orders); if (manual) toast('تم التحديث'); }
+      catch (e) { if (e.message === 'auth') { location.reload(); } else if (manual) toast('تعذّر التحديث'); }
+      r.classList.remove('spin');
+    }
+    $('refresh').addEventListener('click', () => sync(true));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('app').hidden) sync(); });
+
+    function load(list) {
+      const fresh = [];
+      list.forEach((o) => { if (!first && !seen.has(o.id)) fresh.push(o.id); seen.add(o.id); });
+      orders = list; first = false;
+      if (fresh.length) { toast(fresh.length === 1 ? 'وصل طلب جديد' : `وصلت ${fresh.length} طلبات جديدة`); beep(); }
+      $('lastSync').textContent = 'آخر تحديث ' + new Date().toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+      render(fresh);
+      if (openId) { const o = orders.find((x) => x.id === openId); if (o) fillPanelHeader(o); }
+    }
+    function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = 880; g.gain.value = .06; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + .18); } catch {} }
+
+    function render(fresh = []) {
+      const now = new Date(), today = now.toDateString(), ym = now.toISOString().slice(0, 7);
+      const live = orders.filter((o) => o.status !== 'ملغي');
+      const newN = orders.filter((o) => o.status === 'جديد').length;
+      $('kNew').textContent = newN;
+      $('kWork').textContent = orders.filter((o) => WORKING.includes(o.status)).length;
+      const td = live.filter((o) => new Date(o.date).toDateString() === today);
+      $('kToday').textContent = td.length; $('kTodaySum').textContent = money(td.reduce((s, o) => s + Number(o.total || 0), 0));
+      const mo = live.filter((o) => (o.date || '').slice(0, 7) === ym);
+      $('kMonth').textContent = Number(mo.reduce((s, o) => s + Number(o.total || 0), 0)).toLocaleString('en-US'); $('kMonthN').textContent = `جنيه مصري · ${mo.length} ${mo.length > 2 && mo.length < 11 ? 'طلبات' : 'طلب'}`;
+      document.title = (newN ? `(${newN}) ` : '') + 'لوحة الطلبات | NAY ART';
+
+      const counts = { all: orders.length }; STATUSES.forEach((s) => counts[s] = orders.filter((o) => o.status === s).length);
+      $('tabs').innerHTML = [['all', 'الكل'], ...STATUSES.map((s) => [s, s])].map(([k, l]) => `<button class="tab" data-f="${esc(k)}" aria-pressed="${filter === k}">${esc(l)} <em class="num">${counts[k] || 0}</em></button>`).join('');
+
+      const q = $('q').value.trim().toLowerCase();
+      const shown = orders.filter((o) => (filter === 'all' || o.status === filter) && (!q || [o.id, o.name, o.phone, o.city].join(' ').toLowerCase().includes(q)));
+      $('list').innerHTML = shown.length ? shown.map((o) => {
+        const custom = o.items.some((i) => i.custom);
+        const th = o.photos[0]?.thumb ? `<img src="${o.photos[0].thumb}" alt="">` : `<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`;
+        const items = o.items.map((i) => `${i.name}${i.option ? ' (' + i.option + ')' : ''} × ${i.qty}`).join('، ');
+        return `<button class="ord${fresh.includes(o.id) ? ' fresh' : ''}" data-id="${esc(o.id)}">
+          <div class="th">${th}</div>
+          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}</div>
+            <div class="o-who">${esc(o.name)} · ${esc(o.city)}</div><div class="o-items">${esc(items)}</div></div>
+          <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></button>`;
+      }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب حالة أخرى أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;
+
+      // monthly + top products
+      const byM = {}; live.forEach((o) => { const m = (o.date || '').slice(0, 7); (byM[m] = byM[m] || { n: 0, s: 0 }); byM[m].n++; byM[m].s += Number(o.total || 0); });
+      const ms = Object.keys(byM).sort().reverse().slice(0, 12);
+      $('mBody').innerHTML = ms.length ? ms.map((m) => { const d = new Date(m + '-01T00:00:00'); return `<tr><td>${d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</td><td class="num">${byM[m].n}</td><td class="num">${money(byM[m].s)}</td><td class="num">${money(Math.round(byM[m].s / byM[m].n))}</td></tr>`; }).join('') : '<tr><td colspan="4" style="color:var(--soft)">لا توجد مبيعات بعد</td></tr>';
+      const tp = {}; live.forEach((o) => o.items.forEach((i) => { const k = i.custom ? 'لوحة من صورة العميل' : i.name; (tp[k] = tp[k] || { q: 0, s: 0 }); tp[k].q += Number(i.qty || 0); tp[k].s += Number(i.line || 0); }));
+      const tps = Object.entries(tp).sort((a, b) => b[1].s - a[1].s).slice(0, 6);
+      $('tBody').innerHTML = tps.length ? tps.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.q}</td><td class="num">${money(v.s)}</td></tr>`).join('') : '<tr><td colspan="3" style="color:var(--soft)">—</td></tr>';
+    }
+    $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; render(); } });
+    $('q').addEventListener('input', () => render());
+    $('list').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) openPanel(b.dataset.id); });
+
+    /* ---------- order panel ---------- */
+    function fillPanelHeader(o) { $('pTitle').innerHTML = `طلب <span class="num">${esc(o.id)}</span>`; }
+    function openPanel(id) {
+      const o = orders.find((x) => x.id === id); if (!o) return; openId = id; fillPanelHeader(o);
+      const first = (o.name || '').split(' ')[0];
+      const waMsg = `أهلًا ${first}، معك فريق NAY ART بخصوص طلبك رقم ${o.id}.`;
+      const lines = o.items.map((i) => `<div class="line"><span>${esc(i.name)}${i.option ? ` <small style="color:var(--soft)">(${esc(i.option)})</small>` : ''} × <span class="num">${i.qty}</span>${i.note ? `<br><small style="color:var(--soft)">ملاحظة للمصمّم: ${esc(i.note)}</small>` : ''}</span><span class="num">${money(i.line)}</span></div>`).join('');
+      $('pBody').innerHTML = `
+        <div class="sec"><h3>حالة الطلب</h3>
+          <div class="row2"><select class="in" id="pStatus">${STATUSES.map((s) => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn p" id="pSave">حفظ</button></div>
+          <div style="margin-top:8px;font-size:.85rem;color:var(--soft)">وصل ${fmtDate(o.date)}${o.updated ? ' · آخر تعديل ' + fmtDate(o.updated) : ''}</div>
+        </div>
+        ${o.photos.length ? `<div class="sec"><h3>صورة العميل</h3><div class="photos">${o.photos.map((p, i) => `<div class="ph"><div class="im" id="ph${i}">${p.thumb ? `<img src="${p.thumb}" alt="">` : ''}</div><div class="a"><button class="btn" data-full="${esc(p.id)}" data-i="${i}">عرض بالحجم الكامل</button><a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener">فتح في Drive</a></div></div>`).join('')}</div></div>` : ''}
+        <div class="sec"><h3>العميل</h3>
+          <dl class="kv"><dt>الاسم</dt><dd>${esc(o.name)}</dd><dt>الموبايل</dt><dd class="num" style="text-align:right">${esc(o.phone)}</dd><dt>المحافظة</dt><dd>${esc(o.city)}</dd><dt>العنوان</dt><dd>${esc(o.address)}</dd>${o.notes ? `<dt>ملاحظات</dt><dd>${esc(o.notes)}</dd>` : ''}${o.source ? `<dt>المصدر</dt><dd>${esc(o.source)}${o.campaign ? ' · ' + esc(o.campaign) : ''}</dd>` : ''}</dl>
+          <div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(waMsg)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>واتساب</a><a class="btn" href="tel:${esc(o.phone)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>اتصال</a><button class="btn" id="pCopy">نسخ بيانات الشحن</button></div>
+        </div>
+        <div class="sec"><h3>الطلب</h3>${lines}
+          <div class="line"><span>التوصيل</span><span class="num">${money(o.delivery)}</span></div>
+          <div class="line t"><span>الإجمالي</span><span class="num">${money(o.total)}</span></div>
+          <div class="line"><span>الدفع</span><span>${esc(o.payment)}</span></div>
+        </div>
+        <div class="sec"><h3>ملاحظات داخلية (لا يراها العميل)</h3><textarea class="in" id="pNote" placeholder="مثلًا: تم إرسال التصميم، بانتظار رد العميل">${esc(o.internal)}</textarea><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="saved" id="pNoteOk" hidden>تم الحفظ</span><button class="btn" id="pNoteSave" style="margin-inline-start:auto">حفظ الملاحظة</button></div></div>`;
+      $('panel').classList.add('on'); $('scrim').classList.add('on'); $('panel').setAttribute('aria-hidden', 'false');
+
+      $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); toast('تم تحديث الحالة'); } catch { toast('تعذّر الحفظ'); } b.disabled = false; };
+      $('pNoteSave').onclick = async () => { const n = $('pNote').value; try { await api('update', { id: o.id, note: n }); o.internal = n; $('pNoteOk').hidden = false; setTimeout(() => { const e = $('pNoteOk'); if (e) e.hidden = true; }, 2000); } catch { toast('تعذّر الحفظ'); } };
+      $('pCopy').onclick = () => { const t = `${o.name}\n${o.phone}\n${o.city} – ${o.address}\nالإجمالي: ${o.total} ج.م (${o.payment})\nطلب ${o.id}`; navigator.clipboard?.writeText(t).then(() => toast('تم النسخ'), () => toast('تعذّر النسخ')); };
+      $('pBody').querySelectorAll('[data-full]').forEach((b) => b.onclick = async () => {
+        b.disabled = true; b.textContent = 'جارٍ التحميل…';
+        try { const j = await api('photo', { orderId: o.id, fileId: b.dataset.full }); showImage(j.data, j.name || o.id + '.jpg'); } catch { toast('تعذّر تحميل الصورة'); }
+        b.disabled = false; b.textContent = 'عرض بالحجم الكامل';
+      });
+    }
+    function closePanel() { openId = null; $('panel').classList.remove('on'); $('scrim').classList.remove('on'); $('panel').setAttribute('aria-hidden', 'true'); }
+    $('pClose').addEventListener('click', closePanel); $('scrim').addEventListener('click', closePanel);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const lb = document.querySelector('.lightbox'); if (lb) lb.remove(); else closePanel(); } });
+    function showImage(src, name) {
+      const d = document.createElement('div'); d.className = 'lightbox';
+      d.innerHTML = `<button class="btn x">إغلاق</button><div style="display:flex;flex-direction:column;gap:12px;align-items:center"><img src="${src}" alt=""><a class="btn p" download="${esc(name)}" href="${src}">تحميل الصورة</a></div>`;
+      d.addEventListener('click', (e) => { if (e.target === d || e.target.classList.contains('x')) d.remove(); });
+      document.body.appendChild(d);
+    }
+
+    /* ---------- demo data ---------- */
+    function demoApi(action, x) {
+      if (!demoApi.data) {
+        const t = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+        const thumb = '/media/products/couple/ref.webp';
+        demoApi.data = [
+          { id: 'NA-261020-4821', date: t(.2), status: 'جديد', name: 'سارة محمود', phone: '01012345678', city: 'القاهرة', address: 'مدينة نصر، شارع عباس العقاد، عمارة ١٢', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'لوحة من صورتك', option: '50×60 سم / طولي', qty: 1, line: 2200, custom: true, note: 'احذف الخلفية' }], delivery: 120, total: 2320, notes: '', internal: '', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
+          { id: 'NA-261020-1937', date: t(1.5), status: 'جديد', name: 'محمد علي', phone: '01198765432', city: 'الجيزة', address: 'الدقي، شارع التحرير ٤٥', payment: 'InstaPay', items: [{ name: 'حلم الورد', option: '40×50 سم', qty: 1, line: 750 }, { name: 'ليلة النجوم', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 1620, notes: 'الاتصال بعد ٥ مساءً', internal: '', source: 'facebook', photos: [] },
+          { id: 'NA-261019-7710', date: t(20), status: 'بانتظار موافقة التصميم', name: 'ندى حسن', phone: '01055512345', city: 'الإسكندرية', address: 'سموحة، شارع فوزي معاذ', payment: 'فودافون كاش', items: [{ name: 'لوحة من صورتك', option: '40×50 سم / عرضي', qty: 1, line: 1800, custom: true }], delivery: 120, total: 1920, notes: '', internal: 'تم إرسال التصميم على واتساب', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
+          { id: 'NA-261019-3302', date: t(26), status: 'قيد التجهيز', name: 'أحمد سمير', phone: '01234567890', city: 'المنصورة', address: 'شارع الجمهورية', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'حقول الغروب', option: '40×50 سم', qty: 2, line: 1500 }], delivery: 120, total: 1620, notes: '', internal: '', photos: [] },
+          { id: 'NA-261018-5520', date: t(50), status: 'تم الشحن', name: 'منة الله', phone: '01511122233', city: 'القاهرة', address: 'التجمع الخامس', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'صباح على البحر', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: 'بوليصة الشحن 88231', photos: [] },
+          { id: 'NA-261015-6107', date: t(120), status: 'تم التسليم', name: 'يوسف كمال', phone: '01022233344', city: 'الجيزة', address: 'الشيخ زايد', payment: 'InstaPay', items: [{ name: 'مدينة المظلات', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: '', photos: [] },
+          { id: 'NA-261012-2214', date: t(200), status: 'ملغي', name: 'هالة فؤاد', phone: '01066677788', city: 'طنطا', address: 'شارع البحر', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'حلم الورد', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: 'العميل ألغى', photos: [] },
+        ];
+      }
+      if (action === 'list') return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)) });
+      if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; return Promise.resolve({ ok: true }); }
+      if (action === 'photo') return Promise.resolve({ ok: true, data: '/media/products/couple/ref.webp', name: 'demo.webp' });
+    }
+
+    /* ---------- start ---------- */
+    const saved = get(KEY);
+    if (DEMO) tryLogin('demo', false);
+    else if (saved) tryLogin(saved, true);
+    else $('login').hidden = false;
+  })();
+  </script>
+</body>
+</html>

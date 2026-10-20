@@ -1,31 +1,41 @@
 /**
- * NAY ART – order receiver (Google Apps Script)
+ * NAY ART – orders backend (Google Apps Script)
  *
- * What it does:
- *  - Receives every order from the website and writes it to the "Orders" sheet
- *  - Writes one row per product to "Order items" (for product reports)
- *  - Saves custom-canvas photos to a Google Drive folder and puts the link in the sheet
- *  - Emails you each new order
- *  - Saves newsletter sign-ups to "Subscribers"
- *  - Keeps a "Monthly" summary sheet (orders, revenue, average order) up to date
+ * - Receives every website order and saves it to the "Orders" sheet
+ * - Saves customer photos (custom canvases) to a Google Drive folder
+ * - Sends the owner a WhatsApp message + an email for every new order
+ * - Powers the owner dashboard at https://nayarts.com/admin/ (password protected)
+ * - Keeps a "Monthly" sheet with orders, revenue and top products
  *
- * Setup: see docs/SETUP-ORDERS.md (5 minutes).
+ * Setup guide: docs/DASHBOARD-SETUP-AR.md
  */
 
 // ====== CHANGE THESE ======
-const NOTIFY_EMAIL = 'your-store-email@gmail.com'; // where new-order emails go
-const PHOTOS_FOLDER_NAME = 'NAY ART – Custom photos';
+const DASHBOARD_PASSWORD = 'change-me';          // password for nayarts.com/admin
+const NOTIFY_EMAIL = '';                          // e.g. 'owner@gmail.com' – leave '' to use the account that owns this script
+const WHATSAPP_PHONE = '201270820513';            // owner's WhatsApp number with country code, no + or spaces
+const TEXTMEBOT_KEY = '';                          // TextMeBot API key (recommended, ~$1/month) – textmebot.com
+const CALLMEBOT_KEY = '';                          // or a free CallMeBot API key – callmebot.com
+const DASHBOARD_URL = 'https://nayarts.com/admin/';
+const PHOTOS_FOLDER_NAME = 'NAY ART – Customer photos';
 // ==========================
 
-const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photo', 'Notes', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer'];
+const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
+const CANCELLED = 'ملغي';
+
+const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs'];
+const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
+
+/* ---------------- web endpoints ---------------- */
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    if (data.type === 'subscribe') return json(saveSubscriber(data));
     if (data.type === 'order') return json(saveOrder(data));
+    if (data.type === 'subscribe') return json(saveSubscriber(data));
+    if (data.type === 'admin') return json(admin(data));
     return json({ ok: false, error: 'unknown type' });
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -36,82 +46,197 @@ function doGet() {
   return json({ ok: true, service: 'NAY ART orders' });
 }
 
+/* ---------------- orders ---------------- */
+
 function saveOrder(o) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const orders = sheet(ss, 'Orders', ORDERS_HEADERS);
-  const items = sheet(ss, 'Order items', ITEMS_HEADERS);
-  const when = new Date(o.created || Date.now());
-  const month = Utilities.formatDate(when, 'Africa/Cairo', 'yyyy-MM');
-
-  // custom photos → Drive
-  const photoLinks = [];
-  (o.photos || []).forEach(function (p, i) {
-    try {
-      const m = String(p.data).match(/^data:(.+?);base64,(.*)$/);
-      if (!m) return;
-      const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], o.id + '-' + (i + 1) + '-' + (p.name || 'photo.jpg'));
-      const file = folder().createFile(blob);
-      photoLinks.push(file.getUrl());
-    } catch (err) {
-      photoLinks.push('Photo failed: ' + err);
-    }
-  });
-
-  const c = o.customer || {};
-  const s = o.source || {};
-  const units = (o.items || []).reduce(function (n, i) { return n + Number(i.qty || 0); }, 0);
-  const itemText = (o.items || []).map(function (i) { return i.name + ' (' + i.option + ') x' + i.qty; }).join('\n');
-  orders.appendRow([when, o.id, 'New', c.name, "'" + c.phone, c.city, c.address, o.payment_label || o.payment, itemText, units, o.subtotal, o.delivery, o.total, photoLinks.join('\n'), c.notes || '', o.lang, s.utm_source || (s.fbclid ? 'facebook' : s.gclid ? 'google' : ''), s.utm_medium || '', s.utm_campaign || '', s.landing || '', s.referrer || '']);
-  (o.items || []).forEach(function (i) {
-    items.appendRow([when, o.id, month, i.name, i.option, i.qty, i.price, i.line, i.note || '']);
-  });
-  updateMonthly(ss);
-
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
   try {
-    MailApp.sendEmail({
-      to: NOTIFY_EMAIL,
-      subject: 'New NAY ART order ' + o.id + ' – EGP ' + o.total,
-      body: 'Order ' + o.id + '\n\n' + itemText + '\n\nDelivery: EGP ' + o.delivery + '\nTotal: EGP ' + o.total + '\nPayment: ' + (o.payment_label || o.payment) +
-        '\n\n' + c.name + '\n' + c.phone + '\n' + c.city + ' – ' + c.address + (c.notes ? '\nNotes: ' + c.notes : '') +
-        (photoLinks.length ? '\n\nCustom photo:\n' + photoLinks.join('\n') : '') + '\n\nOpen the sheet: ' + ss.getUrl(),
-    });
-  } catch (err) { /* email quota or address problem – the order is still saved */ }
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const orders = sheet(ss, 'Orders', ORDERS_HEADERS);
+    const items = sheet(ss, 'Order items', ITEMS_HEADERS);
+    if (findRow(orders, o.id)) return { ok: true, id: o.id, duplicate: true };
 
-  return { ok: true, id: o.id };
+    const when = new Date(o.created || Date.now());
+    const month = Utilities.formatDate(when, 'Africa/Cairo', 'yyyy-MM');
+    const thumbs = {};
+    (o.items || []).forEach(function (i) { if (i.thumb) thumbs[i.key] = i.thumb; });
+
+    // customer photos → Drive (private to the owner)
+    const links = [], ids = [], thumbList = [];
+    (o.photos || []).forEach(function (p, n) {
+      try {
+        const m = String(p.data).match(/^data:(.+?);base64,(.*)$/);
+        if (!m) return;
+        const ext = (m[1].split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], o.id + '-' + (n + 1) + '.' + ext);
+        const file = folder().createFile(blob);
+        file.setDescription('NAY ART order ' + o.id + ' – ' + ((o.customer || {}).name || ''));
+        links.push(file.getUrl()); ids.push(file.getId()); thumbList.push(thumbs[p.key] || '');
+      } catch (err) {
+        links.push('Photo failed: ' + err);
+      }
+    });
+
+    const c = o.customer || {};
+    const s = o.source || {};
+    const units = (o.items || []).reduce(function (n, i) { return n + Number(i.qty || 0); }, 0);
+    const itemText = (o.items || []).map(function (i) { return i.name + ' (' + (i.display || i.option) + ') × ' + i.qty; }).join('\n');
+    const hasCustom = (o.items || []).some(function (i) { return i.custom; });
+    const cleanItems = (o.items || []).map(function (i) { return { name: i.name, option: i.display || i.option, qty: i.qty, price: i.price, line: i.line, custom: !!i.custom, note: i.note || '' }; });
+
+    const row = new Array(ORDERS_HEADERS.length).fill('');
+    row[C['Date']] = when; row[C['Order ID']] = o.id; row[C['Status']] = STATUSES[0];
+    row[C['Name']] = c.name || ''; row[C['Phone']] = "'" + (c.phone || ''); row[C['Governorate']] = c.city || ''; row[C['Address']] = c.address || '';
+    row[C['Payment']] = o.payment_label || o.payment || ''; row[C['Items']] = itemText; row[C['Units']] = units;
+    row[C['Subtotal (EGP)']] = Number(o.subtotal || 0); row[C['Delivery (EGP)']] = Number(o.delivery || 0); row[C['Total (EGP)']] = Number(o.total || 0);
+    row[C['Custom photos']] = links.join('\n'); row[C['Customer notes']] = c.notes || ''; row[C['Last update']] = new Date();
+    row[C['Language']] = o.lang || ''; row[C['Source']] = s.utm_source || (s.fbclid ? 'facebook' : s.gclid ? 'google' : '');
+    row[C['Medium']] = s.utm_medium || ''; row[C['Campaign']] = s.utm_campaign || ''; row[C['Landing page']] = s.landing || ''; row[C['Referrer']] = s.referrer || '';
+    row[C['Items JSON']] = JSON.stringify(cleanItems); row[C['Photo IDs']] = ids.join(','); row[C['Thumbs']] = JSON.stringify(thumbList).slice(0, 49000);
+    orders.appendRow(row);
+    (o.items || []).forEach(function (i) {
+      items.appendRow([when, o.id, month, i.name, i.display || i.option, i.qty, i.price, i.line, i.note || '']);
+    });
+    updateMonthly(ss);
+
+    notifyOwner(o, itemText, hasCustom, links);
+    return { ok: true, id: o.id };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function saveSubscriber(d) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const subs = sheet(ss, 'Subscribers', SUBS_HEADERS);
-  subs.appendRow([new Date(d.created || Date.now()), d.email, d.lang, (d.source && (d.source.utm_source || d.source.referrer)) || '']);
+  sheet(ss, 'Subscribers', SUBS_HEADERS).appendRow([new Date(d.created || Date.now()), d.email, d.lang, (d.source && (d.source.utm_source || d.source.referrer)) || '']);
   return { ok: true };
 }
 
-/** Monthly summary built with formulas, so it always matches the Orders sheet. */
+/* ---------------- notifications ---------------- */
+
+function notifyOwner(o, itemText, hasCustom, links) {
+  const c = o.customer || {};
+  const wa = '🔔 *طلب جديد على NAY ART*\n' +
+    'رقم الطلب: ' + o.id + '\n' +
+    'العميل: ' + (c.name || '') + ' – ' + (c.city || '') + '\n' +
+    'الإجمالي: ' + o.total + ' ج.م' + (hasCustom ? '\n📷 لوحة من صورة العميل' : '') + '\n\n' +
+    'افتح لوحة الطلبات:\n' + DASHBOARD_URL;
+  sendWhatsApp(wa);
+
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAIL || Session.getEffectiveUser().getEmail(),
+      subject: 'طلب جديد ' + o.id + ' – ' + o.total + ' ج.م',
+      body: 'طلب جديد على NAY ART\n\nرقم الطلب: ' + o.id + '\n\n' + itemText +
+        '\n\nالتوصيل: ' + o.delivery + ' ج.م\nالإجمالي: ' + o.total + ' ج.م\nالدفع: ' + (o.payment_label || o.payment) +
+        '\n\n' + (c.name || '') + '\n' + (c.phone || '') + '\n' + (c.city || '') + ' – ' + (c.address || '') + (c.notes ? '\nملاحظات: ' + c.notes : '') +
+        (links.length ? '\n\nصورة العميل:\n' + links.join('\n') : '') + '\n\nلوحة الطلبات: ' + DASHBOARD_URL,
+    });
+  } catch (err) { /* email quota – the order is still saved */ }
+}
+
+function sendWhatsApp(text) {
+  try {
+    if (TEXTMEBOT_KEY) {
+      UrlFetchApp.fetch('https://api.textmebot.com/send.php?recipient=%2B' + WHATSAPP_PHONE + '&apikey=' + encodeURIComponent(TEXTMEBOT_KEY) + '&text=' + encodeURIComponent(text), { muteHttpExceptions: true });
+    } else if (CALLMEBOT_KEY) {
+      UrlFetchApp.fetch('https://api.callmebot.com/whatsapp.php?phone=%2B' + WHATSAPP_PHONE + '&apikey=' + encodeURIComponent(CALLMEBOT_KEY) + '&text=' + encodeURIComponent(text), { muteHttpExceptions: true });
+    }
+  } catch (err) { /* WhatsApp service down – email still goes out */ }
+}
+
+/** Run once from the editor to check WhatsApp + email work. */
+function testNotify() {
+  sendWhatsApp('✅ تجربة: إشعارات NAY ART شغالة.\n' + DASHBOARD_URL);
+  MailApp.sendEmail(NOTIFY_EMAIL || Session.getEffectiveUser().getEmail(), 'NAY ART – تجربة الإشعارات', 'الإشعارات شغالة.\n' + DASHBOARD_URL);
+}
+
+/* ---------------- dashboard API ---------------- */
+
+function admin(d) {
+  const cache = CacheService.getScriptCache();
+  const tries = Number(cache.get('bad') || 0);
+  if (tries >= 8) return { ok: false, error: 'locked' };
+  if (String(d.pw || '') !== DASHBOARD_PASSWORD || DASHBOARD_PASSWORD === 'change-me') {
+    cache.put('bad', String(tries + 1), 600);
+    return { ok: false, error: 'auth' };
+  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = sheet(ss, 'Orders', ORDERS_HEADERS);
+  if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh) };
+  if (d.action === 'update') {
+    const r = findRow(sh, d.id);
+    if (!r) return { ok: false, error: 'not found' };
+    if (d.status != null) {
+      if (STATUSES.indexOf(d.status) < 0) return { ok: false, error: 'bad status' };
+      sh.getRange(r, C['Status'] + 1).setValue(d.status);
+    }
+    if (d.note != null) sh.getRange(r, C['Internal notes'] + 1).setValue(String(d.note).slice(0, 2000));
+    sh.getRange(r, C['Last update'] + 1).setValue(new Date());
+    return { ok: true };
+  }
+  if (d.action === 'photo') {
+    const r = findRow(sh, d.orderId);
+    const ids = r ? String(sh.getRange(r, C['Photo IDs'] + 1).getValue()).split(',') : [];
+    if (ids.indexOf(d.fileId) < 0) return { ok: false, error: 'not found' };
+    const blob = DriveApp.getFileById(d.fileId).getBlob();
+    return { ok: true, data: 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()), name: blob.getName() };
+  }
+  return { ok: false, error: 'unknown action' };
+}
+
+function listOrders(sh) {
+  const n = sh.getLastRow() - 1;
+  if (n < 1) return [];
+  const start = Math.max(2, sh.getLastRow() - 999); // newest 1000 orders
+  const vals = sh.getRange(start, 1, sh.getLastRow() - start + 1, ORDERS_HEADERS.length).getValues();
+  return vals.filter(function (v) { return v[C['Order ID']]; }).map(function (v) {
+    let items = [], thumbs = [];
+    try { items = JSON.parse(v[C['Items JSON']] || '[]'); } catch (e) {}
+    try { thumbs = JSON.parse(v[C['Thumbs']] || '[]'); } catch (e) {}
+    const ids = String(v[C['Photo IDs']] || '').split(',').filter(String);
+    return {
+      id: v[C['Order ID']], date: v[C['Date']] instanceof Date ? v[C['Date']].toISOString() : String(v[C['Date']]),
+      status: v[C['Status']] || STATUSES[0], name: v[C['Name']], phone: String(v[C['Phone']]).replace(/^'/, ''),
+      city: v[C['Governorate']], address: v[C['Address']], payment: v[C['Payment']],
+      items: items.length ? items : [{ name: v[C['Items']], option: '', qty: v[C['Units']], line: v[C['Subtotal (EGP)']] }],
+      units: v[C['Units']], subtotal: v[C['Subtotal (EGP)']], delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']],
+      notes: v[C['Customer notes']], internal: v[C['Internal notes']],
+      updated: v[C['Last update']] instanceof Date ? v[C['Last update']].toISOString() : '',
+      source: v[C['Source']], campaign: v[C['Campaign']],
+      photos: ids.map(function (id, i) { return { id: id, thumb: thumbs[i] || '', url: 'https://drive.google.com/file/d/' + id + '/view' }; }),
+    };
+  }).reverse();
+}
+
+/* ---------------- sheets ---------------- */
+
+/** Monthly summary with formulas, so it always matches the Orders sheet (cancelled orders excluded). */
 function updateMonthly(ss) {
   const sh = ss.getSheetByName('Monthly') || ss.insertSheet('Monthly');
   if (sh.getRange('A1').getValue() === 'Month') return;
   sh.getRange('A1').setFormula(
-    '=QUERY({ARRAYFORMULA(IF(Orders!A2:A="",,TEXT(Orders!A2:A,"yyyy-mm"))),Orders!M2:M,Orders!J2:J},' +
-    '"select Col1, count(Col1), sum(Col2), sum(Col3), avg(Col2) where Col1 is not null group by Col1 order by Col1 desc ' +
+    '=QUERY({ARRAYFORMULA(IF(Orders!A2:A="",,TEXT(Orders!A2:A,"yyyy-mm"))),Orders!M2:M,Orders!J2:J,Orders!C2:C},' +
+    '"select Col1, count(Col1), sum(Col2), sum(Col3), avg(Col2) where Col1 is not null and Col4 <> \'' + CANCELLED + '\' group by Col1 order by Col1 desc ' +
     'label Col1 \'Month\', count(Col1) \'Orders\', sum(Col2) \'Revenue (EGP)\', sum(Col3) \'Units\', avg(Col2) \'Average order (EGP)\'",0)');
   sh.getRange('G1').setValue('Top products');
   sh.getRange('G2').setFormula('=QUERY(\'Order items\'!A2:I,"select D, sum(F), sum(H) where D is not null group by D order by sum(H) desc label D \'Product\', sum(F) \'Units\', sum(H) \'Revenue (EGP)\'",0)');
   sh.setFrozenRows(1);
 }
 
-/** Run once from the editor: creates the sheets and asks for permissions. */
+/** Run once from the editor: creates the sheets, the photos folder, and asks for permissions. */
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  sheet(ss, 'Orders', ORDERS_HEADERS);
+  const st = sheet(ss, 'Orders', ORDERS_HEADERS);
   sheet(ss, 'Order items', ITEMS_HEADERS);
   sheet(ss, 'Subscribers', SUBS_HEADERS);
   updateMonthly(ss);
   folder();
-  const st = ss.getSheetByName('Orders');
-  const rule = SpreadsheetApp.newDataValidation().requireValueInList(['New', 'Confirmed', 'Paid', 'Shipped', 'Delivered', 'Cancelled'], true).build();
-  st.getRange('C2:C').setDataValidation(rule);
+  st.getRange(2, C['Status'] + 1, st.getMaxRows() - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(STATUSES, true).build());
+  [C['Items JSON'], C['Photo IDs'], C['Thumbs']].forEach(function (i) { st.hideColumns(i + 1); });
   const s1 = ss.getSheetByName('Sheet1'); if (s1 && s1.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s1);
+  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); // asks for the "connect to external service" permission now
 }
 
 function sheet(ss, name, headers) {
@@ -122,6 +247,12 @@ function sheet(ss, name, headers) {
     sh.setFrozenRows(1);
   }
   return sh;
+}
+
+function findRow(sh, id) {
+  if (!id || sh.getLastRow() < 2) return 0;
+  const f = sh.getRange(2, C['Order ID'] + 1, sh.getLastRow() - 1, 1).createTextFinder(String(id)).matchEntireCell(true).findNext();
+  return f ? f.getRow() : 0;
 }
 
 function folder() {

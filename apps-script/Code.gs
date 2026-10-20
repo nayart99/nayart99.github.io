@@ -10,15 +10,27 @@
  * Setup guide: docs/DASHBOARD-SETUP-AR.md
  */
 
-// ====== CHANGE THESE ======
-const DASHBOARD_PASSWORD = 'change-me';          // password for nayarts.com/admin
-const NOTIFY_EMAIL = '';                          // e.g. 'owner@gmail.com' – leave '' to use the account that owns this script
-const WHATSAPP_PHONE = '201270820513';            // owner's WhatsApp number with country code, no + or spaces
-const TEXTMEBOT_KEY = '';                          // TextMeBot API key (recommended, ~$1/month) – textmebot.com
-const CALLMEBOT_KEY = '';                          // or a free CallMeBot API key – callmebot.com
+// ====== SETTINGS ======
+// Change these in Apps Script: Project Settings (gear icon) → Script properties.
+// Changes there work right away, no redeploy needed. The values below are only defaults.
+//   DASHBOARD_PASSWORD  password for nayarts.com/admin
+//   NOTIFY_EMAIL        where new-order emails go (empty = the account that owns this script)
+//   WHATSAPP_PHONE      owner's WhatsApp with country code, no + or spaces (e.g. 201270820513)
+//   TEXTMEBOT_KEY       TextMeBot API key (textmebot.com, about $1/month)
+//   CALLMEBOT_KEY       or a free CallMeBot API key (callmebot.com)
+const DEFAULTS = {
+  SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
+  DASHBOARD_PASSWORD: '',
+  NOTIFY_EMAIL: '',
+  WHATSAPP_PHONE: '201270820513',
+  TEXTMEBOT_KEY: '',
+  CALLMEBOT_KEY: '',
+};
 const DASHBOARD_URL = 'https://nayarts.com/admin/';
 const PHOTOS_FOLDER_NAME = 'NAY ART – Customer photos';
-// ==========================
+function book() { return SpreadsheetApp.openById(cfg('SHEET_ID')); }
+function cfg(k) { return PropertiesService.getScriptProperties().getProperty(k) || DEFAULTS[k] || ''; }
+// ======================
 
 const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 const CANCELLED = 'ملغي';
@@ -52,7 +64,7 @@ function saveOrder(o) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = book();
     const orders = sheet(ss, 'Orders', ORDERS_HEADERS);
     const items = sheet(ss, 'Order items', ITEMS_HEADERS);
     if (findRow(orders, o.id)) return { ok: true, id: o.id, duplicate: true };
@@ -108,7 +120,7 @@ function saveOrder(o) {
 }
 
 function saveSubscriber(d) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = book();
   sheet(ss, 'Subscribers', SUBS_HEADERS).appendRow([new Date(d.created || Date.now()), d.email, d.lang, (d.source && (d.source.utm_source || d.source.referrer)) || '']);
   return { ok: true };
 }
@@ -126,7 +138,7 @@ function notifyOwner(o, itemText, hasCustom, links) {
 
   try {
     MailApp.sendEmail({
-      to: NOTIFY_EMAIL || Session.getEffectiveUser().getEmail(),
+      to: cfg('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail(),
       subject: 'طلب جديد ' + o.id + ' – ' + o.total + ' ج.م',
       body: 'طلب جديد على NAY ART\n\nرقم الطلب: ' + o.id + '\n\n' + itemText +
         '\n\nالتوصيل: ' + o.delivery + ' ج.م\nالإجمالي: ' + o.total + ' ج.م\nالدفع: ' + (o.payment_label || o.payment) +
@@ -138,6 +150,7 @@ function notifyOwner(o, itemText, hasCustom, links) {
 
 function sendWhatsApp(text) {
   try {
+    const TEXTMEBOT_KEY = cfg('TEXTMEBOT_KEY'), CALLMEBOT_KEY = cfg('CALLMEBOT_KEY'), WHATSAPP_PHONE = cfg('WHATSAPP_PHONE');
     if (TEXTMEBOT_KEY) {
       UrlFetchApp.fetch('https://api.textmebot.com/send.php?recipient=%2B' + WHATSAPP_PHONE + '&apikey=' + encodeURIComponent(TEXTMEBOT_KEY) + '&text=' + encodeURIComponent(text), { muteHttpExceptions: true });
     } else if (CALLMEBOT_KEY) {
@@ -149,7 +162,7 @@ function sendWhatsApp(text) {
 /** Run once from the editor to check WhatsApp + email work. */
 function testNotify() {
   sendWhatsApp('✅ تجربة: إشعارات NAY ART شغالة.\n' + DASHBOARD_URL);
-  MailApp.sendEmail(NOTIFY_EMAIL || Session.getEffectiveUser().getEmail(), 'NAY ART – تجربة الإشعارات', 'الإشعارات شغالة.\n' + DASHBOARD_URL);
+  MailApp.sendEmail(cfg('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail(), 'NAY ART – تجربة الإشعارات', 'الإشعارات شغالة.\n' + DASHBOARD_URL);
 }
 
 /* ---------------- dashboard API ---------------- */
@@ -158,11 +171,12 @@ function admin(d) {
   const cache = CacheService.getScriptCache();
   const tries = Number(cache.get('bad') || 0);
   if (tries >= 8) return { ok: false, error: 'locked' };
-  if (String(d.pw || '') !== DASHBOARD_PASSWORD || DASHBOARD_PASSWORD === 'change-me') {
+  const PW = cfg('DASHBOARD_PASSWORD');
+  if (!PW || String(d.pw || '') !== PW) {
     cache.put('bad', String(tries + 1), 600);
     return { ok: false, error: 'auth' };
   }
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = book();
   const sh = sheet(ss, 'Orders', ORDERS_HEADERS);
   if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh) };
   if (d.action === 'update') {
@@ -227,7 +241,7 @@ function updateMonthly(ss) {
 
 /** Run once from the editor: creates the sheets, the photos folder, and asks for permissions. */
 function setup() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = book();
   const st = sheet(ss, 'Orders', ORDERS_HEADERS);
   sheet(ss, 'Order items', ITEMS_HEADERS);
   sheet(ss, 'Subscribers', SUBS_HEADERS);
@@ -237,6 +251,11 @@ function setup() {
   [C['Items JSON'], C['Photo IDs'], C['Thumbs']].forEach(function (i) { st.hideColumns(i + 1); });
   const s1 = ss.getSheetByName('Sheet1'); if (s1 && s1.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s1);
   UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true }); // asks for the "connect to external service" permission now
+  if (!cfg('DASHBOARD_PASSWORD')) {
+    const pw = 'nay-' + Utilities.getUuid().replace(/-/g, '').slice(0, 10);
+    PropertiesService.getScriptProperties().setProperty('DASHBOARD_PASSWORD', pw);
+    Logger.log('Dashboard password: ' + pw);
+  }
 }
 
 function sheet(ss, name, headers) {

@@ -232,7 +232,7 @@
   "thanks_custom": "We will send your custom design on WhatsApp within 48 hours.",
   "pay_after_insta": "Send the total by InstaPay to {id}, then send us the screenshot on WhatsApp.",
   "pay_after_voda": "Send the total by Vodafone Cash to {id}, then send us the screenshot on WhatsApp.",
-  "send_wa": "Send the order on WhatsApp",
+  "send_wa": "Send my order on WhatsApp",
   "order_fail": "We could not send your order online. Send it to us on WhatsApp and we will confirm it right away.",
   "back_shop": "Back to the shop",
   "payment": "Payment",
@@ -269,5 +269,6 @@
   "notfound_p": "This page does not exist. Have a look at the canvases instead.",
   "price_from": "From",
   "follow_us": "Follow us",
-  "pay_after_wa": "We'll send you the payment number on WhatsApp to transfer the total."
+  "pay_after_wa": "We'll send you the payment number on WhatsApp to transfer the total.",
+  "order_wa_step": "One last step: tap the button below to send your order on WhatsApp, and we'll confirm it right away."
 }

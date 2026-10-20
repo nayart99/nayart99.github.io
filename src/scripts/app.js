@@ -107,7 +107,7 @@ function renderDrawer() {
 
 function orderText(o) {
   const lines = o.items.map((i) => `• ${i.name} (${i.display}) × ${i.qty} = ${money(i.line)}`).join('\n');
-  return `NAY ART order ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}\n\n${o.customer.name}\n${o.customer.phone}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(هبعتلكم صورة الكستم في الشات ده)' : '(I will send the custom photo in this chat)') : ''}`;
+  return `${lang === "ar" ? "طلب NAY ART رقم" : "NAY ART order"} ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}\n\n${o.customer.name}\n${o.customer.phone}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(هبعتلكم صورة الكستم في الشات ده)' : '(I will send the custom photo in this chat)') : ''}`;
 }
 const waLink = (text) => `https://wa.me/${S.whatsapp_intl}?text=${encodeURIComponent(text)}`;
 
@@ -151,10 +151,10 @@ function showDone(o, sent) {
   const payNote = o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : o.payment !== 'cod' ? tr('pay_after_wa') : '';
   const rows = o.items.map((i) => `<div class="row"><span>${i.name} (${i.display}) × ${i.qty}</span><span class="price">${money(i.line)}</span></div>`).join('');
   $('drawerBody').innerHTML = `<div class="done-box"><img src="/media/brand/mark.png" alt=""><h2 style="font-size:2rem">${tr('thanks', { name: first })}</h2>
-    <p style="color:var(--ink-soft)">${sent ? (hasCustom ? tr('thanks_custom') : tr('thanks_kit')) : tr('order_fail')}</p><span class="ord">${o.id}</span></div>
+    <p style="color:var(--ink-soft)">${sent ? (hasCustom ? tr('thanks_custom') : tr('thanks_kit')) : S.orders_endpoint ? tr('order_fail') : tr('order_wa_step')}</p><span class="ord">${o.id}</span></div>
     ${payNote ? `<p class="order-note">${payNote}</p>` : ''}
     <div class="summary-mini">${rows}<div class="row"><span>${tr('delivery')}</span><span class="price">${money(o.delivery)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(o.total)}</span></div><div class="row"><span>${tr('payment')}</span><span>${o.payment_label}</span></div></div>`;
-  const wa = `<a class="btn wa-btn" href="${waLink(orderText(o))}" target="_blank" rel="noopener">${tr('send_wa')}</a>`;
+  const wa = `<a class="btn wa-btn${sent ? '' : ' btn-primary'}" href="${waLink(orderText(o))}" target="_blank" rel="noopener">${tr('send_wa')}</a>`;
   $('drawerFoot').innerHTML = (!sent || hasCustom || payNote ? wa : '') + `<a class="btn" href="${DATA.base}#shop" data-close>${tr('back_shop')}</a>`;
 }
 

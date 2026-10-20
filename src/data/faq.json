@@ -2,71 +2,71 @@
   {
     "q": {
       "en": "Do I need painting experience?",
-      "ar": "محتاج أكون بعرف أرسم؟"
+      "ar": "هل أحتاج إلى خبرة في الرسم؟"
     },
     "a": {
       "en": "No. The canvas is split into small numbered areas. You only fill each area with the matching colour.",
-      "ar": "لأ خالص. الكانفاس متقسم لمساحات صغيرة مرقّمة، وانت بس بتملا كل مساحة باللون اللي عليه نفس الرقم."
+      "ar": "إطلاقًا. اللوحة مقسّمة إلى مساحات صغيرة مرقّمة، وكل ما عليك هو ملء كل مساحة باللون الذي يحمل الرقم نفسه."
     }
   },
   {
     "q": {
       "en": "What exactly is in the box?",
-      "ar": "إيه اللي جوه العلبة بالظبط؟"
+      "ar": "ماذا تحتوي العلبة بالضبط؟"
     },
     "a": {
       "en": "A 40×50 cm numbered canvas stretched on a wooden frame, 24 numbered acrylic paints, 3 brushes, a reference sheet, easy instructions and a hanging kit. Custom canvases come with the same kit in the size you choose.",
-      "ar": "كانفاس مرقّم ٤٠×٥٠ سم مشدود على شاسيه خشب، و٢٤ لون أكريليك مرقّمين، و٣ فرش، وريفرنس شيت، وتعليمات سهلة، وطقم تعليق. لوحات الكستم بييجي معاها نفس الكيت بالمقاس اللي تختاره."
+      "ar": "لوحة قماش مرقّمة ⁦٤٠×٥٠⁩ سم مشدودة على إطار خشبي، و٢٤ لون أكريليك مرقّمة، و٣ فُرش، ولوحة إرشادية، ودليل استخدام سهل، وأدوات التعليق. وتأتي اللوحة من صورتك بالطقم نفسه وبالمقاس الذي تختاره."
     }
   },
   {
     "q": {
       "en": "What if a colour runs out?",
-      "ar": "لو لون خلص مني؟"
+      "ar": "ماذا لو نفد مني أحد الألوان؟"
     },
     "a": {
       "en": "Send us a message with the colour number and we send a refill for free.",
-      "ar": "ابعتلنا رسالة فيها رقم اللون وهنبعتلك عبوة جديدة مجانًا."
+      "ar": "أرسل لنا رسالة برقم اللون، وسنرسل لك عبوة جديدة مجانًا."
     }
   },
   {
     "q": {
       "en": "How long does delivery take?",
-      "ar": "التوصيل بياخد قد إيه؟"
+      "ar": "كم يستغرق التوصيل؟"
     },
     "a": {
       "en": "2–4 working days in Cairo and Giza, 3–6 for other governorates. Delivery is EGP 120.",
-      "ar": "من ٢ لـ ٤ أيام عمل في القاهرة والجيزة، ومن ٣ لـ ٦ أيام لباقي المحافظات. التوصيل ١٢٠ جنيه."
+      "ar": "من ٢ إلى ٤ أيام عمل في القاهرة والجيزة، ومن ٣ إلى ٦ أيام لباقي المحافظات. رسوم التوصيل ١٢٠ جنيهًا."
     }
   },
   {
     "q": {
       "en": "How does a custom canvas work?",
-      "ar": "لوحة الكستم بتتعمل إزاي؟"
+      "ar": "كيف تُصنع اللوحة من صورتي؟"
     },
     "a": {
       "en": "Upload your photo and choose a size. We send the design to you on WhatsApp within 48 hours. After you approve, we print and deliver within 5–8 working days.",
-      "ar": "ارفع صورتك واختار المقاس. هنبعتلك التصميم على واتساب خلال ٤٨ ساعة، وبعد موافقتك بنطبع ونوصّل خلال ٥ لـ ٨ أيام عمل."
+      "ar": "ارفع صورتك واختر المقاس، وسنرسل إليك التصميم على واتساب خلال ٤٨ ساعة. بعد موافقتك نطبعها ونوصلها خلال ٥ إلى ٨ أيام عمل."
     }
   },
   {
     "q": {
       "en": "How do I pay?",
-      "ar": "بدفع إزاي؟"
+      "ar": "ما طرق الدفع المتاحة؟"
     },
     "a": {
       "en": "Cash on delivery, InstaPay or Vodafone Cash.",
-      "ar": "كاش عند الاستلام، أو InstaPay، أو فودافون كاش."
+      "ar": "الدفع نقدًا عند الاستلام، أو عبر InstaPay، أو فودافون كاش."
     }
   },
   {
     "q": {
       "en": "How do I contact you?",
-      "ar": "أتواصل معاكم إزاي؟"
+      "ar": "كيف أتواصل معكم؟"
     },
     "a": {
       "en": "Call or WhatsApp our support team on 0127 082 0513, or tap Support at the bottom of any page.",
-      "ar": "كلّمنا أو ابعتلنا واتساب على 0127 082 0513، أو دوس على زرار الدعم تحت في أي صفحة."
+      "ar": "اتصل بنا أو راسلنا على واتساب على الرقم 0127 082 0513، أو اضغط زر خدمة العملاء أسفل أي صفحة."
     }
   }
 ]

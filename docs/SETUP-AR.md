@@ -5,7 +5,7 @@
 ---
 
 ## ١. النشر (GitHub Pages – مجاني)
-الموقع بيتنشر لوحده من GitHub على: **https://nayart99.github.io**
+الموقع بيتنشر لوحده من GitHub على: **https://nayarts.com**
 - الـ repository: `nayart99/nayart99.github.io` (لازم يفضل Public).
 - Settings ← Pages ← Source: **GitHub Actions**.
 - أي تعديل يتعمل على GitHub (أو من لوحة التحكم) بيتنشر لوحده خلال ١–٢ دقيقة. تقدر تتابع النشر من تبويب **Actions**.

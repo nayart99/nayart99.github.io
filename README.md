@@ -22,7 +22,7 @@ npm run build    # output in dist/
 | Editing panel config | `.pages.yml` (Pages CMS) |
 
 ## Hosting
-GitHub Pages via GitHub Actions (`.github/workflows/deploy.yml`). Every change pushed to `main` is built and goes live in 1–2 minutes at https://nayart99.github.io (custom domain can be added in Settings → Pages).
+GitHub Pages via GitHub Actions (`.github/workflows/deploy.yml`). Every change pushed to `main` is built and goes live in 1–2 minutes at https://nayarts.com (custom domain can be added in Settings → Pages).
 
 ## Guides (Arabic)
 - `docs/SETUP-AR.md` – one-time setup: hosting, orders sheet, analytics, monthly report, domain

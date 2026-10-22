@@ -12,6 +12,46 @@ const validPhone = (v) => /^01[0125]\d{8}$/.test(phoneNumber(v));
 const validLocation = (v) => v && Number.isFinite(v.lat) && Number.isFinite(v.lng) && Math.abs(v.lat) <= 90 && Math.abs(v.lng) <= 180;
 const mapsURL = (v) => 'https://www.google.com/maps?q=' + v.lat + ',' + v.lng;
 let deliveryLocation = null, checkoutMap = null, mapMarker = null, checkoutDraft = null, placingOrder = false;
+let addressTimer, addressRequest, addressVersion = 0;
+const addressCache = new Map();
+function cancelAddressLookup() {
+  clearTimeout(addressTimer); addressRequest?.abort(); addressVersion++;
+}
+function addressFromMap(point, replace = false) {
+  cancelAddressLookup();
+  const version = addressVersion, field = $('f-addr'), status = $('addressStatus');
+  const original = field.value;
+  if (!replace && original.trim() && original !== field.dataset.mapAddress) {
+    status.textContent = tr('address_keep'); return;
+  }
+  status.textContent = tr('address_finding');
+  const key = `${lang}:${point.lat},${point.lng}`;
+  addressTimer = setTimeout(async () => {
+    const request = addressRequest = new AbortController();
+    const timeout = setTimeout(() => request.abort(), 8000);
+    try {
+      let address = addressCache.get(key);
+      if (!address) {
+        const params = new URLSearchParams({lat:point.lat,lon:point.lng,limit:1,lang,radius:0.5});
+        const response = await fetch('https://photon.komoot.io/reverse?' + params, {signal:request.signal});
+        if (!response.ok) throw new Error('Address unavailable');
+        const p = (await response.json()).features?.[0]?.properties;
+        if (!p || !(p.street || p.name || p.district || p.city)) throw new Error('No address');
+        address = [...new Set([p.housenumber, p.street || p.name, p.district, p.city, p.county, p.state, p.country].filter(Boolean))].join(lang === 'ar' ? '، ' : ', ');
+        if (address.length < 8) throw new Error('Incomplete address');
+        if (addressCache.size >= 20) addressCache.delete(addressCache.keys().next().value);
+        addressCache.set(key, address);
+      }
+      if (version !== addressVersion || !field.isConnected) return;
+      if (field.value !== original) { status.textContent = tr('address_keep'); return; }
+      field.value = address; field.dataset.mapAddress = address;
+      field.dispatchEvent(new Event('input', {bubbles:true}));
+      status.textContent = tr('address_review');
+    } catch {
+      if (version === addressVersion && field.isConnected) status.textContent = tr('address_manual');
+    } finally { clearTimeout(timeout); }
+  }, 1000);
+}
 function rememberCheckout() {
   if (!$('coForm')) return;
   checkoutDraft = {name:$('f-name').value,phone:$('f-phone').value,phone_extra:$('f-phone-extra').value,city:$('f-city').value,addr:$('f-addr').value,notes:$('f-note').value,location:deliveryLocation};
@@ -35,8 +75,13 @@ async function initDeliveryMap() {
       $('locationStatus').textContent = tr('location_selected');
       $('locationLink').href = mapsURL(deliveryLocation); $('locationLink').hidden = false;
       $('locationError').hidden = true;
+      addressFromMap(deliveryLocation);
     };
     if (validLocation(deliveryLocation)) choose(deliveryLocation);
+    $('useMapAddress').onclick = () => {
+      if (validLocation(deliveryLocation)) addressFromMap(deliveryLocation, true);
+      else $('addressStatus').textContent = tr('location_not_selected');
+    };
     map.on('click', e => choose(e.latlng));
     $('useMapCenter').onclick = () => choose(map.getCenter());
     $('locateMe').onclick = () => {
@@ -125,6 +170,7 @@ function openDrawer(v = 'cart') { view = v; renderDrawer(); $('drawer').classLis
 function closeDrawer() { if (placingOrder) return; rememberCheckout(); $('drawer').classList.remove('on'); $('scrim').classList.remove('on'); $('drawer').setAttribute('aria-hidden', 'true'); if (view === 'done') view = 'cart'; }
 
 function renderDrawer() {
+  cancelAddressLookup();
   if (checkoutMap) { checkoutMap.remove(); checkoutMap = null; mapMarker = null; }
   const body = $('drawerBody'), foot = $('drawerFoot'), t = totals();
   if (view === 'done') return;
@@ -153,7 +199,7 @@ function renderDrawer() {
     <div class="field"><label for="f-phone">${hasCustom ? tr('f_phone_wa') : tr('f_phone')}</label><input id="f-phone" type="tel" required inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx" value="${esc(saved.phone)}"><span class="err" hidden></span></div>
     <div class="field"><label for="f-phone-extra">${tr('f_phone_extra')}</label><input id="f-phone-extra" type="tel" inputmode="tel" autocomplete="section-extra tel" placeholder="01xxxxxxxxx" value="${esc(saved.phone_extra)}"><span class="err" hidden></span></div>
     <div class="field"><label for="f-city">${tr('f_city')}</label><select id="f-city">${T.gov.map((g, i) => `<option value="${i}" ${String(saved.city) === String(i) ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
-    <div class="field"><label for="f-addr">${tr('f_addr')}</label><textarea id="f-addr" required rows="3" autocomplete="street-address" placeholder="${tr('f_addr_hint')}">${esc(saved.addr)}</textarea><span class="err" hidden></span></div>
+    <div class="field"><label for="f-addr">${tr('f_addr')}</label><textarea id="f-addr" required minlength="8" rows="3" autocomplete="street-address" aria-describedby="addressStatus" placeholder="${tr('f_addr_hint')}">${esc(saved.addr)}</textarea><p class="field-help" id="addressStatus" aria-live="polite">${tr('address_review')}</p><button class="btn" type="button" id="useMapAddress">${tr('address_use_map')}</button><span class="err" hidden></span></div>
     <div class="field location-field"><label id="locationLabel">${tr('f_location')}</label><p class="field-help">${tr('location_hint')}</p><div class="delivery-map" id="deliveryMap" role="region" aria-labelledby="locationLabel"></div><div class="location-actions"><button class="btn" type="button" id="locateMe">${tr('location_use_mine')}</button><button class="btn" type="button" id="useMapCenter">${tr('location_center')}</button></div><p class="field-help" id="locationStatus" aria-live="polite">${tr('location_not_selected')}</p><a id="locationLink" target="_blank" rel="noopener" hidden>${tr('location_open')}</a><span class="err" id="locationError" hidden></span></div>
     ${hasCustom ? '<p class="order-note">' + tr('custom_payment_notice') + '</p>' : ''}
     <div class="field"><label>${tr('f_pay')}</label><div class="pay">${pays.map(([v, l], i) => `<label><input type="radio" name="pay" id="pay-${v}" value="${v}" ${i === 0 ? 'checked' : ''}> ${l}</label>`).join('')}</div><span class="err" id="paymentError" hidden></span>${!pays.length ? '<p class="err">' + tr('payment_unavailable') + '</p>' : ''}</div>

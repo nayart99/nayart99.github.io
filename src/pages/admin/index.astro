@@ -216,6 +216,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     const pill = (s) => `<span class="pill" style="--c:${COLOR[s] || 'var(--soft)'}">${esc(s)}</span>`;
     const fmtDate = (iso) => { const d = new Date(iso); if (isNaN(d)) return ''; return d.toLocaleString('ar-EG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); };
     const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); if (m < 1) return 'الآن'; if (m < 60) return `منذ ${m} دقيقة`; const h = Math.round(m / 60); if (h < 24) return `منذ ${h} ساعة`; return fmtDate(iso); };
+    const locationLink = (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180 ? 'https://www.google.com/maps?q=' + p.lat + ',' + p.lng : '';
     const intlPhone = (p) => { p = String(p || '').replace(/\D/g, ''); return p.startsWith('0') ? '2' + p : p; };
 
     async function api(action, extra = {}) {
@@ -283,7 +284,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       $('tabs').innerHTML = [['all', 'الكل'], ...STATUSES.map((s) => [s, s])].map(([k, l]) => `<button class="tab" data-f="${esc(k)}" aria-pressed="${filter === k}">${esc(l)} <em class="num">${counts[k] || 0}</em></button>`).join('');
 
       const q = $('q').value.trim().toLowerCase();
-      const shown = orders.filter((o) => (filter === 'all' || o.status === filter) && (!q || [o.id, o.name, o.phone, o.city].join(' ').toLowerCase().includes(q)));
+      const shown = orders.filter((o) => (filter === 'all' || o.status === filter) && (!q || [o.id, o.name, o.phone, o.phone_extra || '', o.city].join(' ').toLowerCase().includes(q)));
       $('list').innerHTML = shown.length ? shown.map((o) => {
         const custom = o.items.some((i) => i.custom);
         const th = o.photos[0]?.thumb ? `<img src="${o.photos[0].thumb}" alt="">` : `<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`;
@@ -311,6 +312,9 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     function fillPanelHeader(o) { $('pTitle').innerHTML = `طلب <span class="num">${esc(o.id)}</span>`; }
     function openPanel(id) {
       const o = orders.find((x) => x.id === id); if (!o) return; openId = id; fillPanelHeader(o);
+      const custom = o.items.some(i => i.custom);
+      const paid = o.payment_status === 'Paid in full';
+      const mapURL = locationLink(o.location);
       const first = (o.name || '').split(' ')[0];
       const waMsg = `أهلًا ${first}، معك فريق NAY ART بخصوص طلبك رقم ${o.id}.`;
       const lines = o.items.map((i) => `<div class="line"><span>${esc(i.name)}${i.option ? ` <small style="color:var(--soft)">(${esc(i.option)})</small>` : ''} × <span class="num">${i.qty}</span>${i.note ? `<br><small style="color:var(--soft)">ملاحظة للمصمّم: ${esc(i.note)}</small>` : ''}</span><span class="num">${money(i.line)}</span></div>`).join('');
@@ -321,20 +325,29 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         </div>
         ${o.photos.length ? `<div class="sec"><h3>صورة العميل</h3><div class="photos">${o.photos.map((p, i) => `<div class="ph"><div class="im" id="ph${i}">${p.thumb ? `<img src="${p.thumb}" alt="">` : ''}</div><div class="a"><button class="btn" data-full="${esc(p.id)}" data-i="${i}">عرض بالحجم الكامل</button><a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener">فتح في Drive</a></div></div>`).join('')}</div></div>` : ''}
         <div class="sec"><h3>العميل</h3>
-          <dl class="kv"><dt>الاسم</dt><dd>${esc(o.name)}</dd><dt>الموبايل</dt><dd class="num" style="text-align:right">${esc(o.phone)}</dd><dt>المحافظة</dt><dd>${esc(o.city)}</dd><dt>العنوان</dt><dd>${esc(o.address)}</dd>${o.notes ? `<dt>ملاحظات</dt><dd>${esc(o.notes)}</dd>` : ''}${o.source ? `<dt>المصدر</dt><dd>${esc(o.source)}${o.campaign ? ' · ' + esc(o.campaign) : ''}</dd>` : ''}</dl>
+          <dl class="kv"><dt>الاسم</dt><dd>${esc(o.name)}</dd><dt>الموبايل</dt><dd class="num" style="text-align:right">${esc(o.phone)}</dd>${o.phone_extra ? `<dt>هاتف إضافي</dt><dd class="num">${esc(o.phone_extra)}</dd>` : ''}<dt>المحافظة</dt><dd>${esc(o.city)}</dd><dt>العنوان</dt><dd>${esc(o.address)}</dd>${mapURL ? `<dt>موقع التوصيل</dt><dd><a href="${mapURL}" target="_blank" rel="noopener">فتح الموقع على الخريطة</a></dd>` : ''}${o.notes ? `<dt>ملاحظات</dt><dd>${esc(o.notes)}</dd>` : ''}${o.source ? `<dt>المصدر</dt><dd>${esc(o.source)}${o.campaign ? ' · ' + esc(o.campaign) : ''}</dd>` : ''}</dl>
           <div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(waMsg)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>واتساب</a><a class="btn" href="tel:${esc(o.phone)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>اتصال</a><button class="btn" id="pCopy">نسخ بيانات الشحن</button></div>
         </div>
         <div class="sec"><h3>الطلب</h3>${lines}
           <div class="line"><span>التوصيل</span><span class="num">${money(o.delivery)}</span></div>
           <div class="line t"><span>الإجمالي</span><span class="num">${money(o.total)}</span></div>
           <div class="line"><span>الدفع</span><span>${esc(o.payment)}</span></div>
+          ${custom ? '<p class="pay-policy">اللوحة المخصصة تتطلب سداد المبلغ كاملًا قبل التصميم والتنفيذ. لا يتوفر الدفع عند الاستلام.</p>' : ''}
+          <div class="line"><span>حالة الدفع</span><b>${paid ? 'تم تأكيد استلام المبلغ كاملًا' : 'لم يتم تأكيد الدفع'}</b></div>
+          ${!paid && custom ? '<p>بعد مراجعة التحويل واستلام المبلغ كاملًا: <button class="btn p" id="pPaid">تأكيد استلام المبلغ كاملًا</button></p>' : ''}
         </div>
         <div class="sec"><h3>ملاحظات داخلية (لا يراها العميل)</h3><textarea class="in" id="pNote" placeholder="مثلًا: تم إرسال التصميم، بانتظار رد العميل">${esc(o.internal)}</textarea><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="saved" id="pNoteOk" hidden>تم الحفظ</span><button class="btn" id="pNoteSave" style="margin-inline-start:auto">حفظ الملاحظة</button></div></div>`;
       $('panel').classList.add('on'); $('scrim').classList.add('on'); $('panel').setAttribute('aria-hidden', 'false');
 
-      $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); toast('تم تحديث الحالة'); } catch { toast('تعذّر الحفظ'); } b.disabled = false; };
+      if ($('pPaid')) $('pPaid').onclick = async () => {
+        if (!confirm('هل راجعت التحويل وتأكدت من استلام ' + money(o.total) + ' كاملًا؟')) return;
+        const b = $('pPaid'); b.disabled = true;
+        try { await api('confirm_payment', {id:o.id}); o.payment_status = 'Paid in full'; openPanel(o.id); toast('تم تأكيد الدفع'); }
+        catch { b.disabled = false; toast('تعذّر تأكيد الدفع'); }
+      };
+      $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); toast('تم تحديث الحالة'); } catch (e) { toast(e.message === 'payment_required' ? 'أكد استلام المبلغ كاملًا قبل بدء التصميم والتنفيذ' : 'تعذّر الحفظ'); } b.disabled = false; };
       $('pNoteSave').onclick = async () => { const n = $('pNote').value; try { await api('update', { id: o.id, note: n }); o.internal = n; $('pNoteOk').hidden = false; setTimeout(() => { const e = $('pNoteOk'); if (e) e.hidden = true; }, 2000); } catch { toast('تعذّر الحفظ'); } };
-      $('pCopy').onclick = () => { const t = `${o.name}\n${o.phone}\n${o.city} – ${o.address}\nالإجمالي: ${o.total} ج.م (${o.payment})\nطلب ${o.id}`; navigator.clipboard?.writeText(t).then(() => toast('تم النسخ'), () => toast('تعذّر النسخ')); };
+      $('pCopy').onclick = () => { const t = `${o.name}\n${o.phone}${o.phone_extra ? '\nهاتف إضافي: ' + o.phone_extra : ''}${mapURL ? '\n' + mapURL : ''}\n${o.city} – ${o.address}\nالإجمالي: ${o.total} ج.م (${o.payment})\nطلب ${o.id}`; navigator.clipboard?.writeText(t).then(() => toast('تم النسخ'), () => toast('تعذّر النسخ')); };
       $('pBody').querySelectorAll('[data-full]').forEach((b) => b.onclick = async () => {
         b.disabled = true; b.textContent = 'جارٍ التحميل…';
         try { const j = await api('photo', { orderId: o.id, fileId: b.dataset.full }); showImage(j.data, j.name || o.id + '.jpg'); } catch { toast('تعذّر تحميل الصورة'); }
@@ -357,7 +370,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         const t = (h) => new Date(Date.now() - h * 3600e3).toISOString();
         const thumb = '/media/products/couple/ref.webp';
         demoApi.data = [
-          { id: 'NA-261020-4821', date: t(.2), status: 'جديد', name: 'سارة محمود', phone: '01012345678', city: 'القاهرة', address: 'مدينة نصر، شارع عباس العقاد، عمارة ١٢', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'لوحة من صورتك', option: '50×60 سم / طولي', qty: 1, line: 2200, custom: true, note: 'احذف الخلفية' }], delivery: 120, total: 2320, notes: '', internal: '', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
+          { id: 'NA-261020-4821', date: t(.2), status: 'جديد', name: 'سارة محمود', phone: '01012345678', city: 'القاهرة', address: 'مدينة نصر، شارع عباس العقاد، عمارة ١٢', payment: 'InstaPay', payment_status: 'Awaiting full payment', phone_extra:'01112345678', location:{lat:30.056,lng:31.345}, items: [{ name: 'لوحة من صورتك', option: '50×60 سم / طولي', qty: 1, line: 2200, custom: true, note: 'احذف الخلفية' }], delivery: 120, total: 2320, notes: '', internal: '', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
           { id: 'NA-261020-1937', date: t(1.5), status: 'جديد', name: 'محمد علي', phone: '01198765432', city: 'الجيزة', address: 'الدقي، شارع التحرير ٤٥', payment: 'InstaPay', items: [{ name: 'حلم الورد', option: '40×50 سم', qty: 1, line: 750 }, { name: 'ليلة النجوم', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 1620, notes: 'الاتصال بعد ٥ مساءً', internal: '', source: 'facebook', photos: [] },
           { id: 'NA-261019-7710', date: t(20), status: 'بانتظار موافقة التصميم', name: 'ندى حسن', phone: '01055512345', city: 'الإسكندرية', address: 'سموحة، شارع فوزي معاذ', payment: 'فودافون كاش', items: [{ name: 'لوحة من صورتك', option: '40×50 سم / عرضي', qty: 1, line: 1800, custom: true }], delivery: 120, total: 1920, notes: '', internal: 'تم إرسال التصميم على واتساب', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
           { id: 'NA-261019-3302', date: t(26), status: 'قيد التجهيز', name: 'أحمد سمير', phone: '01234567890', city: 'المنصورة', address: 'شارع الجمهورية', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'حقول الغروب', option: '40×50 سم', qty: 2, line: 1500 }], delivery: 120, total: 1620, notes: '', internal: '', photos: [] },
@@ -367,6 +380,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         ];
       }
       if (action === 'list') return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)) });
+      if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }
       if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; return Promise.resolve({ ok: true }); }
       if (action === 'photo') return Promise.resolve({ ok: true, data: '/media/products/couple/ref.webp', name: 'demo.webp' });
     }

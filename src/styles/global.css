@@ -498,3 +498,12 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .compare,.hv-phone,.g-main canvas,.sup-num .num,.price,input[type="tel"],input[inputmode="tel"]{direction:ltr}
 .compare{direction:ltr}
 [dir="rtl"] .price-line,[dir="rtl"] .pr{direction:rtl}
+
+/* Delivery map in checkout */
+.delivery-map{height:240px;min-height:240px;border:1px solid var(--line);border-radius:var(--radius);direction:ltr;isolation:isolate;z-index:0}
+.location-field .field-help{font-size:.82rem;color:var(--ink-soft);margin:0;line-height:1.6}
+.location-actions{display:flex;gap:8px;flex-wrap:wrap}.location-actions .btn{padding:8px 10px;font-size:.78rem;flex:1}
+.location-field>a{font-size:.85rem;color:var(--burgundy)}
+.delivery-pin{background:none;border:0}.delivery-pin span{display:block;width:26px;height:26px;border-radius:50% 50% 50% 0;background:var(--burgundy);border:3px solid white;box-shadow:0 2px 5px #0005;transform:rotate(-45deg)}
+.delivery-map .leaflet-control-attribution{font-size:10px;white-space:normal}
+.checkout .order-note{margin:0;font-size:.86rem;line-height:1.7}

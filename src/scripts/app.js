@@ -6,6 +6,50 @@ const T = DATA.t;
 const tr = (k, vars) => { let s = T[k] ?? k; if (vars) for (const v in vars) s = s.replace(`{${v}}`, vars[v]); return s; };
 const cmL = (s) => (lang === 'ar' ? String(s).replace(/cm/g, 'سم') : s);
 const money = (n) => { const v = Number(n).toLocaleString('en-US'); return lang === 'ar' ? `${v} ج.م` : `EGP ${v}`; };
+const escapeHTML = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const phoneNumber = (v) => String(v || '').replace(/[٠-٩]/g, c => c.charCodeAt(0) - 1632).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 1776).replace(/[\s()-]/g, '');
+const validPhone = (v) => /^01[0125]\d{8}$/.test(phoneNumber(v));
+const validLocation = (v) => v && Number.isFinite(v.lat) && Number.isFinite(v.lng) && Math.abs(v.lat) <= 90 && Math.abs(v.lng) <= 180;
+const mapsURL = (v) => 'https://www.google.com/maps?q=' + v.lat + ',' + v.lng;
+let deliveryLocation = null, checkoutMap = null, mapMarker = null, checkoutDraft = null, placingOrder = false;
+function rememberCheckout() {
+  if (!$('coForm')) return;
+  checkoutDraft = {name:$('f-name').value,phone:$('f-phone').value,phone_extra:$('f-phone-extra').value,city:$('f-city').value,addr:$('f-addr').value,notes:$('f-note').value,location:deliveryLocation};
+}
+async function initDeliveryMap() {
+  const container = $('deliveryMap');
+  try {
+    const { default: L } = await import('leaflet');
+    if (!container.isConnected) return;
+    const point = validLocation(deliveryLocation) ? deliveryLocation : {lat:30.0444,lng:31.2357};
+    const map = checkoutMap = L.map(container, {scrollWheelZoom:false}).setView([point.lat,point.lng], validLocation(deliveryLocation) ? 16 : 7);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
+    const icon = L.divIcon({className:'delivery-pin',html:'<span></span>',iconSize:[28,36],iconAnchor:[14,36]});
+    const choose = (latlng) => {
+      if (!container.isConnected || checkoutMap !== map) return;
+      deliveryLocation = {lat:Number(latlng.lat.toFixed(6)),lng:Number(latlng.lng.toFixed(6))};
+      if (mapMarker) mapMarker.setLatLng(latlng); else {
+        mapMarker = L.marker(latlng,{icon,draggable:true,alt:tr('f_location')}).addTo(map);
+        mapMarker.on('dragend', () => choose(mapMarker.getLatLng()));
+      }
+      $('locationStatus').textContent = tr('location_selected');
+      $('locationLink').href = mapsURL(deliveryLocation); $('locationLink').hidden = false;
+      $('locationError').hidden = true;
+    };
+    if (validLocation(deliveryLocation)) choose(deliveryLocation);
+    map.on('click', e => choose(e.latlng));
+    $('useMapCenter').onclick = () => choose(map.getCenter());
+    $('locateMe').onclick = () => {
+      if (!navigator.geolocation) { $('locationStatus').textContent = tr('location_denied'); return; }
+      const b = $('locateMe'); b.disabled = true; $('locationStatus').textContent = tr('location_finding');
+      navigator.geolocation.getCurrentPosition(pos => {
+        if (!container.isConnected || checkoutMap !== map) return;
+        const p = L.latLng(pos.coords.latitude,pos.coords.longitude); choose(p); map.setView(p,17); b.disabled = false;
+      }, () => { if (container.isConnected) { b.disabled = false; $('locationStatus').textContent = tr('location_denied'); } }, {enableHighAccuracy:true,timeout:15000,maximumAge:0});
+    };
+    requestAnimationFrame(() => { if (container.isConnected) map.invalidateSize(); });
+  } catch { if (container.isConnected) { $('locationStatus').textContent = tr('location_load_error'); $('locateMe').disabled = true; $('useMapCenter').disabled = true; } }
+}
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const store = {
   get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
@@ -78,9 +122,10 @@ function addKit(slug, q = 1) {
 
 let view = 'cart';
 function openDrawer(v = 'cart') { view = v; renderDrawer(); $('drawer').classList.add('on'); $('scrim').classList.add('on'); $('drawer').setAttribute('aria-hidden', 'false'); if (v === 'checkout') track('begin_checkout', { currency: 'EGP', value: totals().total, items: gaItems() }); }
-function closeDrawer() { $('drawer').classList.remove('on'); $('scrim').classList.remove('on'); $('drawer').setAttribute('aria-hidden', 'true'); if (view === 'done') view = 'cart'; }
+function closeDrawer() { if (placingOrder) return; rememberCheckout(); $('drawer').classList.remove('on'); $('scrim').classList.remove('on'); $('drawer').setAttribute('aria-hidden', 'true'); if (view === 'done') view = 'cart'; }
 
 function renderDrawer() {
+  if (checkoutMap) { checkoutMap.remove(); checkoutMap = null; mapMarker = null; }
   const body = $('drawerBody'), foot = $('drawerFoot'), t = totals();
   if (view === 'done') return;
   if (view === 'cart') {
@@ -98,42 +143,54 @@ function renderDrawer() {
   // checkout
   $('drawerTitle').textContent = tr('delivery_details');
   const hasCustom = cart.some((c) => c.kind === 'custom');
-  const saved = store.get('nay-customer', {});
-  const esc = (v) => String(v || '').replace(/"/g, '&quot;');
-  const pays = [S.payments.cod && ['cod', tr('pay_cod')], S.payments.instapay && ['instapay', tr('pay_instapay')], S.payments.vodafone_cash && ['vodafone', tr('pay_vodafone')]].filter(Boolean);
+  const saved = checkoutDraft || store.get('nay-customer', {});
+  deliveryLocation = validLocation(saved.location) ? saved.location : null;
+  const esc = escapeHTML;
+  const pays = [!hasCustom && S.payments.cod && ['cod', tr('pay_cod')], S.payments.instapay && ['instapay', tr('pay_instapay')], S.payments.vodafone_cash && ['vodafone', tr('pay_vodafone')]].filter(Boolean);
   body.innerHTML = `<button class="back" id="backCart">${tr('back_cart')}</button>
   <form class="checkout" id="coForm" novalidate>
-    <div class="field"><label for="f-name">${tr('f_name')}</label><input id="f-name" autocomplete="name" value="${esc(saved.name)}"><span class="err" hidden></span></div>
-    <div class="field"><label for="f-phone">${hasCustom ? tr('f_phone_wa') : tr('f_phone')}</label><input id="f-phone" inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx" value="${esc(saved.phone)}"><span class="err" hidden></span></div>
+    <div class="field"><label for="f-name">${tr('f_name')}</label><input id="f-name" required autocomplete="name" value="${esc(saved.name)}"><span class="err" hidden></span></div>
+    <div class="field"><label for="f-phone">${hasCustom ? tr('f_phone_wa') : tr('f_phone')}</label><input id="f-phone" type="tel" required inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx" value="${esc(saved.phone)}"><span class="err" hidden></span></div>
+    <div class="field"><label for="f-phone-extra">${tr('f_phone_extra')}</label><input id="f-phone-extra" type="tel" inputmode="tel" autocomplete="section-extra tel" placeholder="01xxxxxxxxx" value="${esc(saved.phone_extra)}"><span class="err" hidden></span></div>
     <div class="field"><label for="f-city">${tr('f_city')}</label><select id="f-city">${T.gov.map((g, i) => `<option value="${i}" ${String(saved.city) === String(i) ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
-    <div class="field"><label for="f-addr">${tr('f_addr')}</label><textarea id="f-addr" rows="2" autocomplete="street-address">${saved.addr || ''}</textarea><span class="err" hidden></span></div>
-    <div class="field"><label>${tr('f_pay')}</label><div class="pay">${pays.map(([v, l], i) => `<label><input type="radio" name="pay" id="pay-${v}" value="${v}" ${i === 0 ? 'checked' : ''}> ${l}</label>`).join('')}</div></div>
-    <div class="field"><label for="f-note">${tr('f_note')}</label><input id="f-note"></div>
+    <div class="field"><label for="f-addr">${tr('f_addr')}</label><textarea id="f-addr" required rows="3" autocomplete="street-address" placeholder="${tr('f_addr_hint')}">${esc(saved.addr)}</textarea><span class="err" hidden></span></div>
+    <div class="field location-field"><label id="locationLabel">${tr('f_location')}</label><p class="field-help">${tr('location_hint')}</p><div class="delivery-map" id="deliveryMap" role="region" aria-labelledby="locationLabel"></div><div class="location-actions"><button class="btn" type="button" id="locateMe">${tr('location_use_mine')}</button><button class="btn" type="button" id="useMapCenter">${tr('location_center')}</button></div><p class="field-help" id="locationStatus" aria-live="polite">${tr('location_not_selected')}</p><a id="locationLink" target="_blank" rel="noopener" hidden>${tr('location_open')}</a><span class="err" id="locationError" hidden></span></div>
+    ${hasCustom ? '<p class="order-note">' + tr('custom_payment_notice') + '</p>' : ''}
+    <div class="field"><label>${tr('f_pay')}</label><div class="pay">${pays.map(([v, l], i) => `<label><input type="radio" name="pay" id="pay-${v}" value="${v}" ${i === 0 ? 'checked' : ''}> ${l}</label>`).join('')}</div><span class="err" id="paymentError" hidden></span>${!pays.length ? '<p class="err">' + tr('payment_unavailable') + '</p>' : ''}</div>
+    <div class="field"><label for="f-note">${tr('f_note')}</label><input id="f-note" value="${esc(saved.notes)}"></div>
   </form>`;
-  foot.innerHTML = `<div class="row"><span>${tr('delivery')}</span><span class="price">${money(t.ship)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(t.total)}</span></div><button class="btn btn-primary" id="placeOrder">${tr('place_order')}</button>`;
+  foot.innerHTML = `<div class="row"><span>${tr('delivery')}</span><span class="price">${money(t.ship)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(t.total)}</span></div><button class="btn btn-primary" id="placeOrder" ${!pays.length ? 'disabled' : ''}>${tr('place_order')}</button>`;
+  $('coForm').addEventListener('submit', e => { e.preventDefault(); placeOrder($('placeOrder')); });
+  initDeliveryMap();
 }
 
 function orderText(o) {
   const lines = o.items.map((i) => `• ${i.name} (${i.display}) × ${i.qty} = ${money(i.line)}`).join('\n');
-  return `${lang === "ar" ? "طلب NAY ART رقم" : "NAY ART order"} ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}\n\n${o.customer.name}\n${o.customer.phone}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(سأرسل لكم الصورة المطلوبة للوحة في هذه المحادثة)' : '(I will send the custom photo in this chat)') : ''}`;
+  return `${lang === "ar" ? "طلب NAY ART رقم" : "NAY ART order"} ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}${o.items.some(i => i.custom) ? '\n' + tr('custom_payment_notice') : ''}\n\n${o.customer.name}\n${o.customer.phone}${o.customer.phone_extra ? '\n' + tr('f_phone_extra') + ': ' + o.customer.phone_extra : ''}\n${mapsURL(o.customer.location)}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(سأرسل لكم الصورة المطلوبة للوحة في هذه المحادثة)' : '(I will send the custom photo in this chat)') : ''}`;
 }
 const waLink = (text) => `https://wa.me/${S.whatsapp_intl}?text=${encodeURIComponent(text)}`;
 
 async function placeOrder(btn) {
-  const rules = [['f-name', (v) => v.trim().length >= 3, 'err_name'], ['f-phone', (v) => /^01[0125]\d{8}$/.test(v.replace(/\s/g, '')), 'err_phone'], ['f-addr', (v) => v.trim().length >= 8, 'err_addr']];
+  if (placingOrder || !cart.length || !$('coForm')) return;
+  const rules = [['f-name', (v) => v.trim().length >= 3, 'err_name'], ['f-phone', validPhone, 'err_phone'], ['f-phone-extra', v => !v.trim() || validPhone(v), 'err_phone'], ['f-addr', (v) => v.trim().length >= 8, 'err_addr']];
   let ok = true;
   rules.forEach(([id, test, msg]) => { const el = $(id), err = el.parentElement.querySelector('.err'); if (!test(el.value)) { ok = false; err.textContent = tr(msg); err.hidden = false; } else err.hidden = true; });
-  if (!ok) return;
+  if (!validLocation(deliveryLocation)) { ok = false; $('locationError').textContent = tr('err_location'); $('locationError').hidden = false; } else $('locationError').hidden = true;
+  const hasCustom = cart.some(c => c.kind === 'custom');
+  const payV = document.querySelector('input[name=pay]:checked')?.value;
+  const allowed = {cod:!hasCustom && S.payments.cod,instapay:S.payments.instapay,vodafone:S.payments.vodafone_cash};
+  if (!allowed[payV]) { ok = false; $('paymentError').textContent = tr('err_payment'); $('paymentError').hidden = false; }
+  if (!ok) { $('coForm').querySelector('.err:not([hidden])')?.parentElement.scrollIntoView({block:'center',behavior:'smooth'}); return; }
   const t = totals();
-  const payV = document.querySelector('input[name=pay]:checked')?.value || 'cod';
   const payLabel = { cod: tr('pay_cod'), instapay: 'InstaPay', vodafone: tr('pay_vodafone') }[payV];
   const d = new Date();
   const id = `NA-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
   const cityIdx = $('f-city').value;
-  const customer = { name: $('f-name').value.trim(), phone: $('f-phone').value.replace(/\s/g, ''), city: T.gov[cityIdx], address: $('f-addr').value.trim(), notes: $('f-note').value.trim() };
-  store.set('nay-customer', { name: customer.name, phone: customer.phone, city: cityIdx, addr: customer.address });
+  const customer = { name: $('f-name').value.trim(), phone: phoneNumber($('f-phone').value), phone_extra: phoneNumber($('f-phone-extra').value), location: {...deliveryLocation}, city: T.gov[cityIdx], address: $('f-addr').value.trim(), notes: $('f-note').value.trim() };
+  store.set('nay-customer', { name: customer.name, phone: customer.phone, phone_extra:customer.phone_extra, location:customer.location, city: cityIdx, addr: customer.address });
   const items = cart.map((c) => { const l = lineInfo(c); return { slug: c.kind === 'custom' ? 'custom' : c.slug, name: l.name, option: l.option, display: l.display, qty: c.q, price: l.price, line: l.price * c.q, custom: c.kind === 'custom', note: c.note || '', key: c.key, thumb: c.kind === 'custom' ? c.thumb || '' : '' }; });
   const order = { type: 'order', id, created: d.toISOString(), lang, customer, payment: payV, payment_label: payLabel, items, subtotal: t.sub, delivery: t.ship, total: t.total, source: source(), page: location.href };
+  placingOrder = true; btn.disabled = true; btn.textContent = tr('placing');
   const photoList = (await Promise.all(cart.filter((c) => c.kind === 'custom').map(async (c) => ({ key: c.key, name: c.file || 'photo.jpg', data: photos[c.key] || (await photoDB.get(c.key)) || store.get('nay-photo-' + c.key, '') })))).filter((p) => p.data);
 
   btn.disabled = true; btn.textContent = tr('placing');
@@ -145,6 +202,7 @@ async function placeOrder(btn) {
       sent = res.ok && j.ok !== false;
     } catch { sent = false; }
   }
+  placingOrder = false; checkoutDraft = null;
   showDone(order, sent);
   track('purchase', { transaction_id: id, currency: 'EGP', value: t.total, shipping: t.ship, items: gaItems() });
   cart.forEach((c) => c.kind === 'custom' && dropPhoto(c.key));
@@ -158,8 +216,9 @@ function showDone(o, sent) {
   $('drawerTitle').textContent = tr('order_placed');
   const payNote = o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : o.payment !== 'cod' ? tr('pay_after_wa') : '';
   const rows = o.items.map((i) => `<div class="row"><span>${i.name} (${i.display}) × ${i.qty}</span><span class="price">${money(i.line)}</span></div>`).join('');
-  $('drawerBody').innerHTML = `<div class="done-box"><img src="/media/brand/mark.png" alt=""><h2 style="font-size:2rem">${tr('thanks', { name: first })}</h2>
+  $('drawerBody').innerHTML = `<div class="done-box"><img src="/media/brand/mark.png" alt=""><h2 style="font-size:2rem">${escapeHTML(tr('thanks', { name: first }))}</h2>
     <p style="color:var(--ink-soft)">${sent ? (hasCustom ? tr('thanks_custom') : tr('thanks_kit')) : S.orders_endpoint ? tr('order_fail') : tr('order_wa_step')}</p><span class="ord">${o.id}</span></div>
+    ${hasCustom ? `<p class="order-note">${tr('custom_payment_notice')}</p>` : ''}
     ${payNote ? `<p class="order-note">${payNote}</p>` : ''}
     <div class="summary-mini">${rows}<div class="row"><span>${tr('delivery')}</span><span class="price">${money(o.delivery)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(o.total)}</span></div><div class="row"><span>${tr('payment')}</span><span>${o.payment_label}</span></div></div>`;
   const wa = `<a class="btn wa-btn${sent ? '' : ' btn-primary'}" href="${waLink(orderText(o))}" target="_blank" rel="noopener">${tr('send_wa')}</a>`;
@@ -362,7 +421,7 @@ document.addEventListener('click', (e) => {
   if (t.id === 'cartBtn') openDrawer();
   else if (t.id === 'closeDrawer') closeDrawer();
   else if (t.id === 'toCheckout') { view = 'checkout'; renderDrawer(); track('begin_checkout', { currency: 'EGP', value: totals().total, items: gaItems() }); }
-  else if (t.id === 'backCart') { view = 'cart'; renderDrawer(); }
+  else if (t.id === 'backCart') { if (placingOrder) return; rememberCheckout(); view = 'cart'; renderDrawer(); }
   else if (t.id === 'placeOrder') placeOrder(t);
   else if (d.inc || d.dec) { const c = cart.find((x) => x.key === (d.inc || d.dec)); if (!c) return; c.q += d.inc ? 1 : -1; if (c.q <= 0) { cart = cart.filter((x) => x !== c); dropPhoto(c.key); } save(); counts(); renderDrawer(); }
   else if (d.rm) { cart = cart.filter((x) => x.key !== d.rm); dropPhoto(d.rm); save(); counts(); renderDrawer(); }

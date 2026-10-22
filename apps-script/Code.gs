@@ -15,14 +15,14 @@
 // Changes there work right away, no redeploy needed. The values below are only defaults.
 //   DASHBOARD_PASSWORD  password for nayarts.com/admin
 //   NOTIFY_EMAIL        where new-order emails go (empty = the account that owns this script)
-//   WHATSAPP_PHONE      owner's WhatsApp with country code, no + or spaces (e.g. 201270820513)
+//   WHATSAPP_PHONE      owner's WhatsApp with country code, no + or spaces (e.g. 201033668842)
 //   TEXTMEBOT_KEY       TextMeBot API key (textmebot.com, about $1/month)
 //   CALLMEBOT_KEY       or a free CallMeBot API key (callmebot.com)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
   DASHBOARD_PASSWORD: '',
   NOTIFY_EMAIL: '',
-  WHATSAPP_PHONE: '201270820513',
+  WHATSAPP_PHONE: '201033668842',
   TEXTMEBOT_KEY: '',
   CALLMEBOT_KEY: '',
 };
@@ -35,7 +35,7 @@ function cfg(k) { return PropertiesService.getScriptProperties().getProperty(k) 
 const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 const CANCELLED = 'ملغي';
 
-const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs'];
+const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status'];
 const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
@@ -60,7 +60,26 @@ function doGet() {
 
 /* ---------------- orders ---------------- */
 
+function deliveryMap(c) {
+  const p = c.location;
+  return p && Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180
+    ? 'https://www.google.com/maps?q=' + p.lat + ',' + p.lng : '';
+}
+
+function validateOrder(o) {
+  const c = o.customer || {};
+  if (String(c.name || '').trim().length < 3 || String(c.address || '').trim().length < 8 || !c.city) return 'customer_required';
+  if (!/^01[0125]\d{8}$/.test(c.phone || '') || (c.phone_extra && !/^01[0125]\d{8}$/.test(c.phone_extra))) return 'invalid_phone';
+  if (!deliveryMap(c)) return 'location_required';
+  if (!Array.isArray(o.items) || !o.items.length) return 'items_required';
+  if (['cod', 'instapay', 'vodafone'].indexOf(o.payment) < 0) return 'invalid_payment';
+  if (o.items.some(function(i) { return i.custom || i.slug === 'custom'; }) && o.payment === 'cod') return 'custom_prepayment_required';
+  return '';
+}
+
 function saveOrder(o) {
+  const invalid = validateOrder(o);
+  if (invalid) return { ok: false, error: invalid };
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -94,8 +113,8 @@ function saveOrder(o) {
     const s = o.source || {};
     const units = (o.items || []).reduce(function (n, i) { return n + Number(i.qty || 0); }, 0);
     const itemText = (o.items || []).map(function (i) { return i.name + ' (' + (i.display || i.option) + ') × ' + i.qty; }).join('\n');
-    const hasCustom = (o.items || []).some(function (i) { return i.custom; });
-    const cleanItems = (o.items || []).map(function (i) { return { name: i.name, option: i.display || i.option, qty: i.qty, price: i.price, line: i.line, custom: !!i.custom, note: i.note || '' }; });
+    const hasCustom = (o.items || []).some(function (i) { return i.custom || i.slug === 'custom'; });
+    const cleanItems = (o.items || []).map(function (i) { return { name: i.name, option: i.display || i.option, qty: i.qty, price: i.price, line: i.line, custom: !!i.custom || i.slug === 'custom', note: i.note || '' }; });
 
     const row = new Array(ORDERS_HEADERS.length).fill('');
     row[C['Date']] = when; row[C['Order ID']] = o.id; row[C['Status']] = STATUSES[0];
@@ -106,6 +125,10 @@ function saveOrder(o) {
     row[C['Language']] = o.lang || ''; row[C['Source']] = s.utm_source || (s.fbclid ? 'facebook' : s.gclid ? 'google' : '');
     row[C['Medium']] = s.utm_medium || ''; row[C['Campaign']] = s.utm_campaign || ''; row[C['Landing page']] = s.landing || ''; row[C['Referrer']] = s.referrer || '';
     row[C['Items JSON']] = JSON.stringify(cleanItems); row[C['Photo IDs']] = ids.join(','); row[C['Thumbs']] = JSON.stringify(thumbList).slice(0, 49000);
+    row[C['Additional phone']] = c.phone_extra ? "'" + c.phone_extra : '';
+    row[C['Delivery latitude']] = c.location.lat; row[C['Delivery longitude']] = c.location.lng;
+    row[C['Delivery map']] = deliveryMap(c);
+    row[C['Payment status']] = hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
     orders.appendRow(row);
     (o.items || []).forEach(function (i) {
       items.appendRow([when, o.id, month, i.name, i.display || i.option, i.qty, i.price, i.line, i.note || '']);
@@ -133,6 +156,9 @@ function notifyOwner(o, itemText, hasCustom, links) {
     'رقم الطلب: ' + o.id + '\n' +
     'العميل: ' + (c.name || '') + ' – ' + (c.city || '') + '\n' +
     'الإجمالي: ' + o.total + ' ج.م' + (hasCustom ? '\n📷 لوحة من صورة العميل' : '') + '\n\n' +
+    'هاتف التواصل: ' + (c.phone || '') + (c.phone_extra ? '\nهاتف إضافي: ' + c.phone_extra : '') + '\n' +
+    (deliveryMap(c) ? 'موقع التوصيل: ' + deliveryMap(c) + '\n' : '') +
+    (hasCustom ? '⚠️ سداد المبلغ كاملًا وتأكيد استلامه قبل التصميم والتنفيذ.\n' : '') +
     'افتح لوحة الطلبات:\n' + DASHBOARD_URL;
   sendWhatsApp(wa);
 
@@ -142,7 +168,7 @@ function notifyOwner(o, itemText, hasCustom, links) {
       subject: 'طلب جديد ' + o.id + ' – ' + o.total + ' ج.م',
       body: 'طلب جديد على NAY ART\n\nرقم الطلب: ' + o.id + '\n\n' + itemText +
         '\n\nالتوصيل: ' + o.delivery + ' ج.م\nالإجمالي: ' + o.total + ' ج.م\nالدفع: ' + (o.payment_label || o.payment) +
-        '\n\n' + (c.name || '') + '\n' + (c.phone || '') + '\n' + (c.city || '') + ' – ' + (c.address || '') + (c.notes ? '\nملاحظات: ' + c.notes : '') +
+        '\n\n' + (c.name || '') + '\n' + (c.phone || '') + (c.phone_extra ? '\nهاتف إضافي: ' + c.phone_extra : '') + (deliveryMap(c) ? '\nالموقع: ' + deliveryMap(c) : '') + (hasCustom ? '\nيشترط سداد المبلغ كاملًا قبل التنفيذ.' : '') + '\n' + (c.city || '') + ' – ' + (c.address || '') + (c.notes ? '\nملاحظات: ' + c.notes : '') +
         (links.length ? '\n\nصورة العميل:\n' + links.join('\n') : '') + '\n\nلوحة الطلبات: ' + DASHBOARD_URL,
     });
   } catch (err) { /* email quota – the order is still saved */ }
@@ -179,11 +205,21 @@ function admin(d) {
   const ss = book();
   const sh = sheet(ss, 'Orders', ORDERS_HEADERS);
   if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh) };
+  if (d.action === 'confirm_payment') {
+    const r = findRow(sh, d.id);
+    if (!r) return { ok: false, error: 'not found' };
+    sh.getRange(r, C['Payment status'] + 1).setValue('Paid in full');
+    sh.getRange(r, C['Last update'] + 1).setValue(new Date());
+    return { ok: true };
+  }
   if (d.action === 'update') {
     const r = findRow(sh, d.id);
     if (!r) return { ok: false, error: 'not found' };
     if (d.status != null) {
       if (STATUSES.indexOf(d.status) < 0) return { ok: false, error: 'bad status' };
+      let orderItems = [];
+      try { orderItems = JSON.parse(sh.getRange(r, C['Items JSON'] + 1).getValue() || '[]'); } catch (e) {}
+      if (orderItems.some(function(i) { return i.custom; }) && ['بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم'].indexOf(d.status) >= 0 && sh.getRange(r, C['Payment status'] + 1).getValue() !== 'Paid in full') return { ok: false, error: 'payment_required' };
       sh.getRange(r, C['Status'] + 1).setValue(d.status);
     }
     if (d.note != null) sh.getRange(r, C['Internal notes'] + 1).setValue(String(d.note).slice(0, 2000));
@@ -214,6 +250,9 @@ function listOrders(sh) {
       id: v[C['Order ID']], date: v[C['Date']] instanceof Date ? v[C['Date']].toISOString() : String(v[C['Date']]),
       status: v[C['Status']] || STATUSES[0], name: v[C['Name']], phone: String(v[C['Phone']]).replace(/^'/, ''),
       city: v[C['Governorate']], address: v[C['Address']], payment: v[C['Payment']],
+      phone_extra: String(v[C['Additional phone']] || '').replace(/^'/, ''),
+      location: v[C['Delivery latitude']] !== '' && v[C['Delivery longitude']] !== '' ? { lat: Number(v[C['Delivery latitude']]), lng: Number(v[C['Delivery longitude']]) } : null,
+      payment_status: v[C['Payment status']] || 'Unconfirmed',
       items: items.length ? items : [{ name: v[C['Items']], option: '', qty: v[C['Units']], line: v[C['Subtotal (EGP)']] }],
       units: v[C['Units']], subtotal: v[C['Subtotal (EGP)']], delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']],
       notes: v[C['Customer notes']], internal: v[C['Internal notes']],
@@ -262,9 +301,13 @@ function sheet(ss, name, headers) {
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
+    if (sh.getMaxColumns() < headers.length) sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
     sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold').setBackground('#7A1F2B').setFontColor('#F7F3EC');
     sh.setFrozenRows(1);
   }
+  // Append new fields without changing existing column positions or order history.
+  if (sh.getMaxColumns() < headers.length) sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
+  if (sh.getLastColumn() < headers.length) sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold').setBackground('#7A1F2B').setFontColor('#F7F3EC');
   return sh;
 }
 

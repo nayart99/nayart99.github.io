@@ -29,6 +29,7 @@ const ex = settings.custom_example;
       <h1>{t('custom_title')}<small>{t('custom_sub')}</small></h1>
       <div class="price-line"><span class="now price" id="cPrice">{money(sizes[0].price, lang)}</span></div>
       <p class="blurb">{t('custom_blurb')}</p>
+      <p class="order-note">{t('custom_payment_notice')}</p>
       <div class="opt-group"><span>{t('size')}: <b id="cSizeLbl">{cm(sizes[0].label, lang)}</b></span>
         <div class="opts" id="cSizes">
           {sizes.map((s, i) => <button class="opt" data-size={i} aria-pressed={i === 0 ? 'true' : 'false'} style="min-width:110px">{cm(s.label, lang)}<small>{money(s.price, lang)}</small></button>)}

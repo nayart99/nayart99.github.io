@@ -275,7 +275,7 @@
   "f_phone_extra": "Additional contact phone (optional)",
   "f_addr_hint": "Area, street, building, floor, apartment and a landmark",
   "f_location": "Delivery location on the map (required)",
-  "location_hint": "Move and zoom the map, then tap the delivery location or use your current location. A written address is also required.",
+  "location_hint": "Choose the delivery location on the map to fill the address when available, then add the building, floor and apartment.",
   "location_use_mine": "Use my current location",
   "location_center": "Choose the map centre",
   "location_not_selected": "No delivery location selected yet.",
@@ -287,5 +287,10 @@
   "err_location": "Choose the delivery location on the map.",
   "err_payment": "Choose an available payment method. Custom canvases do not accept cash on delivery.",
   "payment_unavailable": "Transfers are currently unavailable. Contact us to complete your order.",
-  "custom_payment_notice": "Custom canvases require full payment before design and production. Cash on delivery is unavailable. Work starts after we confirm your transfer."
+  "custom_payment_notice": "Custom canvases require full payment before design and production. Cash on delivery is unavailable. Work starts after we confirm your transfer.",
+  "address_keep": "Your written address was kept. If the delivery location changed, select “Use map address” to replace it.",
+  "address_finding": "Finding the address for your map location…",
+  "address_review": "Review the address and add the building, floor and apartment. A written address is required.",
+  "address_manual": "The address could not be found automatically. Enter the full address; your map pin is saved.",
+  "address_use_map": "Use map address"
 }

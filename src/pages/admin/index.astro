@@ -2,7 +2,7 @@
 // Owner dashboard: orders, statuses, customer photos. Data comes from the Google Apps Script backend.
 // Open with ?demo=1 to see it with sample orders.
 import { settings } from '../../lib/site.js';
-const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whatsapp_intl, brand: settings.brand };
+const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whatsapp_intl, brand: settings.brand, payNumber: settings.instapay || settings.vodafone_cash || '' };
 ---
 <!doctype html>
 <html lang="ar" dir="rtl">
@@ -138,10 +138,65 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     .lightbox{position:fixed;inset:0;background:rgba(20,10,12,.88);z-index:70;display:grid;place-items:center;padding:20px}
     .lightbox img{max-width:100%;max-height:86vh;border-radius:6px}
     .lightbox .x{position:absolute;top:16px;left:16px}
-    @media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.month{grid-template-columns:1fr}}
+    /* views */
+    .views{display:flex;gap:4px;background:var(--sand);padding:4px;border-radius:12px;width:max-content;margin-bottom:18px}
+    .views button{border:0;background:transparent;padding:8px 18px;border-radius:9px;font-weight:500;color:var(--soft)}
+    .views button[aria-pressed=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(58,30,34,.15)}
+    /* filters + bulk */
+    .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+    .filters select,.filters input[type=date]{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 10px;font-size:.88rem;max-width:100%}
+    .filters .grow{flex:1}
+    .filters .btn{padding:8px 12px;font-size:.88rem}
+    .selall{display:flex;align-items:center;gap:6px;font-size:.88rem;color:var(--soft)}
+    .bulk{position:sticky;top:64px;z-index:15;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--ink);color:#fff;padding:10px 14px;border-radius:12px;margin-bottom:12px}
+    .bulk b{margin-inline-end:6px}
+    .bulk select{border:0;border-radius:8px;padding:7px 10px;background:#fff;color:var(--ink)}
+    .bulk .btn{padding:7px 12px;font-size:.85rem}
+    .ord{grid-template-columns:24px 56px 1fr auto}
+    .ord .pick{width:20px;height:20px;accent-color:var(--wine);cursor:pointer}
+    .ord.sel{border-color:var(--wine);background:#FBF4F3}
+    .count-line{font-size:.85rem;color:var(--soft);margin:0 0 10px}
+    /* analytics */
+    .seg{display:flex;flex-wrap:wrap;gap:6px}
+    .seg button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:7px 14px;font-size:.88rem}
+    .seg button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+    .a-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+    .a-head small{color:var(--soft)}
+    .kpis.k8{grid-template-columns:repeat(4,1fr)}
+    .delta{display:inline-block;margin-inline-start:6px;font-size:.78rem;color:var(--soft);font-weight:500}
+    .agrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .agrid .wide{grid-column:1/-1}
+    .card .sub{font-size:.8rem;color:var(--soft);margin:-6px 0 10px}
+    .cols{position:relative;display:flex;align-items:flex-end;gap:2px;height:190px;border-bottom:1px solid var(--line);padding-top:8px}
+    .cols .c{flex:1;height:100%;display:flex;align-items:flex-end;cursor:default;position:relative;z-index:1}
+    .cols .c i{display:block;width:100%;background:var(--wine);border-radius:4px 4px 0 0;min-height:0;transition:opacity .15s}
+    .cols .c:hover i{opacity:.75}
+    .cols .grid{position:absolute;inset:8px 0 0;pointer-events:none}
+    .cols .grid span{position:absolute;left:0;right:0;border-top:1px dashed #EAE1D6;font-size:.7rem;color:var(--soft)}
+    .cols .grid span em{position:absolute;inset-inline-start:0;top:-16px;font-style:normal;background:var(--paper);padding:0 4px}
+    .xlab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--soft);margin-top:6px}
+    .bars{display:flex;flex-direction:column;gap:9px}
+    .bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:10px;align-items:center;font-size:.88rem}
+    .bar .lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bar .trk{height:10px;background:#F1EAE1;border-radius:99px;overflow:hidden}
+    .bar .trk i{display:block;height:100%;background:var(--wine);border-radius:99px}
+    .bar .val{color:var(--soft);font-size:.8rem;white-space:nowrap}
+    .tip{position:fixed;z-index:80;background:var(--ink);color:#fff;font-size:.82rem;padding:6px 10px;border-radius:8px;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .1s}
+    .tip.on{opacity:1}
+    .none{color:var(--soft);font-size:.88rem;padding:10px 0}
+    #printArea{display:none}
+    @media print{
+      body>*:not(#printArea){display:none!important}
+      #printArea{display:block!important}
+      .lbl{page-break-after:always;border:2px solid #000;padding:18px;font-size:14px;line-height:1.6;color:#000;font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif}
+      .lbl h3{margin:0 0 8px;font-size:18px}
+      .lbl table{width:100%;border-collapse:collapse;margin-top:10px}
+      .lbl td,.lbl th{border:1px solid #999;padding:4px 6px;font-size:13px}
+    }
+    @media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.kpis.k8{grid-template-columns:repeat(2,1fr)}.month{grid-template-columns:1fr}.agrid{grid-template-columns:1fr}}
     @media (max-width:560px){
       header h1{font-size:.95rem}.live span{display:none}
-      .ord{grid-template-columns:48px 1fr;gap:12px}.th{width:48px;height:48px}
+      .ord{grid-template-columns:22px 48px 1fr;gap:10px}.th{width:48px;height:48px}
       .o-end{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center;border-top:1px dashed var(--line);padding-top:10px}
       .kpi b{font-size:1.4rem}.search{flex:1 1 100%}.kv{grid-template-columns:95px 1fr}
     }
@@ -173,6 +228,12 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     </div></header>
 
     <main><div class="wrap">
+      <div class="views" role="tablist">
+        <button data-view="orders" aria-pressed="true">الطلبات</button>
+        <button data-view="analytics" aria-pressed="false">التحليلات</button>
+      </div>
+
+      <section id="vOrders">
       <div class="kpis">
         <div class="kpi hot"><span>طلبات جديدة</span><b class="num" id="kNew">0</b><small>بحاجة لتأكيد</small></div>
         <div class="kpi"><span>قيد التنفيذ</span><b class="num" id="kWork">0</b><small>مؤكدة وقيد التجهيز</small></div>
@@ -185,12 +246,58 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input class="in" id="q" type="search" placeholder="ابحث بالاسم أو الموبايل أو رقم الطلب" /></label>
       </div>
 
-      <div class="list" id="list"></div>
-
-      <div class="month">
-        <div class="card"><h2>المبيعات الشهرية</h2><table><thead><tr><th>الشهر</th><th>الطلبات</th><th>المبيعات</th><th>متوسط الطلب</th></tr></thead><tbody id="mBody"></tbody></table></div>
-        <div class="card"><h2>الأكثر مبيعًا</h2><table><thead><tr><th>اللوحة</th><th>القطع</th><th>المبيعات</th></tr></thead><tbody id="tBody"></tbody></table></div>
+      <div class="filters">
+        <select id="fRange" aria-label="الفترة">
+          <option value="all">كل الفترات</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option><option value="month">هذا الشهر</option><option value="custom">فترة محددة…</option>
+        </select>
+        <input type="date" id="fFrom" aria-label="من" hidden /><input type="date" id="fTo" aria-label="إلى" hidden />
+        <select id="fCity" aria-label="المحافظة"></select>
+        <select id="fPay" aria-label="طريقة الدفع"></select>
+        <select id="fType" aria-label="النوع"><option value="">كل الأنواع</option><option value="kit">لوحات جاهزة</option><option value="custom">من صورة العميل</option></select>
+        <select id="fSrc" aria-label="المصدر"></select>
+        <select id="fSort" aria-label="الترتيب"><option value="new">الأحدث أولًا</option><option value="old">الأقدم أولًا</option><option value="high">الأعلى قيمة</option><option value="low">الأقل قيمة</option></select>
+        <span class="grow"></span>
+        <button class="btn" id="exportCsv" title="يفتح في Excel"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>تصدير Excel</button>
       </div>
+      <div class="bulk" id="bulk" hidden>
+        <b id="bulkN"></b>
+        <select id="bulkStatus" aria-label="الحالة الجديدة"></select>
+        <button class="btn p" id="bulkApply">تغيير الحالة</button>
+        <button class="btn" id="bulkPrint">طباعة بوالص الشحن</button>
+        <button class="btn" id="bulkCsv">تصدير المحدد</button>
+        <button class="btn" id="bulkClear">إلغاء التحديد</button>
+      </div>
+      <p class="count-line"><label class="selall"><input type="checkbox" id="selAll" /> <span id="countLine"></span></label></p>
+
+      <div class="list" id="list"></div>
+      </section>
+
+      <section id="vAnalytics" hidden>
+        <div class="a-head">
+          <div class="seg" id="aRange">
+            <button data-r="7">7 أيام</button><button data-r="30" aria-pressed="true">30 يوم</button><button data-r="90">90 يوم</button><button data-r="month">هذا الشهر</button><button data-r="lastmonth">الشهر الماضي</button><button data-r="all">الكل</button>
+          </div>
+          <small id="aRangeLbl"></small>
+        </div>
+        <div class="kpis k8" id="aKpis"></div>
+        <div class="agrid">
+          <div class="card wide"><h2>المبيعات</h2><p class="sub" id="revSub">بالجنيه، بدون الطلبات الملغية</p><div id="chRev"></div></div>
+          <div class="card wide"><h2>عدد الطلبات</h2><p class="sub" id="ordSub">بدون الطلبات الملغية</p><div id="chOrd"></div></div>
+          <div class="card"><h2>الأكثر مبيعًا</h2><p class="sub">حسب المبيعات</p><div id="bProducts"></div></div>
+          <div class="card"><h2>المحافظات</h2><p class="sub">حسب عدد الطلبات</p><div id="bCities"></div></div>
+          <div class="card"><h2>مصادر الطلبات</h2><p class="sub">من أين جاء العميل (UTM)</p><div id="bSources"></div></div>
+          <div class="card"><h2>طرق الدفع</h2><p class="sub">حسب عدد الطلبات</p><div id="bPay"></div></div>
+          <div class="card"><h2>حالة الطلبات</h2><p class="sub">كل طلبات الفترة</p><div id="bStatus"></div></div>
+          <div class="card"><h2>أيام الأسبوع</h2><p class="sub">أي يوم بيجيب طلبات أكتر</p><div id="bDow"></div></div>
+          <div class="card"><h2>اللوحات الجاهزة مقابل المخصصة</h2><p class="sub">حسب المبيعات</p><div id="bType"></div></div>
+          <div class="card"><h2>المقاسات المخصصة</h2><p class="sub">عدد القطع</p><div id="bSizes"></div></div>
+          <div class="card wide"><h2>أفضل العملاء</h2><p class="sub">حسب إجمالي الشراء في الفترة</p><table><thead><tr><th>العميل</th><th>الموبايل</th><th>الطلبات</th><th>الإجمالي</th><th>آخر طلب</th></tr></thead><tbody id="cBody"></tbody></table></div>
+        </div>
+        <div class="month">
+          <div class="card"><h2>المبيعات الشهرية</h2><table><thead><tr><th>الشهر</th><th>الطلبات</th><th>المبيعات</th><th>متوسط الطلب</th></tr></thead><tbody id="mBody"></tbody></table></div>
+          <div class="card"><h2>الأكثر مبيعًا (كل الوقت)</h2><table><thead><tr><th>اللوحة</th><th>القطع</th><th>المبيعات</th></tr></thead><tbody id="tBody"></tbody></table></div>
+        </div>
+      </section>
     </div></main>
   </div>
 
@@ -200,6 +307,8 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     <div class="p-body" id="pBody"></div>
   </aside>
   <div class="toast" id="toast" role="status"></div>
+  <div class="tip" id="tip"></div>
+  <div id="printArea"></div>
 
   <script is:inline>
   (() => {
@@ -270,6 +379,37 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     }
     function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = 880; g.gain.value = .06; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + .18); } catch {} }
 
+    let selected = new Set(), view = 'orders', aRange = '30';
+    const isCustom = (o) => o.items.some((i) => i.custom);
+    const unpaid = (o) => isCustom(o) && o.payment_status !== 'Paid in full' && o.status !== 'ملغي';
+    const units = (o) => o.items.reduce((s, i) => s + Number(i.qty || 0), 0);
+    const srcLabel = (s) => { s = String(s || '').toLowerCase(); if (!s) return 'مباشر / غير معروف'; if (/^(fb|facebook|meta)/.test(s)) return 'فيسبوك'; if (/^(ig|insta)/.test(s)) return 'إنستجرام'; if (/tiktok/.test(s)) return 'تيك توك'; if (/google/.test(s)) return 'جوجل'; if (/whats/.test(s)) return 'واتساب'; return s; };
+    const payLabel = (p) => { p = String(p || ''); if (/cash|نقد|استلام/i.test(p)) return 'الدفع عند الاستلام'; if (/insta/i.test(p)) return 'InstaPay'; if (/voda|فودافون/i.test(p)) return 'فودافون كاش'; return p || 'غير محدد'; };
+    const payState = (o) => o.payment_status === 'Paid in full' ? 'مدفوع بالكامل' : isCustom(o) ? 'بانتظار الدفع' : 'غير مؤكد';
+    const isCOD = (o) => payLabel(o.payment) === 'الدفع عند الاستلام';
+    function rangeBounds(r, from, to) {
+      const now = new Date(), sod = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (r === 'today') return [sod, null];
+      if (r === '7' || r === '30' || r === '90') return [new Date(sod.getTime() - (Number(r) - 1) * 864e5), null];
+      if (r === 'month') return [new Date(now.getFullYear(), now.getMonth(), 1), null];
+      if (r === 'lastmonth') return [new Date(now.getFullYear(), now.getMonth() - 1, 1), new Date(now.getFullYear(), now.getMonth(), 1)];
+      if (r === 'custom') return [from ? new Date(from + 'T00:00:00') : null, to ? new Date(new Date(to + 'T00:00:00').getTime() + 864e5) : null];
+      return [null, null];
+    }
+    const inRange = (o, b) => { const d = new Date(o.date); return (!b[0] || d >= b[0]) && (!b[1] || d < b[1]); };
+    function fillSelect(id, label, values) { const el = $(id), cur = el.value; el.innerHTML = `<option value="">${label}</option>` + values.map((v) => `<option ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join(''); }
+    const uniq = (a) => [...new Set(a.filter(Boolean))].sort((x, y) => x.localeCompare(y, 'ar'));
+
+    function filtered() {
+      const q = $('q').value.trim().toLowerCase(), b = rangeBounds($('fRange').value, $('fFrom').value, $('fTo').value);
+      const city = $('fCity').value, pay = $('fPay').value, type = $('fType').value, src = $('fSrc').value, sort = $('fSort').value;
+      const list = orders.filter((o) => (filter === 'all' || (filter === 'unpaid' ? unpaid(o) : o.status === filter)) && inRange(o, b)
+        && (!city || o.city === city) && (!pay || payLabel(o.payment) === pay) && (!type || (type === 'custom') === isCustom(o)) && (!src || srcLabel(o.source) === src)
+        && (!q || [o.id, o.name, o.phone, o.phone_extra || '', o.city, o.address].join(' ').toLowerCase().includes(q)));
+      list.sort((x, y) => sort === 'old' ? new Date(x.date) - new Date(y.date) : sort === 'high' ? y.total - x.total : sort === 'low' ? x.total - y.total : new Date(y.date) - new Date(x.date));
+      return list;
+    }
+
     function render(fresh = []) {
       const now = new Date(), today = now.toDateString(), ym = now.toISOString().slice(0, 7);
       const live = orders.filter((o) => o.status !== 'ملغي');
@@ -282,36 +422,197 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       $('kMonth').textContent = Number(mo.reduce((s, o) => s + Number(o.total || 0), 0)).toLocaleString('en-US'); $('kMonthN').textContent = `جنيه مصري · ${mo.length} ${mo.length > 2 && mo.length < 11 ? 'طلبات' : 'طلب'}`;
       document.title = (newN ? `(${newN}) ` : '') + 'لوحة الطلبات | NAY ART';
 
-      const unpaid = (o) => o.items.some((i) => i.custom) && o.payment_status !== 'Paid in full' && o.status !== 'ملغي';
       const counts = { all: orders.length, unpaid: orders.filter(unpaid).length }; STATUSES.forEach((s) => counts[s] = orders.filter((o) => o.status === s).length);
       $('tabs').innerHTML = [['all', 'الكل'], ['unpaid', 'بانتظار الدفع'], ...STATUSES.map((s) => [s, s])].map(([k, l]) => `<button class="tab" data-f="${esc(k)}" aria-pressed="${filter === k}">${esc(l)} <em class="num">${counts[k] || 0}</em></button>`).join('');
+      fillSelect('fCity', 'كل المحافظات', uniq(orders.map((o) => o.city)));
+      fillSelect('fPay', 'كل طرق الدفع', uniq(orders.map((o) => payLabel(o.payment))));
+      fillSelect('fSrc', 'كل المصادر', uniq(orders.map((o) => srcLabel(o.source))));
 
-      const q = $('q').value.trim().toLowerCase();
-      const shown = orders.filter((o) => (filter === 'all' || (filter === 'unpaid' ? unpaid(o) : o.status === filter)) && (!q || [o.id, o.name, o.phone, o.phone_extra || '', o.city].join(' ').toLowerCase().includes(q)));
+      const shown = filtered();
+      const ids = new Set(orders.map((o) => o.id)); [...selected].forEach((id) => { if (!ids.has(id)) selected.delete(id); });
+      $('countLine').textContent = `${shown.length} طلب · ${money(shown.filter((o) => o.status !== 'ملغي').reduce((s, o) => s + Number(o.total || 0), 0))}`;
+      $('selAll').checked = shown.length > 0 && shown.every((o) => selected.has(o.id));
       $('list').innerHTML = shown.length ? shown.map((o) => {
-        const custom = o.items.some((i) => i.custom);
+        const custom = isCustom(o), sel = selected.has(o.id);
         const th = o.photos[0]?.thumb ? `<img src="${o.photos[0].thumb}" alt="">` : `<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`;
         const items = o.items.map((i) => `${i.name}${i.option ? ' (' + i.option + ')' : ''} × ${i.qty}`).join('، ');
-        return `<button class="ord${fresh.includes(o.id) ? ' fresh' : ''}" data-id="${esc(o.id)}">
+        return `<div class="ord${fresh.includes(o.id) ? ' fresh' : ''}${sel ? ' sel' : ''}" data-id="${esc(o.id)}" tabindex="0" role="button">
+          <input type="checkbox" class="pick" data-pick="${esc(o.id)}" ${sel ? 'checked' : ''} aria-label="تحديد ${esc(o.id)}">
           <div class="th">${th}</div>
           <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}${unpaid(o) ? '<span class="tag unpaid">بانتظار الدفع</span>' : (custom && o.payment_status === 'Paid in full' ? '<span class="tag paid">تم الدفع</span>' : '')}</div>
             <div class="o-who">${esc(o.name)} · ${esc(o.city)}</div><div class="o-items">${esc(items)}</div></div>
-          <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></button>`;
-      }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب حالة أخرى أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;
-
-      // monthly + top products
-      const byM = {}; live.forEach((o) => { const m = (o.date || '').slice(0, 7); (byM[m] = byM[m] || { n: 0, s: 0 }); byM[m].n++; byM[m].s += Number(o.total || 0); });
-      const ms = Object.keys(byM).sort().reverse().slice(0, 12);
-      $('mBody').innerHTML = ms.length ? ms.map((m) => { const d = new Date(m + '-01T00:00:00'); return `<tr><td>${d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</td><td class="num">${byM[m].n}</td><td class="num">${money(byM[m].s)}</td><td class="num">${money(Math.round(byM[m].s / byM[m].n))}</td></tr>`; }).join('') : '<tr><td colspan="4" style="color:var(--soft)">لا توجد مبيعات بعد</td></tr>';
-      const tp = {}; live.forEach((o) => o.items.forEach((i) => { const k = i.custom ? 'لوحة من صورة العميل' : i.name; (tp[k] = tp[k] || { q: 0, s: 0 }); tp[k].q += Number(i.qty || 0); tp[k].s += Number(i.line || 0); }));
-      const tps = Object.entries(tp).sort((a, b) => b[1].s - a[1].s).slice(0, 6);
-      $('tBody').innerHTML = tps.length ? tps.map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.q}</td><td class="num">${money(v.s)}</td></tr>`).join('') : '<tr><td colspan="3" style="color:var(--soft)">—</td></tr>';
+          <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></div>`;
+      }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب فلتر آخر أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;
+      renderBulk();
+      if (view === 'analytics') renderAnalytics();
     }
+
+    function renderBulk() {
+      const n = selected.size; $('bulk').hidden = !n;
+      if (!n) return;
+      $('bulkN').textContent = `${n} طلب محدد`;
+      if (!$('bulkStatus').options.length) $('bulkStatus').innerHTML = STATUSES.map((s) => `<option>${s}</option>`).join('');
+    }
+
     $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; render(); } });
     $('q').addEventListener('input', () => render());
-    $('list').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) openPanel(b.dataset.id); });
+    ['fCity', 'fPay', 'fType', 'fSrc', 'fSort', 'fFrom', 'fTo'].forEach((id) => $(id).addEventListener('change', () => render()));
+    $('fRange').addEventListener('change', () => { const c = $('fRange').value === 'custom'; $('fFrom').hidden = !c; $('fTo').hidden = !c; render(); });
+    $('list').addEventListener('click', (e) => {
+      const pick = e.target.closest('[data-pick]');
+      if (pick) { const id = pick.dataset.pick; pick.checked ? selected.add(id) : selected.delete(id); pick.closest('.ord').classList.toggle('sel', pick.checked); $('selAll').checked = filtered().every((o) => selected.has(o.id)); renderBulk(); return; }
+      const b = e.target.closest('[data-id]'); if (b) openPanel(b.dataset.id);
+    });
+    $('list').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('.ord')) openPanel(e.target.dataset.id); });
+    $('selAll').addEventListener('change', (e) => { const list = filtered(); list.forEach((o) => e.target.checked ? selected.add(o.id) : selected.delete(o.id)); render(); });
+    $('bulkClear').addEventListener('click', () => { selected.clear(); render(); });
+    $('bulkApply').addEventListener('click', async () => {
+      const s = $('bulkStatus').value, ids = [...selected]; if (!ids.length) return;
+      if (!confirm(`تغيير حالة ${ids.length} طلب إلى «${s}»؟`)) return;
+      const b = $('bulkApply'); b.disabled = true; let ok = 0, blocked = 0, fail = 0;
+      for (const id of ids) {
+        b.textContent = `جارٍ التحديث ${ok + blocked + fail + 1}/${ids.length}`;
+        try { await api('update', { id, status: s }); const o = orders.find((x) => x.id === id); if (o) { o.status = s; o.updated = new Date().toISOString(); } ok++; }
+        catch (e) { e.message === 'payment_required' ? blocked++ : fail++; }
+      }
+      b.disabled = false; b.textContent = 'تغيير الحالة'; selected.clear(); render();
+      toast(`تم تحديث ${ok} طلب` + (blocked ? ` · ${blocked} بانتظار تأكيد الدفع` : '') + (fail ? ` · ${fail} تعذّر` : ''));
+    });
+    const pickedOrders = () => orders.filter((o) => selected.has(o.id));
+    $('bulkPrint').addEventListener('click', () => printLabels(pickedOrders()));
+    $('bulkCsv').addEventListener('click', () => downloadCsv(pickedOrders(), 'selected'));
+    $('exportCsv').addEventListener('click', () => { const l = filtered(); if (!l.length) return toast('لا توجد طلبات للتصدير'); downloadCsv(l, 'orders'); });
+
+    /* ---------- export + print ---------- */
+    function downloadCsv(list, tag) {
+      const cols = [['رقم الطلب', (o) => o.id], ['التاريخ', (o) => new Date(o.date).toLocaleString('en-GB')], ['الحالة', (o) => o.status], ['حالة الدفع', payState],
+        ['الاسم', (o) => o.name], ['الموبايل', (o) => '="' + (o.phone || '') + '"'], ['موبايل إضافي', (o) => o.phone_extra ? '="' + o.phone_extra + '"' : ''], ['المحافظة', (o) => o.city], ['العنوان', (o) => o.address], ['موقع التوصيل', (o) => locationLink(o.location)],
+        ['المنتجات', (o) => o.items.map((i) => `${i.name}${i.option ? ' (' + i.option + ')' : ''} × ${i.qty}`).join(' | ')], ['القطع', units], ['المجموع', (o) => o.subtotal], ['التوصيل', (o) => o.delivery], ['الإجمالي', (o) => o.total],
+        ['طريقة الدفع', (o) => payLabel(o.payment)], ['المصدر', (o) => srcLabel(o.source)], ['الحملة', (o) => o.campaign || ''], ['ملاحظات العميل', (o) => o.notes || ''], ['ملاحظات داخلية', (o) => o.internal || '']];
+      const q = (v) => { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const csv = '﻿' + [cols.map((c) => q(c[0])).join(','), ...list.map((o) => cols.map((c) => q(c[1](o))).join(','))].join('\r\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = `nay-art-${tag}-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+      toast(`تم تصدير ${list.length} طلب`);
+    }
+    function printLabels(list) {
+      if (!list.length) return;
+      $('printArea').innerHTML = list.map((o) => `<div class="lbl"><h3>NAY ART · طلب ${esc(o.id)}</h3>
+        <div><b>العميل:</b> ${esc(o.name)}</div><div><b>الموبايل:</b> ${esc(o.phone)}${o.phone_extra ? ' / ' + esc(o.phone_extra) : ''}</div>
+        <div><b>المحافظة:</b> ${esc(o.city)}</div><div><b>العنوان:</b> ${esc(o.address)}</div>${locationLink(o.location) ? `<div><b>الموقع:</b> ${locationLink(o.location)}</div>` : ''}
+        <table><tr><th>المنتج</th><th>الكمية</th><th>السعر</th></tr>${o.items.map((i) => `<tr><td>${esc(i.name)}${i.option ? ' (' + esc(i.option) + ')' : ''}</td><td>${i.qty}</td><td>${money(i.line)}</td></tr>`).join('')}
+        <tr><td>التوصيل</td><td></td><td>${money(o.delivery)}</td></tr><tr><th>الإجمالي</th><th></th><th>${money(o.total)}</th></tr></table>
+        <div style="margin-top:8px"><b>الدفع:</b> ${esc(payLabel(o.payment))}${o.payment_status === 'Paid in full' ? ' · مدفوع بالكامل' : isCOD(o) ? ` · يُحصّل عند الاستلام: <b>${money(o.total)}</b>` : ''}</div>
+        ${o.notes ? `<div><b>ملاحظات:</b> ${esc(o.notes)}</div>` : ''}<div style="margin-top:6px;font-size:12px">تاريخ الطلب: ${fmtDate(o.date)}</div></div>`).join('');
+      setTimeout(() => window.print(), 50);
+    }
+
+    /* ---------- views ---------- */
+    document.querySelectorAll('.views [data-view]').forEach((b) => b.addEventListener('click', () => {
+      view = b.dataset.view;
+      document.querySelectorAll('.views [data-view]').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+      $('vOrders').hidden = view !== 'orders'; $('vAnalytics').hidden = view !== 'analytics';
+      if (view === 'analytics') renderAnalytics();
+    }));
+    $('aRange').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (!b) return; aRange = b.dataset.r; $('aRange').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); renderAnalytics(); });
+
+    /* ---------- analytics ---------- */
+    const niceMax = (v) => { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
+    const num = (n) => Number(n || 0).toLocaleString('en-US');
+    function colChart(pts, fmt) {
+      if (!pts.some((p) => p.v)) return '<p class="none">لا توجد بيانات في هذه الفترة</p>';
+      const max = niceMax(Math.max(...pts.map((p) => p.v)));
+      const grid = [1, 0.5].map((f) => `<span style="top:${(1 - f) * 100}%"><em>${fmt(Math.round(max * f))}</em></span>`).join('');
+      const cols = pts.map((p) => `<div class="c" data-tip="${esc(p.label + ': ' + p.txt)}"><i style="height:${p.v ? Math.max(1.5, (p.v / max) * 100) : 0}%"></i></div>`).join('');
+      const marks = pts.length > 2 ? [pts[0], pts[Math.floor(pts.length / 2)], pts[pts.length - 1]] : pts;
+      return `<div class="cols"><div class="grid">${grid}</div>${cols}</div><div class="xlab">${marks.map((p) => `<span>${esc(p.label)}</span>`).join('')}</div>`;
+    }
+    function barList(entries, fmtVal, colorFn) {
+      if (!entries.length) return '<p class="none">لا توجد بيانات في هذه الفترة</p>';
+      const max = Math.max(...entries.map((e) => e[1])) || 1;
+      return '<div class="bars">' + entries.map(([l, v, x]) => `<div class="bar" data-tip="${esc(l + ': ' + fmtVal(v, x))}"><span class="lab">${esc(l)}</span><span class="trk"><i style="width:${(v / max) * 100}%;${colorFn ? 'background:' + colorFn(l) : ''}"></i></span><span class="val">${fmtVal(v, x)}</span></div>`).join('') + '</div>';
+    }
+    function group(list, keyFn, valFn) { const m = {}; list.forEach((o) => { const k = keyFn(o); if (k == null || k === '') return; (m[k] = m[k] || [0, 0]); m[k][0] += valFn(o); m[k][1]++; }); return Object.entries(m).map(([k, [v, n]]) => [k, v, n]).sort((a, b) => b[1] - a[1]); }
+    function topN(entries, n) { if (entries.length <= n) return entries; const rest = entries.slice(n - 1).reduce((a, e) => [a[0] + e[1], a[1] + e[2]], [0, 0]); return [...entries.slice(0, n - 1), ['أخرى', rest[0], rest[1]]]; }
+
+    function renderAnalytics() {
+      const b = rangeBounds(aRange);
+      const inP = orders.filter((o) => inRange(o, b)), live = inP.filter((o) => o.status !== 'ملغي');
+      let prev = null;
+      if (b[0]) { const end = b[1] || new Date(), len = end - b[0]; const pb = [new Date(b[0].getTime() - len), b[0]]; prev = orders.filter((o) => inRange(o, pb) && o.status !== 'ملغي'); }
+      const sum = (l, f) => l.reduce((s, o) => s + Number(f(o) || 0), 0);
+      const rev = sum(live, (o) => o.total), n = live.length, aov = n ? Math.round(rev / n) : 0, u = sum(live, units);
+      const pRev = prev ? sum(prev, (o) => o.total) : null, pN = prev ? prev.length : null, pAov = prev ? (prev.length ? Math.round(pRev / pN) : 0) : null, pU = prev ? sum(prev, units) : null;
+      const cancelled = inP.filter((o) => o.status === 'ملغي').length, cancelRate = inP.length ? Math.round((cancelled / inP.length) * 100) : 0;
+      const delivered = sum(live.filter((o) => o.status === 'تم التسليم'), (o) => o.total);
+      const waiting = orders.filter(unpaid), pending = sum(waiting, (o) => o.total);
+      const byPhone = {}; orders.filter((o) => o.status !== 'ملغي').forEach((o) => (byPhone[o.phone] = byPhone[o.phone] || []).push(o));
+      const custP = new Set(live.map((o) => o.phone)), repeat = [...custP].filter((p) => (byPhone[p] || []).length > 1).length;
+      const d = (cur, pv) => pv == null ? '' : pv === 0 ? (cur ? '<span class="delta">جديد</span>' : '') : `<span class="delta">${cur >= pv ? '▲' : '▼'} ${Math.abs(Math.round(((cur - pv) / pv) * 100))}%</span>`;
+      const k = (label, val, small) => `<div class="kpi"><span>${label}</span><b class="num">${val}</b><small>${small}</small></div>`;
+      $('aKpis').innerHTML = [
+        k('المبيعات', num(rev), 'جنيه' + d(rev, pRev)),
+        k('عدد الطلبات', n, 'طلب' + d(n, pN)),
+        k('متوسط قيمة الطلب', num(aov), 'جنيه' + d(aov, pAov)),
+        k('القطع المباعة', u, 'لوحة' + d(u, pU)),
+        k('مبيعات تم تسليمها', num(delivered), 'جنيه'),
+        k('بانتظار الدفع', num(pending), `جنيه · ${waiting.length} طلب مخصص`),
+        k('نسبة الإلغاء', cancelRate + '%', `${cancelled} من ${inP.length} طلب`),
+        k('العملاء', custP.size, `${repeat} اشترى أكثر من مرة`),
+      ].join('');
+      const endD = b[1] ? new Date(b[1].getTime() - 864e5) : new Date();
+      $('aRangeLbl').textContent = b[0] ? `${b[0].toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })} – ${endD.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' })}${prev ? ' · النسب مقارنة بالفترة السابقة' : ''}` : 'كل الطلبات';
+
+      // time series (daily, or weekly for long spans)
+      let start = b[0] || (live.length ? new Date(Math.min(...live.map((o) => +new Date(o.date)))) : new Date());
+      start = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const days = Math.max(1, Math.round((new Date(endD.getFullYear(), endD.getMonth(), endD.getDate()) - start) / 864e5) + 1);
+      const weekly = days > 92, step = (weekly ? 7 : 1) * 864e5, buckets = [];
+      for (let t = start.getTime(); t <= endD.getTime(); t += step) buckets.push({ t, rev: 0, n: 0 });
+      live.forEach((o) => { const i = Math.floor((new Date(o.date) - start) / step); if (buckets[i]) { buckets[i].rev += Number(o.total || 0); buckets[i].n++; } });
+      const fmtB = (t) => { const a = new Date(t); return (weekly ? 'أسبوع ' : '') + a.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' }); };
+      $('revSub').textContent = (weekly ? 'أسبوعيًا' : 'يوميًا') + ' بالجنيه، بدون الطلبات الملغية';
+      $('ordSub').textContent = (weekly ? 'أسبوعيًا' : 'يوميًا') + '، بدون الطلبات الملغية';
+      $('chRev').innerHTML = colChart(buckets.map((x) => ({ label: fmtB(x.t), v: x.rev, txt: money(x.rev) + ' · ' + x.n + ' طلب' })), num);
+      $('chOrd').innerHTML = colChart(buckets.map((x) => ({ label: fmtB(x.t), v: x.n, txt: x.n + ' طلب · ' + money(x.rev) })), num);
+
+      // products (by item)
+      const prod = {}; live.forEach((o) => o.items.forEach((i) => { const key = i.custom ? 'لوحة من صورة العميل' : i.name; (prod[key] = prod[key] || [0, 0]); prod[key][0] += Number(i.line || 0); prod[key][1] += Number(i.qty || 0); }));
+      $('bProducts').innerHTML = barList(topN(Object.entries(prod).map(([k2, [v, q]]) => [k2, v, q]).sort((a, c) => c[1] - a[1]), 8), (v, q) => `${money(v)} · ${q} قطعة`);
+      $('bCities').innerHTML = barList(topN(group(live, (o) => o.city, () => 1), 8), (v) => `${v} طلب`);
+      const src = group(live, (o) => srcLabel(o.source), () => 1), srcRev = Object.fromEntries(group(live, (o) => srcLabel(o.source), (o) => Number(o.total || 0)).map((e) => [e[0], e[1]]));
+      $('bSources').innerHTML = barList(src.map((e) => [e[0], e[1], srcRev[e[0]]]), (v, r) => `${v} طلب · ${money(r)}`);
+      $('bPay').innerHTML = barList(group(live, (o) => payLabel(o.payment), () => 1), (v) => `${v} طلب`);
+      const st = group(inP, (o) => o.status, () => 1); st.sort((a, c) => STATUSES.indexOf(a[0]) - STATUSES.indexOf(c[0]));
+      $('bStatus').innerHTML = barList(st, (v) => `${v} طلب`, (l) => COLOR[l] || 'var(--wine)');
+      const DOW = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'], dow = [0, 0, 0, 0, 0, 0, 0], dowRev = [0, 0, 0, 0, 0, 0, 0];
+      live.forEach((o) => { const g = new Date(o.date).getDay(); dow[g]++; dowRev[g] += Number(o.total || 0); });
+      $('bDow').innerHTML = live.length ? barList([6, 0, 1, 2, 3, 4, 5].map((g) => [DOW[g], dow[g], dowRev[g]]), (v, r) => `${v} طلب · ${money(r)}`) : '<p class="none">لا توجد بيانات في هذه الفترة</p>';
+      let kit = [0, 0], cus = [0, 0]; live.forEach((o) => o.items.forEach((i) => { const t = i.custom ? cus : kit; t[0] += Number(i.line || 0); t[1] += Number(i.qty || 0); }));
+      $('bType').innerHTML = barList([['لوحات جاهزة', kit[0], kit[1]], ['من صورة العميل', cus[0], cus[1]]].filter((e) => e[2]), (v, q) => `${money(v)} · ${q} قطعة`);
+      const sizes = {}; live.forEach((o) => o.items.filter((i) => i.custom).forEach((i) => { const s = String(i.option || '').split('/')[0].replace(/cm/i, 'سم').trim() || 'غير محدد'; sizes[s] = (sizes[s] || 0) + Number(i.qty || 0); }));
+      $('bSizes').innerHTML = barList(Object.entries(sizes).sort((a, c) => c[1] - a[1]), (v) => `${v} قطعة`);
+      const cust = {}; live.forEach((o) => { const c = cust[o.phone] = cust[o.phone] || { name: o.name, phone: o.phone, n: 0, s: 0, last: o.date }; c.n++; c.s += Number(o.total || 0); if (new Date(o.date) > new Date(c.last)) { c.last = o.date; c.name = o.name; } });
+      const tc = Object.values(cust).sort((a, c) => c.s - a.s).slice(0, 10);
+      $('cBody').innerHTML = tc.length ? tc.map((c) => `<tr><td>${esc(c.name)}</td><td class="num">${esc(c.phone)}</td><td class="num">${c.n}</td><td class="num">${money(c.s)}</td><td>${fmtDate(c.last)}</td></tr>`).join('') : '<tr><td colspan="5" style="color:var(--soft)">لا توجد بيانات في هذه الفترة</td></tr>';
+
+      // all-time tables
+      const all = orders.filter((o) => o.status !== 'ملغي');
+      const byM = {}; all.forEach((o) => { const m = (o.date || '').slice(0, 7); (byM[m] = byM[m] || { n: 0, s: 0 }); byM[m].n++; byM[m].s += Number(o.total || 0); });
+      const ms = Object.keys(byM).sort().reverse().slice(0, 12);
+      $('mBody').innerHTML = ms.length ? ms.map((m) => { const dd = new Date(m + '-01T00:00:00'); return `<tr><td>${dd.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</td><td class="num">${byM[m].n}</td><td class="num">${money(byM[m].s)}</td><td class="num">${money(Math.round(byM[m].s / byM[m].n))}</td></tr>`; }).join('') : '<tr><td colspan="4" style="color:var(--soft)">لا توجد مبيعات بعد</td></tr>';
+      const tp = {}; all.forEach((o) => o.items.forEach((i) => { const key = i.custom ? 'لوحة من صورة العميل' : i.name; (tp[key] = tp[key] || { q: 0, s: 0 }); tp[key].q += Number(i.qty || 0); tp[key].s += Number(i.line || 0); }));
+      const tps = Object.entries(tp).sort((a, c) => c[1].s - a[1].s).slice(0, 8);
+      $('tBody').innerHTML = tps.length ? tps.map(([k2, v]) => `<tr><td>${esc(k2)}</td><td class="num">${v.q}</td><td class="num">${money(v.s)}</td></tr>`).join('') : '<tr><td colspan="3" style="color:var(--soft)">—</td></tr>';
+    }
+
+    // shared hover tooltip for chart marks
+    const tip = $('tip');
+    document.addEventListener('mousemove', (e) => { const t = e.target.closest && e.target.closest('[data-tip]'); if (!t) { tip.classList.remove('on'); return; } tip.textContent = t.dataset.tip; tip.classList.add('on'); const w = tip.offsetWidth; tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, e.clientX - w / 2)) + 'px'; tip.style.top = (e.clientY - 40) + 'px'; });
+    document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('#vAnalytics [data-tip]'); if (!t) return; tip.textContent = t.dataset.tip; tip.classList.add('on'); const r = t.getBoundingClientRect(), w = tip.offsetWidth; tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, r.left + r.width / 2 - w / 2)) + 'px'; tip.style.top = (r.top - 40) + 'px'; clearTimeout(tip.h); tip.h = setTimeout(() => tip.classList.remove('on'), 2200); });
 
     /* ---------- order panel ---------- */
+    function nextStatus(o) { if (o.status === 'ملغي' || o.status === 'تم التسليم') return ''; let i = STATUSES.indexOf(o.status) + 1; if (STATUSES[i] === 'بانتظار موافقة التصميم' && !isCustom(o)) i++; return STATUSES[i] && STATUSES[i] !== 'ملغي' ? STATUSES[i] : ''; }
     function fillPanelHeader(o) { $('pTitle').innerHTML = `طلب <span class="num">${esc(o.id)}</span>`; }
     function openPanel(id) {
       const o = orders.find((x) => x.id === id); if (!o) return; openId = id; fillPanelHeader(o);
@@ -320,16 +621,18 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       const mapURL = locationLink(o.location);
       const first = (o.name || '').split(' ')[0];
       const waMsg = `أهلًا ${first}، معك فريق NAY ART بخصوص طلبك رقم ${o.id}.`;
+      const payMsg = `أهلًا ${first}، شكرًا لطلبك من NAY ART 🎨\nرقم الطلب: ${o.id}\nالإجمالي: ${money(o.total)}\nلبدء تصميم لوحتك، برجاء تحويل المبلغ كاملًا${CFG.payNumber ? ' على الرقم ' + CFG.payNumber + ' (InstaPay أو فودافون كاش)' : ''} وإرسال صورة التحويل هنا.`;
       const lines = o.items.map((i) => `<div class="line"><span>${esc(i.name)}${i.option ? ` <small style="color:var(--soft)">(${esc(i.option)})</small>` : ''} × <span class="num">${i.qty}</span>${i.note ? `<br><small style="color:var(--soft)">ملاحظة للمصمّم: ${esc(i.note)}</small>` : ''}</span><span class="num">${money(i.line)}</span></div>`).join('');
       $('pBody').innerHTML = `
         <div class="sec"><h3>حالة الطلب</h3>
           <div class="row2"><select class="in" id="pStatus">${STATUSES.map((s) => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn p" id="pSave">حفظ</button></div>
+          ${nextStatus(o) ? `<div class="acts"><button class="btn" id="pNext">نقل إلى «${esc(nextStatus(o))}» ←</button><button class="btn" id="pPrint">طباعة بوليصة الشحن</button></div>` : '<div class="acts"><button class="btn" id="pPrint">طباعة بوليصة الشحن</button></div>'}
           <div style="margin-top:8px;font-size:.85rem;color:var(--soft)">وصل ${fmtDate(o.date)}${o.updated ? ' · آخر تعديل ' + fmtDate(o.updated) : ''}</div>
         </div>
         ${o.photos.length ? `<div class="sec"><h3>صورة العميل</h3><div class="photos">${o.photos.map((p, i) => `<div class="ph"><div class="im" id="ph${i}">${p.thumb ? `<img src="${p.thumb}" alt="">` : ''}</div><div class="a"><button class="btn" data-full="${esc(p.id)}" data-i="${i}">عرض بالحجم الكامل</button><a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener">فتح في Drive</a></div></div>`).join('')}</div></div>` : ''}
         <div class="sec"><h3>العميل</h3>
           <dl class="kv"><dt>الاسم</dt><dd>${esc(o.name)}</dd><dt>الموبايل</dt><dd class="num" style="text-align:right">${esc(o.phone)}</dd>${o.phone_extra ? `<dt>هاتف إضافي</dt><dd class="num">${esc(o.phone_extra)}</dd>` : ''}<dt>المحافظة</dt><dd>${esc(o.city)}</dd><dt>العنوان</dt><dd>${esc(o.address)}</dd>${mapURL ? `<dt>موقع التوصيل</dt><dd><a href="${mapURL}" target="_blank" rel="noopener">فتح الموقع على الخريطة</a></dd>` : ''}${o.notes ? `<dt>ملاحظات</dt><dd>${esc(o.notes)}</dd>` : ''}${o.source ? `<dt>المصدر</dt><dd>${esc(o.source)}${o.campaign ? ' · ' + esc(o.campaign) : ''}</dd>` : ''}</dl>
-          <div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(waMsg)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>واتساب</a><a class="btn" href="tel:${esc(o.phone)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>اتصال</a><button class="btn" id="pCopy">نسخ بيانات الشحن</button></div>
+          <div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(waMsg)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>واتساب</a><a class="btn" href="tel:${esc(o.phone)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>اتصال</a><button class="btn" id="pCopy">نسخ بيانات الشحن</button>${unpaid(o) ? `<a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(payMsg)}" target="_blank" rel="noopener">طلب الدفع على واتساب</a>` : ''}</div>
         </div>
         <div class="sec"><h3>الطلب</h3>${lines}
           <div class="line"><span>التوصيل</span><span class="num">${money(o.delivery)}</span></div>
@@ -348,7 +651,9 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         try { await api('confirm_payment', {id:o.id}); o.payment_status = 'Paid in full'; openPanel(o.id); toast('تم تأكيد الدفع'); }
         catch { b.disabled = false; toast('تعذّر تأكيد الدفع'); }
       };
-      $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); toast('تم تحديث الحالة'); } catch (e) { toast(e.message === 'payment_required' ? 'أكد استلام المبلغ كاملًا قبل بدء التصميم والتنفيذ' : 'تعذّر الحفظ'); } b.disabled = false; };
+      $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تم تحديث الحالة'); } catch (e) { toast(e.message === 'payment_required' ? 'أكد استلام المبلغ كاملًا قبل بدء التصميم والتنفيذ' : 'تعذّر الحفظ'); } b.disabled = false; };
+      if ($('pNext')) $('pNext').onclick = () => { $('pStatus').value = nextStatus(o); $('pSave').click(); };
+      $('pPrint').onclick = () => printLabels([o]);
       $('pNoteSave').onclick = async () => { const n = $('pNote').value; try { await api('update', { id: o.id, note: n }); o.internal = n; $('pNoteOk').hidden = false; setTimeout(() => { const e = $('pNoteOk'); if (e) e.hidden = true; }, 2000); } catch { toast('تعذّر الحفظ'); } };
       $('pCopy').onclick = () => { const t = `${o.name}\n${o.phone}${o.phone_extra ? '\nهاتف إضافي: ' + o.phone_extra : ''}${mapURL ? '\n' + mapURL : ''}\n${o.city} – ${o.address}\nالإجمالي: ${o.total} ج.م (${o.payment})\nطلب ${o.id}`; navigator.clipboard?.writeText(t).then(() => toast('تم النسخ'), () => toast('تعذّر النسخ')); };
       $('pBody').querySelectorAll('[data-full]').forEach((b) => b.onclick = async () => {
@@ -381,6 +686,21 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           { id: 'NA-261015-6107', date: t(120), status: 'تم التسليم', name: 'يوسف كمال', phone: '01022233344', city: 'الجيزة', address: 'الشيخ زايد', payment: 'InstaPay', items: [{ name: 'مدينة المظلات', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: '', photos: [] },
           { id: 'NA-261012-2214', date: t(200), status: 'ملغي', name: 'هالة فؤاد', phone: '01066677788', city: 'طنطا', address: 'شارع البحر', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'حلم الورد', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: 'العميل ألغى', photos: [] },
         ];
+        // extra sample history so the analytics view has something to show
+        const names = ['ريم عادل', 'كريم فتحي', 'مي سامي', 'عمر خالد', 'هبة نبيل', 'مصطفى رأفت', 'ياسمين طارق', 'نور الدين', 'سلمى أشرف', 'آدم حسام'];
+        const cities = ['القاهرة', 'الجيزة', 'الإسكندرية', 'القاهرة', 'الجيزة', 'الدقهلية', 'الشرقية', 'القاهرة'];
+        const kits = ['حلم الورد', 'صباح على البحر', 'حقول الغروب', 'ليلة النجوم', 'مدينة المظلات'];
+        const srcs = ['facebook', 'instagram', 'instagram', '', 'facebook', 'tiktok'];
+        const pays = ['الدفع نقدًا عند الاستلام', 'الدفع نقدًا عند الاستلام', 'InstaPay', 'فودافون كاش'];
+        let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+        for (let i = 0; i < 34; i++) {
+          const h = 30 + rnd() * 1400, custom = rnd() < 0.22, qty = rnd() < 0.2 ? 2 : 1;
+          const size = [['40×50 سم / طولي', 1800], ['50×60 سم / عرضي', 2200], ['60×75 سم / طولي', 2800]][Math.floor(rnd() * 3)];
+          const item = custom ? { name: 'لوحة من صورتك', option: size[0], qty: 1, line: size[1], custom: true } : { name: kits[Math.floor(rnd() * kits.length)], option: '40×50 سم', qty, line: 750 * qty };
+          const st = h > 300 ? (rnd() < 0.1 ? 'ملغي' : 'تم التسليم') : h > 120 ? 'تم الشحن' : 'قيد التجهيز';
+          const nm = names[Math.floor(rnd() * names.length)];
+          demoApi.data.push({ id: 'NA-DEMO-' + (1000 + i), date: t(h), status: st, name: nm, phone: '010' + String(10000000 + names.indexOf(nm) * 1111111).slice(0, 8), city: cities[Math.floor(rnd() * cities.length)], address: 'عنوان تجريبي', payment: custom ? 'InstaPay' : pays[Math.floor(rnd() * pays.length)], payment_status: custom ? 'Paid in full' : 'Unconfirmed', items: [item], delivery: 120, total: item.line + 120, subtotal: item.line, notes: '', internal: '', source: srcs[Math.floor(rnd() * srcs.length)], photos: [] });
+        }
       }
       if (action === 'list') return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)) });
       if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }

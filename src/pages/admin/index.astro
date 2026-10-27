@@ -265,6 +265,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         <button class="btn p" id="bulkApply">تغيير الحالة</button>
         <button class="btn" id="bulkPrint">طباعة بوالص الشحن</button>
         <button class="btn" id="bulkCsv">تصدير المحدد</button>
+        <button class="btn" id="bulkArchive">حذف من اللوحة</button>
         <button class="btn" id="bulkClear">إلغاء التحديد</button>
       </div>
       <p class="count-line"><label class="selall"><input type="checkbox" id="selAll" /> <span id="countLine"></span></label></p>
@@ -466,6 +467,13 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     $('list').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('.ord')) openPanel(e.target.dataset.id); });
     $('selAll').addEventListener('change', (e) => { const list = filtered(); list.forEach((o) => e.target.checked ? selected.add(o.id) : selected.delete(o.id)); render(); });
     $('bulkClear').addEventListener('click', () => { selected.clear(); render(); });
+    async function archive(ids) {
+      if (!ids.length) return false;
+      if (!confirm(`حذف ${ids.length} طلب من اللوحة؟\nهتتنقل لشيت «Archived orders» في Google Sheets ومش هتظهر في اللوحة ولا التحليلات.`)) return false;
+      try { const j = await api('archive', { ids }); orders = orders.filter((o) => !ids.includes(o.id)); ids.forEach((id) => selected.delete(id)); render(); toast(`تم حذف ${j.archived ?? ids.length} طلب من اللوحة`); return true; }
+      catch (e) { toast(e.message === 'unknown action' ? 'الحذف محتاج تحديث خدمة الطلبات' : 'تعذّر الحذف'); return false; }
+    }
+    $('bulkArchive').addEventListener('click', () => archive([...selected]));
     $('bulkApply').addEventListener('click', async () => {
       const s = $('bulkStatus').value, ids = [...selected]; if (!ids.length) return;
       if (!confirm(`تغيير حالة ${ids.length} طلب إلى «${s}»؟`)) return;
@@ -642,7 +650,8 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           <div class="line"><span>حالة الدفع</span><b>${paid ? 'تم تأكيد استلام المبلغ كاملًا' : 'لم يتم تأكيد الدفع'}</b></div>
           ${!paid && custom ? '<p>بعد مراجعة التحويل واستلام المبلغ كاملًا: <button class="btn p" id="pPaid">تأكيد استلام المبلغ كاملًا</button></p>' : ''}
         </div>
-        <div class="sec"><h3>ملاحظات داخلية (لا يراها العميل)</h3><textarea class="in" id="pNote" placeholder="مثلًا: تم إرسال التصميم، بانتظار رد العميل">${esc(o.internal)}</textarea><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="saved" id="pNoteOk" hidden>تم الحفظ</span><button class="btn" id="pNoteSave" style="margin-inline-start:auto">حفظ الملاحظة</button></div></div>`;
+        <div class="sec"><h3>ملاحظات داخلية (لا يراها العميل)</h3><textarea class="in" id="pNote" placeholder="مثلًا: تم إرسال التصميم، بانتظار رد العميل">${esc(o.internal)}</textarea><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="saved" id="pNoteOk" hidden>تم الحفظ</span><button class="btn" id="pNoteSave" style="margin-inline-start:auto">حفظ الملاحظة</button></div></div>
+        <div class="sec"><h3>طلب تجربة أو مكرر؟</h3><button class="btn" id="pArchive">حذف الطلب من اللوحة</button><p style="margin:8px 0 0;font-size:.82rem;color:var(--soft)">بيتنقل لشيت «Archived orders» في Google Sheets، ومش بيتحسب في التحليلات.</p></div>`;
       $('panel').classList.add('on'); $('scrim').classList.add('on'); $('panel').setAttribute('aria-hidden', 'false');
 
       if ($('pPaid')) $('pPaid').onclick = async () => {
@@ -654,6 +663,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تم تحديث الحالة'); } catch (e) { toast(e.message === 'payment_required' ? 'أكد استلام المبلغ كاملًا قبل بدء التصميم والتنفيذ' : 'تعذّر الحفظ'); } b.disabled = false; };
       if ($('pNext')) $('pNext').onclick = () => { $('pStatus').value = nextStatus(o); $('pSave').click(); };
       $('pPrint').onclick = () => printLabels([o]);
+      $('pArchive').onclick = async () => { if (await archive([o.id])) closePanel(); };
       $('pNoteSave').onclick = async () => { const n = $('pNote').value; try { await api('update', { id: o.id, note: n }); o.internal = n; $('pNoteOk').hidden = false; setTimeout(() => { const e = $('pNoteOk'); if (e) e.hidden = true; }, 2000); } catch { toast('تعذّر الحفظ'); } };
       $('pCopy').onclick = () => { const t = `${o.name}\n${o.phone}${o.phone_extra ? '\nهاتف إضافي: ' + o.phone_extra : ''}${mapURL ? '\n' + mapURL : ''}\n${o.city} – ${o.address}\nالإجمالي: ${o.total} ج.م (${o.payment})\nطلب ${o.id}`; navigator.clipboard?.writeText(t).then(() => toast('تم النسخ'), () => toast('تعذّر النسخ')); };
       $('pBody').querySelectorAll('[data-full]').forEach((b) => b.onclick = async () => {
@@ -703,6 +713,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         }
       }
       if (action === 'list') return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)) });
+      if (action === 'archive') { demoApi.data = demoApi.data.filter((d) => !x.ids.includes(d.id)); return Promise.resolve({ ok: true, archived: x.ids.length }); }
       if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }
       if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; return Promise.resolve({ ok: true }); }
       if (action === 'photo') return Promise.resolve({ ok: true, data: '/media/products/couple/ref.webp', name: 'demo.webp' });

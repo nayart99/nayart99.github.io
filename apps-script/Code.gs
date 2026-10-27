@@ -205,6 +205,28 @@ function admin(d) {
   const ss = book();
   const sh = sheet(ss, 'Orders', ORDERS_HEADERS);
   if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh) };
+  if (d.action === 'archive') {
+    // Moves orders out of the dashboard into "Archived orders" (nothing is lost; rows can be copied back).
+    const ids = [].concat(d.ids || d.id || []).map(String).slice(0, 200);
+    const lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try {
+      const arch = sheet(ss, 'Archived orders', ORDERS_HEADERS.concat(['Archived at']));
+      const items = sheet(ss, 'Order items', ITEMS_HEADERS), archItems = sheet(ss, 'Archived items', ITEMS_HEADERS);
+      let n = 0;
+      ids.forEach(function (id) {
+        const r = findRow(sh, id); if (!r) return;
+        const row = sh.getRange(r, 1, 1, ORDERS_HEADERS.length).getValues()[0];
+        ['Phone', 'Additional phone'].forEach(function (h) { if (row[C[h]] !== '') row[C[h]] = "'" + String(row[C[h]]).replace(/^'/, ''); });
+        arch.appendRow(row.concat([new Date()]));
+        sh.deleteRow(r); n++;
+        if (items.getLastRow() > 1) {
+          const vals = items.getRange(2, 2, items.getLastRow() - 1, 1).getValues();
+          for (let i = vals.length - 1; i >= 0; i--) if (String(vals[i][0]) === id) { archItems.appendRow(items.getRange(i + 2, 1, 1, ITEMS_HEADERS.length).getValues()[0]); items.deleteRow(i + 2); }
+        }
+      });
+      return { ok: true, archived: n };
+    } finally { lock.releaseLock(); }
+  }
   if (d.action === 'confirm_payment') {
     const r = findRow(sh, d.id);
     if (!r) return { ok: false, error: 'not found' };

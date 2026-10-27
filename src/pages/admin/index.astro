@@ -93,6 +93,8 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:.8rem;font-weight:500;color:var(--c);background:color-mix(in srgb,var(--c) 11%,#fff);border:1px solid color-mix(in srgb,var(--c) 28%,#fff);white-space:nowrap}
     .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
     .tag{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--soft)}
+    .tag.unpaid{color:#8A5A00;background:#FFF4D6;border-color:#EBD9A6;font-weight:600}
+    .tag.paid{color:#2E7D4F;background:#EAF5EE;border-color:#BFE0CB}
     .empty{text-align:center;padding:60px 20px;color:var(--soft);background:var(--paper);border:1px dashed var(--line);border-radius:12px}
     .empty b{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:4px}
     /* monthly */
@@ -280,18 +282,19 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       $('kMonth').textContent = Number(mo.reduce((s, o) => s + Number(o.total || 0), 0)).toLocaleString('en-US'); $('kMonthN').textContent = `جنيه مصري · ${mo.length} ${mo.length > 2 && mo.length < 11 ? 'طلبات' : 'طلب'}`;
       document.title = (newN ? `(${newN}) ` : '') + 'لوحة الطلبات | NAY ART';
 
-      const counts = { all: orders.length }; STATUSES.forEach((s) => counts[s] = orders.filter((o) => o.status === s).length);
-      $('tabs').innerHTML = [['all', 'الكل'], ...STATUSES.map((s) => [s, s])].map(([k, l]) => `<button class="tab" data-f="${esc(k)}" aria-pressed="${filter === k}">${esc(l)} <em class="num">${counts[k] || 0}</em></button>`).join('');
+      const unpaid = (o) => o.items.some((i) => i.custom) && o.payment_status !== 'Paid in full' && o.status !== 'ملغي';
+      const counts = { all: orders.length, unpaid: orders.filter(unpaid).length }; STATUSES.forEach((s) => counts[s] = orders.filter((o) => o.status === s).length);
+      $('tabs').innerHTML = [['all', 'الكل'], ['unpaid', 'بانتظار الدفع'], ...STATUSES.map((s) => [s, s])].map(([k, l]) => `<button class="tab" data-f="${esc(k)}" aria-pressed="${filter === k}">${esc(l)} <em class="num">${counts[k] || 0}</em></button>`).join('');
 
       const q = $('q').value.trim().toLowerCase();
-      const shown = orders.filter((o) => (filter === 'all' || o.status === filter) && (!q || [o.id, o.name, o.phone, o.phone_extra || '', o.city].join(' ').toLowerCase().includes(q)));
+      const shown = orders.filter((o) => (filter === 'all' || (filter === 'unpaid' ? unpaid(o) : o.status === filter)) && (!q || [o.id, o.name, o.phone, o.phone_extra || '', o.city].join(' ').toLowerCase().includes(q)));
       $('list').innerHTML = shown.length ? shown.map((o) => {
         const custom = o.items.some((i) => i.custom);
         const th = o.photos[0]?.thumb ? `<img src="${o.photos[0].thumb}" alt="">` : `<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`;
         const items = o.items.map((i) => `${i.name}${i.option ? ' (' + i.option + ')' : ''} × ${i.qty}`).join('، ');
         return `<button class="ord${fresh.includes(o.id) ? ' fresh' : ''}" data-id="${esc(o.id)}">
           <div class="th">${th}</div>
-          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}</div>
+          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}${unpaid(o) ? '<span class="tag unpaid">بانتظار الدفع</span>' : (custom && o.payment_status === 'Paid in full' ? '<span class="tag paid">تم الدفع</span>' : '')}</div>
             <div class="o-who">${esc(o.name)} · ${esc(o.city)}</div><div class="o-items">${esc(items)}</div></div>
           <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></button>`;
       }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب حالة أخرى أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;

@@ -292,5 +292,6 @@
   "address_finding": "Finding the address for your map location…",
   "address_review": "Review the address and add the building, floor and apartment. A written address is required.",
   "address_manual": "The address could not be found automatically. Enter the full address; your map pin is saved.",
-  "address_use_map": "Use map address"
+  "address_use_map": "Use map address",
+  "custom_pay_numbers": "Transfer the full total to {num} by InstaPay or Vodafone Cash, then send the transfer screenshot on WhatsApp."
 }

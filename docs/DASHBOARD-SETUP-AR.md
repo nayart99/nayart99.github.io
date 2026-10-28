@@ -32,3 +32,14 @@
 
 ## حالات الطلب
 جديد ← تم التأكيد ← بانتظار موافقة التصميم (للوحات من صورة العميل) ← قيد التجهيز ← تم الشحن ← تم التسليم. أو: ملغي (ما بيتحسبش في المبيعات).
+
+## ٤. الدفع الأونلاين (Kashier)
+1. افتح حساب تاجر على kashier.io (التجربة مجانية فورًا، والحساب الحقيقي محتاج أوراق النشاط).
+2. من لوحة Kashier ← Integrations انسخ: **Merchant ID** و **Secret Key** و **Payment API Key**.
+3. في Apps Script ← Project Settings ← Script properties أضف:
+   - `KASHIER_MERCHANT_ID`، `KASHIER_SECRET_KEY`، `KASHIER_API_KEY`
+   - `KASHIER_MODE` = `test` للتجربة، و `live` بعد التفعيل (ومع live استخدم مفاتيح الـ live).
+4. شغّل الدالة **testKashier** مرة؛ لو ظهر في السجل لينك صفحة دفع يبقى الربط سليم.
+5. فعّل طريقة الدفع في إعدادات الموقع: `payments.kashier = true` (من لوحة تعديل الموقع ← Settings ← Payment methods).
+
+بعدها: العميل يختار «ادفع أونلاين» ← صفحة Kashier الآمنة ← يرجع لصفحة nayarts.com/pay ← الموقع يتأكد من التوقيع والمبلغ ← الطلب يتعلّم «مدفوع» في اللوحة لوحده ويوصلك إشعار. كل العمليات بتتسجل في شيت «Payments log».

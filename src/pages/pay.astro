@@ -1,0 +1,7 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Pay from '../components/views/Pay.astro';
+import { useT } from '../lib/site.js';
+const t = useT('en');
+---
+<Layout lang="en" path="/pay" title={t('pay_title')} noindex><Pay lang="en" /></Layout>

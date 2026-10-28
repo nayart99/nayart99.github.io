@@ -110,6 +110,7 @@ content:
           - { name: cod, label: "Cash on delivery", type: boolean }
           - { name: instapay, label: "InstaPay", type: boolean }
           - { name: vodafone_cash, label: "Vodafone Cash", type: boolean }
+          - { name: kashier, label: "Online payment by card / wallet (Kashier) – turn on only after the Kashier keys are added", type: boolean }
       - { name: orders_endpoint, label: "Orders web app link (from Google Apps Script)", type: string }
       - name: analytics
         label: "Analytics and tracking"

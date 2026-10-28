@@ -192,7 +192,7 @@ function renderDrawer() {
   const saved = checkoutDraft || store.get('nay-customer', {});
   deliveryLocation = validLocation(saved.location) ? saved.location : null;
   const esc = escapeHTML;
-  const pays = [!hasCustom && S.payments.cod && ['cod', tr('pay_cod')], S.payments.instapay && ['instapay', tr('pay_instapay')], S.payments.vodafone_cash && ['vodafone', tr('pay_vodafone')]].filter(Boolean);
+  const pays = [S.payments.kashier && S.orders_endpoint && ['kashier', tr('pay_kashier')], !hasCustom && S.payments.cod && ['cod', tr('pay_cod')], S.payments.instapay && ['instapay', tr('pay_instapay')], S.payments.vodafone_cash && ['vodafone', tr('pay_vodafone')]].filter(Boolean);
   body.innerHTML = `<button class="back" id="backCart">${tr('back_cart')}</button>
   <form class="checkout" id="coForm" novalidate>
     <div class="field"><label for="f-name">${tr('f_name')}</label><input id="f-name" required autocomplete="name" value="${esc(saved.name)}"><span class="err" hidden></span></div>
@@ -224,11 +224,11 @@ async function placeOrder(btn) {
   if (!validLocation(deliveryLocation)) { ok = false; $('locationError').textContent = tr('err_location'); $('locationError').hidden = false; } else $('locationError').hidden = true;
   const hasCustom = cart.some(c => c.kind === 'custom');
   const payV = document.querySelector('input[name=pay]:checked')?.value;
-  const allowed = {cod:!hasCustom && S.payments.cod,instapay:S.payments.instapay,vodafone:S.payments.vodafone_cash};
+  const allowed = {kashier:S.payments.kashier && S.orders_endpoint,cod:!hasCustom && S.payments.cod,instapay:S.payments.instapay,vodafone:S.payments.vodafone_cash};
   if (!allowed[payV]) { ok = false; $('paymentError').textContent = tr('err_payment'); $('paymentError').hidden = false; }
   if (!ok) { $('coForm').querySelector('.err:not([hidden])')?.parentElement.scrollIntoView({block:'center',behavior:'smooth'}); return; }
   const t = totals();
-  const payLabel = { cod: tr('pay_cod'), instapay: 'InstaPay', vodafone: tr('pay_vodafone') }[payV];
+  const payLabel = { kashier: tr('pay_kashier'), cod: tr('pay_cod'), instapay: 'InstaPay', vodafone: tr('pay_vodafone') }[payV];
   const d = new Date();
   const id = `NA-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
   const cityIdx = $('f-city').value;
@@ -240,17 +240,26 @@ async function placeOrder(btn) {
   const photoList = (await Promise.all(cart.filter((c) => c.kind === 'custom').map(async (c) => ({ key: c.key, name: c.file || 'photo.jpg', data: photos[c.key] || (await photoDB.get(c.key)) || store.get('nay-photo-' + c.key, '') })))).filter((p) => p.data);
 
   btn.disabled = true; btn.textContent = tr('placing');
-  let sent = false;
+  let sent = false, reply = {};
   if (S.orders_endpoint) {
     try {
       const res = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify({ ...order, photos: photoList }) });
-      const j = await res.json().catch(() => ({}));
-      sent = res.ok && j.ok !== false;
+      reply = await res.json().catch(() => ({}));
+      sent = res.ok && reply.ok !== false;
     } catch { sent = false; }
   }
   placingOrder = false; checkoutDraft = null;
-  showDone(order, sent);
-  track('purchase', { transaction_id: id, currency: 'EGP', value: t.total, shipping: t.ship, items: gaItems() });
+  if (payV === 'kashier' && sent && reply.payUrl) {
+    // Card / wallet: go to Kashier's secure page; the purchase is tracked when the payment is confirmed on /pay.
+    store.set('nay-pending-pay', { id, total: t.total, ship: t.ship, items: gaItems(), custom: order.items.some((i) => i.custom), at: Date.now() });
+    cart.forEach((c) => c.kind === 'custom' && dropPhoto(c.key));
+    cart = []; save(); counts();
+    btn.textContent = tr('pay_redirecting');
+    location.href = reply.payUrl;
+    return;
+  }
+  showDone(order, sent && payV !== 'kashier');
+  if (payV !== 'kashier') track('purchase', { transaction_id: id, currency: 'EGP', value: t.total, shipping: t.ship, items: gaItems() });
   cart.forEach((c) => c.kind === 'custom' && dropPhoto(c.key));
   cart = []; save(); counts();
 }
@@ -260,7 +269,7 @@ function showDone(o, sent) {
   const hasCustom = o.items.some((i) => i.custom);
   const first = o.customer.name.split(' ')[0];
   $('drawerTitle').textContent = tr('order_placed');
-  const payNote = o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : o.payment !== 'cod' ? tr('pay_after_wa') : '';
+  const payNote = o.payment === 'kashier' ? tr('pay_online_fail') : o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : o.payment !== 'cod' ? tr('pay_after_wa') : '';
   const rows = o.items.map((i) => `<div class="row"><span>${i.name} (${i.display}) × ${i.qty}</span><span class="price">${money(i.line)}</span></div>`).join('');
   $('drawerBody').innerHTML = `<div class="done-box"><img src="/media/brand/mark.png" alt=""><h2 style="font-size:2rem">${escapeHTML(tr('thanks', { name: first }))}</h2>
     <p style="color:var(--ink-soft)">${sent ? (hasCustom ? tr('thanks_custom') : tr('thanks_kit')) : S.orders_endpoint ? tr('order_fail') : tr('order_wa_step')}</p><span class="ord">${o.id}</span></div>
@@ -485,3 +494,38 @@ $('newsForm').addEventListener('submit', async (e) => {
 });
 
 counts();
+
+
+/* ---------- /pay: back from Kashier ---------- */
+const payPage = $('payPage');
+if (payPage) {
+  const q = new URLSearchParams(location.search);
+  const pending = store.get('nay-pending-pay', {});
+  const id = (q.get('merchantOrderId') || q.get('o') || pending.id || '').replace(/-R\d+$/, '');
+  const box = $('payBox');
+  const show = (state, extra = '') => {
+    const t = { ok: ['pay_ok_t', pending.custom ? 'pay_ok_custom' : 'pay_ok_p'], fail: ['pay_fail_t', 'pay_fail_p'], unknown: ['pay_unknown_t', 'pay_unknown_p'] }[state];
+    box.innerHTML = `<div class="pay-icon ${state}">${state === 'ok' ? '✓' : state === 'fail' ? '!' : '?'}</div><h1>${tr(t[0])}</h1><p>${escapeHTML(tr(t[1], { id }))}</p>${id ? `<span class="ord">${escapeHTML(id)}</span>` : ''}${extra}
+      <div class="pay-actions">${state !== 'ok' && id ? `<button class="btn btn-primary" id="payRetry">${tr('pay_retry')}</button>` : ''}<a class="btn wa-btn" href="${waLink((lang === 'ar' ? 'بخصوص طلبي رقم ' : 'About my order ') + id)}" target="_blank" rel="noopener">${tr('whatsapp')}</a><a class="btn" href="${DATA.base}">${tr('back_shop')}</a></div>`;
+    const r = $('payRetry');
+    if (r) r.onclick = async () => {
+      r.disabled = true; r.textContent = tr('pay_redirecting');
+      try { const res = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify({ type: 'pay_retry', id }) }); const j = await res.json(); if (j.paid) return show('ok'); if (j.payUrl) { location.href = j.payUrl; return; } } catch {}
+      r.disabled = false; r.textContent = tr('pay_retry'); toast(tr('order_fail'));
+    };
+  };
+  (async () => {
+    if (!id || !S.orders_endpoint) return show('unknown');
+    const params = Object.fromEntries(q.entries());
+    if (!params.paymentStatus) return show('fail');
+    try {
+      const res = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify({ type: 'pay_verify', id, params }) });
+      const j = await res.json();
+      if (j.paid) {
+        show('ok');
+        if (pending.id === id && !pending.tracked) { track('purchase', { transaction_id: id, currency: 'EGP', value: pending.total, shipping: pending.ship, items: pending.items || [] }); store.set('nay-pending-pay', { ...pending, tracked: true }); }
+      } else if (j.ok) show('fail');
+      else show('unknown');
+    } catch { show('unknown'); }
+  })();
+}

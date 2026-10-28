@@ -4,7 +4,7 @@ import '../styles/global.css';
 import { settings, useT, href, altPath, absolute, getProducts, pick, STRINGS } from '../lib/site.js';
 import Social from '../components/Social.astro';
 
-const { lang = 'en', title, description, path = '/', image = '/media/brand/og.jpg', jsonld = [], bodyClass = '' } = Astro.props;
+const { lang = 'en', title, description, path = '/', image = '/media/brand/og.jpg', jsonld = [], bodyClass = '', noindex = false } = Astro.props;
 const t = useT(lang);
 const dir = lang === 'ar' ? 'rtl' : 'ltr';
 const canonical = absolute(href(lang, path));
@@ -54,6 +54,7 @@ const fontsUrl = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:it
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{fullTitle}</title>
   <meta name="description" content={desc} />
+  {noindex && <meta name="robots" content="noindex" />}
   <link rel="canonical" href={canonical} />
   <link rel="alternate" hreflang="en" href={enUrl} />
   <link rel="alternate" hreflang="ar" href={arUrl} />

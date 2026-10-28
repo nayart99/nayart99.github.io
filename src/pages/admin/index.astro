@@ -382,11 +382,12 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
 
     let selected = new Set(), view = 'orders', aRange = '30';
     const isCustom = (o) => o.items.some((i) => i.custom);
-    const unpaid = (o) => isCustom(o) && o.payment_status !== 'Paid in full' && o.status !== 'ملغي';
+    const online = (o) => /Kashier|أونلاين|online/i.test(o.payment || '') || o.payment_status === 'Awaiting online payment';
+    const unpaid = (o) => (isCustom(o) || online(o)) && o.payment_status !== 'Paid in full' && o.status !== 'ملغي';
     const units = (o) => o.items.reduce((s, i) => s + Number(i.qty || 0), 0);
     const srcLabel = (s) => { s = String(s || '').toLowerCase(); if (!s) return 'مباشر / غير معروف'; if (/^(fb|facebook|meta)/.test(s)) return 'فيسبوك'; if (/^(ig|insta)/.test(s)) return 'إنستجرام'; if (/tiktok/.test(s)) return 'تيك توك'; if (/google/.test(s)) return 'جوجل'; if (/whats/.test(s)) return 'واتساب'; return s; };
-    const payLabel = (p) => { p = String(p || ''); if (/cash|نقد|استلام/i.test(p)) return 'الدفع عند الاستلام'; if (/insta/i.test(p)) return 'InstaPay'; if (/voda|فودافون/i.test(p)) return 'فودافون كاش'; return p || 'غير محدد'; };
-    const payState = (o) => o.payment_status === 'Paid in full' ? 'مدفوع بالكامل' : isCustom(o) ? 'بانتظار الدفع' : 'غير مؤكد';
+    const payLabel = (p) => { p = String(p || ''); if (/kashier|أونلاين|online/i.test(p)) return 'أونلاين (كارت/محفظة)'; if (/cash|نقد|استلام/i.test(p)) return 'الدفع عند الاستلام'; if (/insta/i.test(p)) return 'InstaPay'; if (/voda|فودافون/i.test(p)) return 'فودافون كاش'; return p || 'غير محدد'; };
+    const payState = (o) => o.payment_status === 'Paid in full' ? 'مدفوع بالكامل' + (o.payment_ref ? ' · ' + o.payment_ref : '') : o.payment_status === 'Awaiting online payment' ? 'لم يكمل الدفع الأونلاين' : isCustom(o) ? 'بانتظار الدفع' : 'غير مؤكد';
     const isCOD = (o) => payLabel(o.payment) === 'الدفع عند الاستلام';
     function rangeBounds(r, from, to) {
       const now = new Date(), sod = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -440,7 +441,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         return `<div class="ord${fresh.includes(o.id) ? ' fresh' : ''}${sel ? ' sel' : ''}" data-id="${esc(o.id)}" tabindex="0" role="button">
           <input type="checkbox" class="pick" data-pick="${esc(o.id)}" ${sel ? 'checked' : ''} aria-label="تحديد ${esc(o.id)}">
           <div class="th">${th}</div>
-          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}${unpaid(o) ? '<span class="tag unpaid">بانتظار الدفع</span>' : (custom && o.payment_status === 'Paid in full' ? '<span class="tag paid">تم الدفع</span>' : '')}</div>
+          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}${unpaid(o) ? `<span class="tag unpaid">${online(o) ? 'لم يكمل الدفع الأونلاين' : 'بانتظار الدفع'}</span>` : ((custom || online(o)) && o.payment_status === 'Paid in full' ? `<span class="tag paid">${online(o) ? 'مدفوع أونلاين' : 'تم الدفع'}</span>` : '')}</div>
             <div class="o-who">${esc(o.name)} · ${esc(o.city)}</div><div class="o-items">${esc(items)}</div></div>
           <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></div>`;
       }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب فلتر آخر أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;
@@ -647,7 +648,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           <div class="line t"><span>الإجمالي</span><span class="num">${money(o.total)}</span></div>
           <div class="line"><span>الدفع</span><span>${esc(o.payment)}</span></div>
           ${custom ? '<p class="pay-policy">اللوحة المخصصة تتطلب سداد المبلغ كاملًا قبل التصميم والتنفيذ. لا يتوفر الدفع عند الاستلام.</p>' : ''}
-          <div class="line"><span>حالة الدفع</span><b>${paid ? 'تم تأكيد استلام المبلغ كاملًا' : 'لم يتم تأكيد الدفع'}</b></div>
+          <div class="line"><span>حالة الدفع</span><b>${paid ? (online(o) ? 'تم الدفع أونلاين عبر Kashier' : 'تم تأكيد استلام المبلغ كاملًا') : online(o) ? 'العميل لم يكمل الدفع الأونلاين' : 'لم يتم تأكيد الدفع'}</b></div>${o.payment_ref ? `<div class="line"><span>رقم العملية</span><span class="num">${esc(o.payment_ref)}</span></div>` : ''}
           ${!paid && custom ? '<p>بعد مراجعة التحويل واستلام المبلغ كاملًا: <button class="btn p" id="pPaid">تأكيد استلام المبلغ كاملًا</button></p>' : ''}
         </div>
         <div class="sec"><h3>ملاحظات داخلية (لا يراها العميل)</h3><textarea class="in" id="pNote" placeholder="مثلًا: تم إرسال التصميم، بانتظار رد العميل">${esc(o.internal)}</textarea><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="saved" id="pNoteOk" hidden>تم الحفظ</span><button class="btn" id="pNoteSave" style="margin-inline-start:auto">حفظ الملاحظة</button></div></div>

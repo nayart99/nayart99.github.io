@@ -507,3 +507,15 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .delivery-pin{background:none;border:0}.delivery-pin span{display:block;width:26px;height:26px;border-radius:50% 50% 50% 0;background:var(--burgundy);border:3px solid white;box-shadow:0 2px 5px #0005;transform:rotate(-45deg)}
 .delivery-map .leaflet-control-attribution{font-size:10px;white-space:normal}
 .checkout .order-note{margin:0;font-size:.86rem;line-height:1.7}
+
+/* ---------- /pay ---------- */
+.pay-page{padding-block:72px 96px}
+.pay-box{max-width:520px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:40px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.pay-box h1{font-size:clamp(1.8rem,4vw,2.4rem);margin:0}
+.pay-box p{color:var(--ink-soft);margin:0;max-width:40ch}
+.pay-spin{width:44px;height:44px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--burgundy);animation:paySpin 1s linear infinite}
+@keyframes paySpin{to{transform:rotate(360deg)}}
+.pay-icon{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-size:1.8rem;font-weight:600;color:#fff;background:var(--ink-soft)}
+.pay-icon.ok{background:#1f7a4d}.pay-icon.fail{background:var(--burgundy)}
+.pay-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px}
+.pay-secure{text-align:center;color:var(--ink-soft);font-size:.82rem;margin-top:16px}

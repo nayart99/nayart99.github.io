@@ -18,6 +18,10 @@
 //   WHATSAPP_PHONE      owner's WhatsApp with country code, no + or spaces (e.g. 201033668842)
 //   TEXTMEBOT_KEY       TextMeBot API key (textmebot.com, about $1/month)
 //   CALLMEBOT_KEY       or a free CallMeBot API key (callmebot.com)
+//   KASHIER_MERCHANT_ID Kashier merchant ID (MID-xxx-xxx)            – online card / wallet payments
+//   KASHIER_SECRET_KEY  Kashier secret key (dashboard → Integrations)
+//   KASHIER_API_KEY     Kashier Payment API key (dashboard → Integrations)
+//   KASHIER_MODE        test or live (default test)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
   DASHBOARD_PASSWORD: '',
@@ -25,6 +29,8 @@ const DEFAULTS = {
   WHATSAPP_PHONE: '201033668842',
   TEXTMEBOT_KEY: '',
   CALLMEBOT_KEY: '',
+  KASHIER_MODE: 'test',
+  SITE_URL: 'https://nayarts.com',
 };
 const DASHBOARD_URL = 'https://nayarts.com/admin/';
 const PHOTOS_FOLDER_NAME = 'NAY ART – Customer photos';
@@ -35,7 +41,7 @@ function cfg(k) { return PropertiesService.getScriptProperties().getProperty(k) 
 const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 const CANCELLED = 'ملغي';
 
-const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status'];
+const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session'];
 const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
@@ -45,7 +51,10 @@ const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    if (data && data.data && data.event && !data.type) return json(kashierWebhook(data));
     if (data.type === 'order') return json(saveOrder(data));
+    if (data.type === 'pay_verify') return json(payVerify(data));
+    if (data.type === 'pay_retry') return json(payRetry(data));
     if (data.type === 'subscribe') return json(saveSubscriber(data));
     if (data.type === 'admin') return json(admin(data));
     return json({ ok: false, error: 'unknown type' });
@@ -72,7 +81,8 @@ function validateOrder(o) {
   if (!/^01[0125]\d{8}$/.test(c.phone || '') || (c.phone_extra && !/^01[0125]\d{8}$/.test(c.phone_extra))) return 'invalid_phone';
   if (!deliveryMap(c)) return 'location_required';
   if (!Array.isArray(o.items) || !o.items.length) return 'items_required';
-  if (['cod', 'instapay', 'vodafone'].indexOf(o.payment) < 0) return 'invalid_payment';
+  if (['cod', 'instapay', 'vodafone', 'kashier'].indexOf(o.payment) < 0) return 'invalid_payment';
+  if (o.payment === 'kashier' && !kashierReady()) return 'online_payment_unavailable';
   if (o.items.some(function(i) { return i.custom || i.slug === 'custom'; }) && o.payment === 'cod') return 'custom_prepayment_required';
   return '';
 }
@@ -128,7 +138,7 @@ function saveOrder(o) {
     row[C['Additional phone']] = c.phone_extra ? "'" + c.phone_extra : '';
     row[C['Delivery latitude']] = c.location.lat; row[C['Delivery longitude']] = c.location.lng;
     row[C['Delivery map']] = deliveryMap(c);
-    row[C['Payment status']] = hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
+    row[C['Payment status']] = o.payment === 'kashier' ? 'Awaiting online payment' : hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
     orders.appendRow(row);
     (o.items || []).forEach(function (i) {
       items.appendRow([when, o.id, month, i.name, i.display || i.option, i.qty, i.price, i.line, i.note || '']);
@@ -136,6 +146,11 @@ function saveOrder(o) {
     updateMonthly(ss);
 
     notifyOwner(o, itemText, hasCustom, links);
+    if (o.payment === 'kashier') {
+      const pay = kashierSession(o.id, o.id, Number(o.total || 0), o.lang, (o.customer || {}).phone);
+      if (pay.url) setOrderField(orders, o.id, { 'Kashier session': pay.sessionId });
+      return { ok: true, id: o.id, payUrl: pay.url || '', payError: pay.error || '' };
+    }
     return { ok: true, id: o.id };
   } finally {
     lock.releaseLock();
@@ -189,6 +204,115 @@ function sendWhatsApp(text) {
 function testNotify() {
   sendWhatsApp('✅ تجربة: إشعارات NAY ART شغالة.\n' + DASHBOARD_URL);
   MailApp.sendEmail(cfg('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail(), 'NAY ART – تجربة الإشعارات', 'الإشعارات شغالة.\n' + DASHBOARD_URL);
+}
+
+/* ---------------- Kashier online payments ---------------- */
+
+function kashierReady() { return !!(cfg('KASHIER_MERCHANT_ID') && cfg('KASHIER_SECRET_KEY') && cfg('KASHIER_API_KEY')); }
+function kashierBase() { return cfg('KASHIER_MODE') === 'live' ? 'https://api.kashier.io' : 'https://test-api.kashier.io'; }
+function hex(bytes) { return bytes.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join(''); }
+function kashierLog(kind, detail) {
+  try { sheet(book(), 'Payments log', ['Date', 'Kind', 'Detail']).appendRow([new Date(), kind, String(detail).slice(0, 4000)]); } catch (e) {}
+}
+function setOrderField(sh, id, fields) {
+  const r = findRow(sh, id); if (!r) return 0;
+  Object.keys(fields).forEach(function (h) { sh.getRange(r, C[h] + 1).setValue(fields[h]); });
+  sh.getRange(r, C['Last update'] + 1).setValue(new Date());
+  return r;
+}
+
+/** Creates a Kashier hosted payment page for an order. kashierOrder must be unique per attempt. */
+function kashierSession(orderId, kashierOrder, amount, lang, phone) {
+  if (!kashierReady()) return { error: 'not_configured' };
+  const back = cfg('SITE_URL') + (lang === 'ar' ? '/ar' : '') + '/pay/?o=' + encodeURIComponent(orderId);
+  const body = {
+    expireAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    maxFailureAttempts: 3, paymentType: 'credit', amount: amount.toFixed(2), currency: 'EGP',
+    order: kashierOrder, merchantId: cfg('KASHIER_MERCHANT_ID'), merchantRedirect: encodeURIComponent(back),
+    serverWebhook: ScriptApp.getService().getUrl(), type: 'external', display: lang === 'ar' ? 'ar' : 'en',
+    allowedMethods: 'card,wallet', brandColor: '#7A1F2B', failureRedirect: true, mode: cfg('KASHIER_MODE') === 'live' ? 'live' : 'test',
+    description: 'NAY ART order ' + orderId, customer: { reference: String(phone || orderId) },
+  };
+  try {
+    const res = UrlFetchApp.fetch(kashierBase() + '/v3/payment/sessions', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { Authorization: cfg('KASHIER_SECRET_KEY'), 'api-key': cfg('KASHIER_API_KEY') }, payload: JSON.stringify(body),
+    });
+    const j = JSON.parse(res.getContentText() || '{}');
+    if (res.getResponseCode() >= 300 || !j.sessionUrl) { kashierLog('session_error', res.getResponseCode() + ' ' + res.getContentText()); return { error: 'session_failed' }; }
+    return { url: j.sessionUrl, sessionId: j._id };
+  } catch (err) { kashierLog('session_exception', err); return { error: 'session_failed' }; }
+}
+
+/** Kashier redirect signature: fixed parameter order, missing values signed as "null", HMAC-SHA256 with the Payment API key. */
+function redirectSignatureOk(p) {
+  const keys = ['paymentStatus', 'cardDataToken', 'maskedCard', 'merchantOrderId', 'orderId', 'cardBrand', 'orderReference', 'transactionId', 'amount', 'currency'];
+  const sig = String(p.signature || '').toLowerCase(); if (!sig) return false;
+  const build = function (enc) { return keys.map(function (k) { const v = p[k] == null || p[k] === '' ? 'null' : String(p[k]); return k + '=' + (enc ? encodeURIComponent(v) : v); }).join('&'); };
+  return [build(false), build(true)].some(function (b) { return hex(Utilities.computeHmacSha256Signature(b, cfg('KASHIER_API_KEY'))) === sig; });
+}
+
+function markPaid(id, ref, amount, how) {
+  const ss = book(), sh = sheet(ss, 'Orders', ORDERS_HEADERS), r = findRow(sh, id);
+  if (!r) return { ok: false, error: 'not_found' };
+  const row = sh.getRange(r, 1, 1, ORDERS_HEADERS.length).getValues()[0];
+  if (Math.abs(Number(row[C['Total (EGP)']]) - Number(amount)) > 0.5) { kashierLog('amount_mismatch', id + ' paid ' + amount + ' expected ' + row[C['Total (EGP)']]); return { ok: false, error: 'amount_mismatch' }; }
+  if (row[C['Payment status']] === 'Paid in full') return { ok: true, paid: true, already: true };
+  setOrderField(sh, id, { 'Payment status': 'Paid in full', 'Payment ref': ref || '' });
+  kashierLog('paid_' + how, id + ' ' + ref + ' ' + amount);
+  sendWhatsApp('✅ *تم الدفع أونلاين*\nرقم الطلب: ' + id + '\nالمبلغ: ' + amount + ' ج.م\nرقم العملية: ' + (ref || '-') + '\n' + DASHBOARD_URL);
+  try { MailApp.sendEmail(cfg('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail(), 'تم الدفع أونلاين – ' + id, 'تم دفع الطلب ' + id + ' أونلاين عن طريق Kashier.\nالمبلغ: ' + amount + ' ج.م\nرقم العملية: ' + (ref || '-') + '\n\n' + DASHBOARD_URL); } catch (e) {}
+  return { ok: true, paid: true };
+}
+
+const baseOrderId = function (o) { return String(o || '').replace(/-R\d+$/, ''); };
+
+/** Called by the /pay page after Kashier redirects the customer back. */
+function payVerify(d) {
+  const p = d.params || {}, id = baseOrderId(p.merchantOrderId || d.id);
+  if (!kashierReady()) return { ok: false, error: 'not_configured' };
+  if (!redirectSignatureOk(p)) { kashierLog('bad_signature', JSON.stringify(p)); return { ok: false, error: 'bad_signature' }; }
+  if (String(p.paymentStatus).toUpperCase() !== 'SUCCESS') return { ok: true, paid: false, id: id, status: p.paymentStatus || '' };
+  const r = markPaid(id, p.transactionId || p.orderReference || '', p.amount, 'redirect');
+  r.id = id; return r;
+}
+
+/** Server-to-server notification. Apps Script can't read headers, so the payment is re-checked with Kashier before trusting it. */
+function kashierWebhook(w) {
+  const data = w.data || {}, id = baseOrderId(data.merchantOrderId);
+  kashierLog('webhook', JSON.stringify(w).slice(0, 1500));
+  if (!id || String(data.status).toUpperCase() !== 'SUCCESS' || ['pay', 'capture'].indexOf(w.event) < 0) return { ok: true };
+  const sh = sheet(book(), 'Orders', ORDERS_HEADERS), r = findRow(sh, id); if (!r) return { ok: true };
+  const session = sh.getRange(r, C['Kashier session'] + 1).getValue(); if (!session) return { ok: true };
+  try {
+    const res = UrlFetchApp.fetch(kashierBase() + '/v3/payment/sessions/' + encodeURIComponent(session) + '/payment', { headers: { Authorization: cfg('KASHIER_SECRET_KEY') }, muteHttpExceptions: true });
+    const txt = res.getContentText(); kashierLog('webhook_check', txt.slice(0, 1500));
+    const j = JSON.parse(txt || '{}'), st = String((j.data || j).status || '').toUpperCase();
+    if (['PAID', 'SUCCESS', 'CAPTURED', 'COMPLETED'].indexOf(st) >= 0) markPaid(id, data.transactionId || data.orderReference || '', data.amount, 'webhook');
+  } catch (err) { kashierLog('webhook_exception', err); }
+  return { ok: true };
+}
+
+/** New payment page for an order that wasn't paid (e.g. card declined). */
+function payRetry(d) {
+  const sh = sheet(book(), 'Orders', ORDERS_HEADERS), r = findRow(sh, d.id);
+  if (!r) return { ok: false, error: 'not_found' };
+  const row = sh.getRange(r, 1, 1, ORDERS_HEADERS.length).getValues()[0];
+  if (row[C['Payment status']] === 'Paid in full') return { ok: true, paid: true };
+  if (row[C['Status']] === CANCELLED) return { ok: false, error: 'cancelled' };
+  const cache = CacheService.getScriptCache(), k = 'retry_' + d.id, n = Number(cache.get(k) || 0) + 1;
+  if (n > 6) return { ok: false, error: 'too_many' };
+  cache.put(k, String(n), 21600);
+  const pay = kashierSession(d.id, d.id + '-R' + n + String(Date.now()).slice(-4), Number(row[C['Total (EGP)']]), row[C['Language']], String(row[C['Phone']]).replace(/^'/, ''));
+  if (!pay.url) return { ok: false, error: pay.error };
+  setOrderField(sh, d.id, { 'Kashier session': pay.sessionId });
+  return { ok: true, payUrl: pay.url };
+}
+
+/** Run from the editor after adding the Kashier keys: creates a 1 EGP test session and logs its link. */
+function testKashier() {
+  const r = kashierSession('TEST-' + Date.now(), 'TEST-' + Date.now(), 1, 'ar', '01000000000');
+  Logger.log(JSON.stringify(r));
 }
 
 /* ---------------- dashboard API ---------------- */
@@ -275,6 +399,7 @@ function listOrders(sh) {
       phone_extra: String(v[C['Additional phone']] || '').replace(/^'/, ''),
       location: v[C['Delivery latitude']] !== '' && v[C['Delivery longitude']] !== '' ? { lat: Number(v[C['Delivery latitude']]), lng: Number(v[C['Delivery longitude']]) } : null,
       payment_status: v[C['Payment status']] || 'Unconfirmed',
+      payment_ref: v[C['Payment ref']] || '',
       items: items.length ? items : [{ name: v[C['Items']], option: '', qty: v[C['Units']], line: v[C['Subtotal (EGP)']] }],
       units: v[C['Units']], subtotal: v[C['Subtotal (EGP)']], delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']],
       notes: v[C['Customer notes']], internal: v[C['Internal notes']],

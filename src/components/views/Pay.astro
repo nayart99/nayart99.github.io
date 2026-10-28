@@ -1,0 +1,14 @@
+---
+import { useT } from '../../lib/site.js';
+const { lang = 'en' } = Astro.props;
+const t = useT(lang);
+---
+<section class="pay-page" id="payPage">
+  <div class="wrap">
+    <div class="pay-box" id="payBox" aria-live="polite">
+      <div class="pay-spin" aria-hidden="true"></div>
+      <h1>{t('pay_checking')}</h1>
+    </div>
+    <p class="pay-secure">{t('pay_secure')}</p>
+  </div>
+</section>

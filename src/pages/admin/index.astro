@@ -671,9 +671,10 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       let body = '';
       if (!jobs.length) body = paid
         ? `<p class="dnote">ملف الطباعة بيتعمل تلقائيًا بعد تأكيد الدفع. لو ما بدأش، ابدأه من هنا:</p><div class="acts"><select class="in sm" id="dColors">${colorOpts(24)}</select><select class="in sm" id="dCx">${cxOpts('none')}</select><button class="btn p" id="dStart">إنشاء ملف الطباعة</button></div>`
-        : '<p class="dnote">بعد تأكيد وصول الدفع، ملف الطباعة المرقّم بيتعمل تلقائيًا على Mimi Panda ويظهر هنا.</p>';
+        : '<p class="dnote">ملف الطباعة مش بيبدأ غير بإثبات: لما تدوس «✓ تم وصول الدفع»، أو لو صورة التحويل عدّت كل الفحوصات (المبلغ، رقمنا كامل، تاريخ النهارده، ومش مستخدمة قبل كده). كلام العميل لوحده مش بيشغّل حاجة.</p>';
       jobs.forEach((j) => {
-        const meta = `<div class="dmeta">${jobs.length > 1 ? `<b>لوحة ${j.n}</b> · ` : ''}مقاس ${esc(j.size)} بوصة · ${j.colors} لون</div>`;
+        const trig = { screenshot: 'بدأ تلقائيًا: صورة التحويل عدّت كل الفحوصات', kashier: 'بدأ تلقائيًا: دفع أونلاين مؤكد من Kashier', owner: 'بدأ بتأكيدك' }[j.trigger] || '';
+        const meta = `<div class="dmeta">${jobs.length > 1 ? `<b>لوحة ${j.n}</b> · ` : ''}مقاس ${esc(j.size)} بوصة · ${j.colors} لون${trig ? ' · ' + trig : ''}</div>`;
         const f = j.files || {};
         if (j.status === 'ready') body += `<div class="dj">${meta}
           <div class="dprev"><figure><div class="im" data-prev="${esc(f.painted || '')}"></div><figcaption>بعد التلوين</figcaption></figure><figure><div class="im" data-prev="${esc(f.numbered || '')}"></div><figcaption>المرقّمة (اللي هتتطبع)</figcaption></figure></div>
@@ -683,7 +684,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         else body += `<div class="dj">${meta}<p class="dwait"><span class="spin"></span>جارٍ تجهيز التصميم على Mimi Panda… عادةً من دقيقة لـ 3 دقايق. الصفحة بتتحدث لوحدها.</p></div>`;
       });
       if (jobs.length && st !== 'pending') body += `<details class="regen" ${st === 'failed' ? 'open' : ''}><summary>${st === 'failed' ? 'حاول تاني' : 'إعادة التصميم بإعدادات مختلفة'}</summary><div class="acts"><select class="in sm" id="dColors">${colorOpts(jobs[0].colors)}</select><select class="in sm" id="dCx">${cxOpts(jobs[0].complexity)}</select><button class="btn" id="dStart">${st === 'failed' ? 'إعادة المحاولة' : 'إعادة التصميم'}</button></div><p class="dnote">كل محاولة بتستهلك تحويل من باقة Mimi Panda.</p></details>`;
-      if (st === 'ready' && ['تم التأكيد', 'بانتظار موافقة التصميم'].includes(o.status)) body += `<div class="dapprove"><p class="dnote">١) حمّل «صورة المعاينة للعميل» ٢) ابعتها له مع الرسالة ٣) لما يوافق دوس «العميل وافق».</p><div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(designMsg(o))}" target="_blank" rel="noopener">رسالة الموافقة لـ${esc((o.name || '').split(' ')[0])}</a><button class="btn ok" id="dApprove">✓ العميل وافق ← قيد التجهيز (طباعة)</button></div></div>`;
+      if (st === 'ready' && ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم'].includes(o.status)) body += `<div class="dapprove"><p class="dnote">١) حمّل «صورة المعاينة للعميل» ٢) ابعتها له مع الرسالة ٣) لما يوافق دوس «العميل وافق».</p><div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(designMsg(o))}" target="_blank" rel="noopener">رسالة الموافقة لـ${esc((o.name || '').split(' ')[0])}</a>${paid ? '<button class="btn ok" id="dApprove">✓ العميل وافق ← قيد التجهيز (طباعة)</button>' : ''}</div>${paid ? '' : '<p class="dnote" style="margin-top:8px"><b>الطباعة مقفولة لحد ما تأكد وصول المبلغ</b> (زرار «✓ تم وصول الدفع» فوق).</p>'}</div>`;
       return `<div class="sec ${st === 'ready' && o.status === 'بانتظار موافقة التصميم' ? 'attn' : st === 'failed' ? 'flag' : ''}"><h3>ملف الطباعة (التصميم)</h3>${body}</div>`;
     }
     function wireDesign(o) {
@@ -741,7 +742,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           <div style="margin-top:8px;font-size:.85rem;color:var(--soft)">وصل ${fmtDate(o.date)}${o.updated ? ' · آخر تعديل ' + fmtDate(o.updated) : ''}</div>
         </div>
         ${o.transfer_proof ? `<div class="sec ${paid ? '' : flagLvl(o) === 'bad' ? 'flag' : 'attn'}"><h3>صورة التحويل · ${esc(o.payment)}</h3>
-          ${paid ? '' : flagLvl(o) === 'bad' || flagLvl(o) === 'warn' ? `<div class="flagbox ${flagLvl(o)}"><b>${flagLvl(o) === 'bad' ? '🔴 في حاجة غلط في صورة التحويل' : '🟠 راجع الصورة كويس'}</b><span>${esc(flagWhy(o))}</span></div>` : flagLvl(o) === 'unchecked' ? '<div class="flagbox warn"><b>الفحص الآلي ما اشتغلش على الصورة دي</b><span>راجعها بنفسك، أو دوس «فحص الصورة آليًا».</span></div>' : flagLvl(o) === 'ok' ? '<div class="flagbox ok"><b>✓ الفحص الآلي: الصورة شكلها إيصال تحويل والمبلغ ظاهر فيها</b><span>برضه اتأكد من وصول المبلغ في الحساب.</span></div>' : ''}
+          ${paid ? '' : flagLvl(o) === 'bad' || flagLvl(o) === 'warn' ? `<div class="flagbox ${flagLvl(o)}"><b>${flagLvl(o) === 'bad' ? '🔴 في حاجة غلط في صورة التحويل' : '🟠 راجع الصورة كويس'}</b><span>${esc(flagWhy(o))}</span></div>` : flagLvl(o) === 'unchecked' ? '<div class="flagbox warn"><b>الفحص الآلي ما اشتغلش على الصورة دي</b><span>راجعها بنفسك، أو دوس «فحص الصورة آليًا».</span></div>' : flagLvl(o) === 'ok' ? `<div class="flagbox ok"><b>✓ الفحص الآلي: الصورة شكلها إيصال تحويل والمبلغ ظاهر فيها</b><span>${flagWhy(o) ? '⏸️ ' + esc(flagWhy(o)) + ' — علشان كده التصميم مستني تأكيدك.' : 'برضه اتأكد من وصول المبلغ في الحساب.'}</span></div>` : ''}
           <div class="proof" id="proofBox"><span class="none">جارٍ تحميل الصورة…</span></div>
           ${o.transfer_ref ? `<div class="line"><span>رقم العملية (من العميل)</span><span class="num">${esc(o.transfer_ref)}</span></div>` : ''}
           ${paid ? '' : `<p class="pay-check">افتح أبلكيشن InstaPay / فودافون كاش واتأكد إن <b>${money(o.total)}</b> وصل فعلًا قبل التأكيد.</p>`}

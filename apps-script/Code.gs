@@ -25,7 +25,9 @@
 //   MIMI_TOKEN          Mimi Panda API token (mimi-panda.com → My profile → API Token) – automatic print files for custom canvases
 //   MIMI_COLORS         number of paint colors for custom canvases (7–100, default 24)
 //   MIMI_COMPLEXITY     none, level1, level2, level3 or simplest (default none = most detail)
-//   MIMI_AUTO           yes = start the print design as soon as payment is confirmed (default yes)
+//   MIMI_AUTO           yes = start the print design automatically (default yes): when the owner confirms payment, or when the
+//                       transfer screenshot passes every check (amount, our number, today's date, receipt, never used before)
+//   PAY_ALIASES         optional, comma separated: how our account appears on InstaPay receipts (IPA address, account name)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
   DASHBOARD_PASSWORD: '',
@@ -96,6 +98,16 @@ function validateOrder(o) {
 }
 
 function saveOrder(o) {
+  const res = saveOrderRow(o);
+  if (res.ok && res.startDesign) {
+    // custom canvas + a transfer screenshot that passed every check → start the print design now (printing still needs the owner)
+    try { autoDesign(sheet(book(), 'Orders', ORDERS_HEADERS), o.id, 'screenshot'); } catch (err) {}
+  }
+  delete res.startDesign;
+  return res;
+}
+
+function saveOrderRow(o) {
   const invalid = validateOrder(o);
   if (invalid) return { ok: false, error: invalid };
   // Automatic check of the transfer screenshot (OCR + duplicate detection). Clear junk is refused at checkout.
@@ -167,20 +179,21 @@ function saveOrder(o) {
     row[C['Delivery map']] = deliveryMap(c);
     row[C['Payment status']] = o.payment === 'kashier' ? 'Awaiting online payment' : proofId ? 'Transfer submitted' : hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
     row[C['Transfer proof']] = proofId; row[C['Transfer ref']] = String((o.transfer || {}).ref || '').slice(0, 60);
-    if (proofCheck) { row[C['Transfer hash']] = proofCheck.hash; row[C['Proof check']] = proofCheck.level + (proofCheck.reasons.length ? ': ' + proofCheck.reasons.join(' · ') : ''); }
+    if (proofCheck) { row[C['Transfer hash']] = proofCheck.hash; row[C['Proof check']] = proofCheck.level + (proofCheck.reasons.length ? ': ' + proofCheck.reasons.join(' · ') : proofCheck.hold ? ': ' + proofCheck.hold : ''); }
     orders.appendRow(row);
     (o.items || []).forEach(function (i) {
       items.appendRow([when, o.id, month, i.name, i.display || i.option, i.qty, i.price, i.line, i.note || '']);
     });
     updateMonthly(ss);
 
-    notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck);
+    const startDesign = hasCustom && !!proofCheck && proofCheck.auto === true && mimiReady() && cfg('MIMI_AUTO') !== 'no';
+    notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck, startDesign);
     if (o.payment === 'kashier') {
       const pay = kashierSession(o.id, o.id, Number(o.total || 0), o.lang, (o.customer || {}).phone);
       if (pay.url) setOrderField(orders, o.id, { 'Kashier session': pay.sessionId });
       return { ok: true, id: o.id, payUrl: pay.url || '', payError: pay.error || '' };
     }
-    return { ok: true, id: o.id };
+    return { ok: true, id: o.id, startDesign: startDesign };
   } finally {
     lock.releaseLock();
   }
@@ -230,6 +243,11 @@ function checkProof(o) {
   const words = PROOF_WORDS.test(norm);
   const pay = String(cfg('PAY_NUMBER') || '01033668842').replace(/\D/g, '');
   const toOk = pay && (digits.indexOf(pay.slice(1)) >= 0 || norm.indexOf(pay.slice(-4)) >= 0);
+  // stronger checks, only used to decide whether work may start automatically
+  const low = norm.toLowerCase();
+  const toStrong = pay && (digits.indexOf(pay.slice(1)) >= 0 || new RegExp(pay.slice(0, 3) + '[^\\d]{2,8}\\d{0,4}' + pay.slice(-4)).test(norm) ||
+    String(cfg('PAY_ALIASES') || '').split(',').map(function (x) { return x.trim().toLowerCase(); }).filter(function (x) { return x.length >= 4; }).some(function (x) { return low.indexOf(x) >= 0; }));
+  const dateOk = recentDateIn(low);
 
   if (!norm.trim() || (!words && !amountOk && !toOk)) {
     out.level = 'reject'; out.reasons.push('الصورة لا تبدو إيصال تحويل');
@@ -238,7 +256,31 @@ function checkProof(o) {
   if (!amountOk) { out.level = 'bad'; out.reasons.push('المبلغ ' + total + ' ج.م مش ظاهر في الصورة'); }
   if (!toOk && out.level === 'ok') { out.level = 'warn'; }
   if (!toOk) out.reasons.push('رقم المحفظة/InstaPay بتاعنا مش ظاهر في الصورة');
+  // Only a screenshot that clearly shows a transfer receipt, the exact amount and our number (and was never used before)
+  // may start work automatically. Anything less waits for the owner.
+  out.auto = out.level === 'ok' && words && amountOk && toStrong && dateOk;
+  if (out.level === 'ok' && !out.auto) out.hold = !dateOk ? 'تاريخ التحويل (النهارده أو امبارح) مش واضح في الصورة' : 'رقمنا مش ظاهر كامل في الصورة';
   return out;
+}
+
+/** True when the receipt text shows today's or yesterday's date (Cairo), in the usual English/Arabic formats. */
+function recentDateIn(low) {
+  const t = low.replace(/\s+/g, ' ');
+  const EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  for (let back = 0; back <= 1; back++) {
+    const d = new Date(Date.now() - back * 864e5);
+    const day = Number(Utilities.formatDate(d, 'Africa/Cairo', 'd')), mon = Number(Utilities.formatDate(d, 'Africa/Cairo', 'M')), yr = Utilities.formatDate(d, 'Africa/Cairo', 'yyyy');
+    const dd = ('0' + day).slice(-2), mm = ('0' + mon).slice(-2), yy = yr.slice(2);
+    const cands = [dd + '/' + mm + '/' + yr, day + '/' + mon + '/' + yr, dd + '-' + mm + '-' + yr, dd + '.' + mm + '.' + yr, yr + '-' + mm + '-' + dd, yr + '/' + mm + '/' + dd,
+      dd + '/' + mm + '/' + yy, mm + '/' + dd + '/' + yr, mon + '/' + day + '/' + yr];
+    if (cands.some(function (c) { return t.indexOf(c) >= 0; })) return true;
+    const en = EN[mon - 1], ar = AR[mon - 1].replace('أ', '[أا]');
+    if (new RegExp('(^|\\D)0?' + day + '(st|nd|rd|th)? ?' + en + '[a-z]*\\.?,? ?(' + yr + '|' + yy + ')?').test(t)) return true;
+    if (new RegExp(en + '[a-z]*\\.? 0?' + day + '(\\D|$)').test(t)) return true;
+    if (new RegExp('(^|\\D)0?' + day + ' ?' + ar).test(t)) return true;
+  }
+  return false;
 }
 
 /** OCR through Google Drive: upload the image as a Google Doc, export its text, then move the temp doc to trash. */
@@ -341,12 +383,12 @@ function getJobs(sh, r) { try { return JSON.parse(sh.getRange(r, C['Design jobs'
 function setJobs(sh, r, jobs) { sh.getRange(r, C['Design jobs'] + 1).setValue(JSON.stringify(jobs)); sh.getRange(r, C['Last update'] + 1).setValue(new Date()); }
 
 /** Starts the print design automatically for a paid custom order that has none yet. */
-function autoDesign(sh, id) {
+function autoDesign(sh, id, trigger) {
   if (!mimiReady() || cfg('MIMI_AUTO') === 'no') return null;
   const r = findRow(sh, id); if (!r) return null;
   if (!String(sh.getRange(r, C['Photo IDs'] + 1).getValue())) return null;
   if (getJobs(sh, r).length) return null;
-  return designStart(sh, id, {});
+  return designStart(sh, id, { trigger: trigger || 'owner' });
 }
 
 function designStart(sh, id, opts) {
@@ -365,7 +407,7 @@ function designStart(sh, id, opts) {
   only.forEach(function (pid) {
     const n = photoIds.indexOf(pid), item = customItems[n] || customItems[0] || {};
     const cv = canvasFor(item.option);
-    const job = { photo: pid, n: n + 1, size: cv.size, colors: colors, complexity: complexity, status: 'starting', at: new Date().toISOString() };
+    const job = { photo: pid, n: n + 1, size: cv.size, colors: colors, complexity: complexity, status: 'starting', at: new Date().toISOString(), trigger: opts.trigger || 'owner' };
     try {
       const blob = DriveApp.getFileById(pid).getBlob();
       const dim = imageSize(blob.getBytes());
@@ -423,13 +465,15 @@ function testMimi() {
 
 /* ---------------- notifications ---------------- */
 
-function notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck) {
+function notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck, startDesign) {
   const c = o.customer || {};
+  const holdLine = hasCustom && proofCheck && proofCheck.level === 'ok' && !proofCheck.auto && proofCheck.hold ? '⏸️ التصميم مستني تأكيدك: ' + proofCheck.hold + '.\n' : '';
+  const autoLine = holdLine + (startDesign ? '✅ صورة التحويل سليمة (المبلغ ورقمنا ظاهرين) — بدأنا ملف الطباعة تلقائيًا. الطباعة مش هتبدأ غير بعد ما تأكد وصول المبلغ من اللوحة.\n' : '');
   const flag = proofCheck && proofCheck.level === 'bad' ? '🔴 *تنبيه: صورة التحويل فيها مشكلة* — ' + proofCheck.reasons.join(' · ') + '\n' : proofCheck && proofCheck.level === 'warn' ? '🟠 راجع صورة التحويل كويس: ' + proofCheck.reasons.join(' · ') + '\n' : '';
   const wa = '🔔 *طلب جديد على NAY ART*\n' +
     'رقم الطلب: ' + o.id + '\n' +
     'العميل: ' + (c.name || '') + ' – ' + (c.city || '') + '\n' +
-    'الإجمالي: ' + o.total + ' ج.م' + (hasCustom ? '\n📷 لوحة من صورة العميل' : '') + '\n\n' +
+    'الإجمالي: ' + o.total + ' ج.م' + (hasCustom ? '\n📷 لوحة من صورة العميل' : '') + '\n\n' + autoLine +
     'هاتف التواصل: ' + (c.phone || '') + (c.phone_extra ? '\nهاتف إضافي: ' + c.phone_extra : '') + '\n' +
     (deliveryMap(c) ? 'موقع التوصيل: ' + deliveryMap(c) + '\n' : '') +
     (proofLink ? '💳 العميل رفع صورة التحويل (' + (o.payment_label || o.payment) + ') — راجعها وأكد وصول المبلغ من اللوحة.\n' + flag : hasCustom ? '⚠️ سداد المبلغ كاملًا وتأكيد استلامه قبل التصميم والتنفيذ.\n' : '') +
@@ -519,7 +563,7 @@ function markPaid(id, ref, amount, how) {
   if (row[C['Payment status']] === 'Paid in full') return { ok: true, paid: true, already: true };
   setOrderField(sh, id, { 'Payment status': 'Paid in full', 'Payment ref': ref || '' });
   kashierLog('paid_' + how, id + ' ' + ref + ' ' + amount);
-  try { autoDesign(sh, id); } catch (e) {}
+  try { autoDesign(sh, id, 'kashier'); } catch (e) {}
   sendWhatsApp('✅ *تم الدفع أونلاين*\nرقم الطلب: ' + id + '\nالمبلغ: ' + amount + ' ج.م\nرقم العملية: ' + (ref || '-') + '\n' + DASHBOARD_URL);
   try { MailApp.sendEmail(cfg('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail(), 'تم الدفع أونلاين – ' + id, 'تم دفع الطلب ' + id + ' أونلاين عن طريق Kashier.\nالمبلغ: ' + amount + ' ج.م\nرقم العملية: ' + (ref || '-') + '\n\n' + DASHBOARD_URL); } catch (e) {}
   return { ok: true, paid: true };
@@ -617,7 +661,7 @@ function admin(d) {
     sh.getRange(r, C['Payment status'] + 1).setValue('Paid in full');
     sh.getRange(r, C['Last update'] + 1).setValue(new Date());
     let design = null;
-    try { design = autoDesign(sh, d.id); } catch (e) { design = { ok: false, error: String(e).slice(0, 200) }; }
+    try { design = autoDesign(sh, d.id, 'owner'); } catch (e) { design = { ok: false, error: String(e).slice(0, 200) }; }
     return { ok: true, design: design };
   }
   if (d.action === 'design_start') return designStart(sh, d.id, { colors: d.colors, complexity: d.complexity, photo: d.photo });
@@ -644,7 +688,7 @@ function admin(d) {
     const blob = DriveApp.getFileById(v[C['Transfer proof']]).getBlob();
     const res = checkProof({ id: d.id, total: v[C['Total (EGP)']], transfer: { ref: v[C['Transfer ref']], data: 'data:image/jpeg;base64,' + Utilities.base64Encode(blob.getBytes()) } });
     const level = res.level === 'reject' ? 'bad' : res.level;
-    const txt = level + (res.reasons.length ? ': ' + res.reasons.join(' · ') : '');
+    const txt = level + (res.reasons.length ? ': ' + res.reasons.join(' · ') : res.hold ? ': ' + res.hold : '');
     setOrderField(sh, d.id, { 'Transfer hash': res.hash, 'Proof check': txt });
     return { ok: true, proof_check: txt };
   }

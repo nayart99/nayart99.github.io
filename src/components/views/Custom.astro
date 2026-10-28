@@ -18,7 +18,14 @@ const ex = settings.custom_example;
           <b>{t('upload_t')}</b><span>{t('upload_s')}</span>
         </div>
         <img id="pvImg" alt="" hidden />
+        <canvas id="pbnCanvas" hidden></canvas>
       </label>
+      <div class="pbn-ui" id="pbnUi" hidden>
+        <p class="pbn-status" id="pbnStatus" aria-live="polite"></p>
+        <ol class="pbn-steps" id="pbnSteps"><li data-s="colors">{t('pbn_s1')}</li><li data-s="lines">{t('pbn_s2')}</li><li data-s="numbers">{t('pbn_s3')}</li></ol>
+        <div class="pbn-palette" id="pbnPalette"></div>
+        <div class="pbn-views" id="pbnViews" role="group" hidden><button type="button" data-v="numbers" aria-pressed="true">{t('pbn_v_num')}</button><button type="button" data-v="color" aria-pressed="false">{t('pbn_v_col')}</button><button type="button" data-v="photo" aria-pressed="false">{t('pbn_v_photo')}</button></div>
+      </div>
       <div class="up-done" id="upDone" hidden>
         <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>{t('photo_ok')}</span>
         <button type="button" class="btn" id="changePhoto">{t('mode_change')}</button>

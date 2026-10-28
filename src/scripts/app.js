@@ -1,4 +1,5 @@
 // NAY ART – browser behaviour for every page.
+import { buildPBN, playReveal, showView } from './pbn-preview.js';
 const $ = (id) => document.getElementById(id);
 const DATA = JSON.parse($('store-data').textContent);
 const { lang, settings: S, products: PRODUCTS } = DATA;
@@ -453,10 +454,41 @@ if (pick) pick.addEventListener('click', (e) => {
 });
 
 /* ---------- custom page ---------- */
-// The customer only uploads a photo. No generated preview: the designer prepares the canvas by hand.
+// The customer uploads a photo and watches a quick paint-by-numbers preview build up (made in the browser).
+// The real print file is made after payment (Mimi Panda, from the dashboard).
 const customPage = $('customPage');
 if (customPage) {
-  let has = false, cSize = 0, cOr = 'Portrait', cOrLabel = tr('portrait'), cQty = 1, cThumb = null, cPhoto = null, cFile = '';
+  let has = false, cSize = 0, cOr = 'Portrait', cOrLabel = tr('portrait'), cQty = 1, cThumb = null, cPhoto = null, cFile = '', cImg = null;
+  let pvRun = 0, pvRes = null, pvTimer = null, pvShape = '';
+  const canvasRatio = () => { const m = String(S.custom_sizes[cSize].label).match(/(\d+)\s*[×x]\s*(\d+)/); const a = m ? +m[1] : 4, b = m ? +m[2] : 5; return cOr === 'Landscape' ? Math.max(a, b) / Math.min(a, b) : Math.min(a, b) / Math.max(a, b); };
+  const PV_STEPS = ['colors', 'lines', 'numbers'];
+  function pvStep(st) {
+    $('pbnStatus').textContent = st === 'done' ? tr('pbn_ready', { n: pvRes ? pvRes.palette.length : '' }) : tr('pbn_' + st);
+    const i = PV_STEPS.indexOf(st);
+    $('pbnSteps').querySelectorAll('li').forEach((li, j) => { li.classList.toggle('on', j === i); li.classList.toggle('done', st === 'done' || (i >= 0 && j < i)); });
+    if (st === 'colors' && pvRes) $('pbnPalette').innerHTML = pvRes.palette.map((c, j) => `<i style="background:${c};animation-delay:${j * 35}ms" title="${j + 1}"></i>`).join('');
+  }
+  async function runPreview(fast) {
+    if (!cImg) return;
+    const ratio = canvasRatio(), shape = ratio.toFixed(3);
+    if (shape === pvShape && pvRes) return;
+    const run = ++pvRun; pvShape = shape;
+    $('drop').style.aspectRatio = String(ratio);
+    $('pbnUi').hidden = false; $('pbnViews').hidden = true; $('pbnPalette').innerHTML = ''; pvStep('analyzing');
+    try {
+      await new Promise((r) => setTimeout(r, 40));
+      const r = await buildPBN(cImg, ratio, 24);
+      if (run !== pvRun) return;
+      pvRes = r; $('pvImg').hidden = true; $('pbnCanvas').hidden = false;
+      const ok = await playReveal($('pbnCanvas'), r, pvStep, () => run === pvRun, fast);
+      if (ok && run === pvRun) { $('pbnViews').hidden = false; $('pbnViews').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === 'numbers' ? 'true' : 'false')); }
+    } catch (err) {
+      if (run !== pvRun) return;
+      pvRes = null; $('pbnCanvas').hidden = true; $('pvImg').hidden = false; $('pbnUi').hidden = true; $('drop').style.aspectRatio = '';
+    }
+  }
+  const schedulePreview = () => { clearTimeout(pvTimer); if (has) pvTimer = setTimeout(() => runPreview(true), 250); };
+  $('pbnViews').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (!b || !pvRes) return; $('pbnViews').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); showView($('pbnCanvas'), pvRes, b.dataset.v); });
   const MAX_ORIGINAL = 6 * 1024 * 1024; // send the original up to 6 MB, otherwise a high-quality copy
   function loadPhoto(file) {
     if (!file || !file.type.startsWith('image/')) { toast(tr('bad_file')); return; }
@@ -467,6 +499,7 @@ if (customPage) {
       const img = $('pvImg'); img.src = shrink(im, 1200, 0.85); img.hidden = false;
       $('upEmpty').hidden = true; $('drop').classList.add('has-photo'); $('upDone').hidden = false; $('pvNote').hidden = false;
       has = true; upd(); track('generate_lead', { method: 'custom_photo' });
+      cImg = im; pvRes = null; pvShape = ''; runPreview(false);
     }; im.src = r.result; };
     r.readAsDataURL(file);
   }
@@ -485,8 +518,8 @@ if (customPage) {
   drop.addEventListener('drop', (e) => loadPhoto(e.dataTransfer.files[0]));
   drop.addEventListener('click', (e) => { if (has) e.preventDefault(); });
   $('changePhoto').addEventListener('click', () => $('photo').click());
-  document.querySelectorAll('#cSizes .opt').forEach((b) => b.addEventListener('click', () => { cSize = +b.dataset.size; upd(); }));
-  document.querySelectorAll('#cOrient .opt').forEach((b) => b.addEventListener('click', () => { cOr = b.dataset.or; cOrLabel = b.dataset.orLabel; upd(); }));
+  document.querySelectorAll('#cSizes .opt').forEach((b) => b.addEventListener('click', () => { cSize = +b.dataset.size; upd(); schedulePreview(); }));
+  document.querySelectorAll('#cOrient .opt').forEach((b) => b.addEventListener('click', () => { cOr = b.dataset.or; cOrLabel = b.dataset.orLabel; upd(); schedulePreview(); }));
   $('cDec').addEventListener('click', () => { cQty = Math.max(1, cQty - 1); upd(); });
   $('cInc').addEventListener('click', () => { cQty = Math.min(5, cQty + 1); upd(); });
   $('cAdd').addEventListener('click', async () => {

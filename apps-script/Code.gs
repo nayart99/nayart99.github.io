@@ -22,6 +22,10 @@
 //   KASHIER_SECRET_KEY  Kashier secret key (dashboard → Integrations)
 //   KASHIER_API_KEY     Kashier Payment API key (dashboard → Integrations)
 //   KASHIER_MODE        test or live (default test)
+//   MIMI_TOKEN          Mimi Panda API token (mimi-panda.com → My profile → API Token) – automatic print files for custom canvases
+//   MIMI_COLORS         number of paint colors for custom canvases (7–100, default 24)
+//   MIMI_COMPLEXITY     none, level1, level2, level3 or simplest (default none = most detail)
+//   MIMI_AUTO           yes = start the print design as soon as payment is confirmed (default yes)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
   DASHBOARD_PASSWORD: '',
@@ -31,6 +35,9 @@ const DEFAULTS = {
   CALLMEBOT_KEY: '',
   KASHIER_MODE: 'test',
   SITE_URL: 'https://nayarts.com',
+  MIMI_COLORS: '24',
+  MIMI_COMPLEXITY: 'none',
+  MIMI_AUTO: 'yes',
 };
 const DASHBOARD_URL = 'https://nayarts.com/admin/';
 const PHOTOS_FOLDER_NAME = 'NAY ART – Customer photos';
@@ -41,7 +48,7 @@ function cfg(k) { return PropertiesService.getScriptProperties().getProperty(k) 
 const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 const CANCELLED = 'ملغي';
 
-const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session', 'Transfer proof', 'Transfer ref', 'Transfer hash', 'Proof check'];
+const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session', 'Transfer proof', 'Transfer ref', 'Transfer hash', 'Proof check', 'Design jobs'];
 const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
@@ -265,6 +272,155 @@ function testProofCheck() {
   Logger.log(JSON.stringify(checkProof({ id: 'TEST2', total: 2320, transfer: { data: 'data:image/jpeg;base64,' + Utilities.base64Encode(junk.getBytes()) } })));
 }
 
+/* ---------------- print design (Mimi Panda) ---------------- */
+// After a custom canvas is paid, the customer photo is sent to Mimi Panda, which returns the numbered print file
+// (PDF + SVG), the painted preview and the color chart. Files are saved to Drive and shown in the dashboard.
+
+const MIMI_API = 'https://mimi-panda.com/api';
+const DESIGN_FILES = [
+  ['print_pdf', '/pbn/download/pbnpdf', 'pdf'],
+  ['print_svg', '/pbn/download/pbn', 'svg'],
+  ['numbered', '/pbn/download/pbnpng?width=1400', 'png'],
+  ['painted', '/pbn/download/originpng?width=1400', 'png'],
+  ['colors_pdf', '/pbn/colors/pdf', 'pdf'],
+  ['colors_csv', '/pbn/colors/csv', 'csv'],
+];
+function mimiReady() { return !!cfg('MIMI_TOKEN'); }
+function mimiFetch(path, opt) {
+  opt = opt || {};
+  opt.headers = { Authorization: 'Bearer ' + cfg('MIMI_TOKEN'), Accept: 'application/json' };
+  opt.muteHttpExceptions = true;
+  return UrlFetchApp.fetch(MIMI_API + path, opt);
+}
+function mimiJson(res) { try { return JSON.parse(res.getContentText()); } catch (e) { return {}; } }
+
+/** "50×60 cm / Landscape" → canvas size in inches for Mimi Panda + width/height ratio. */
+function canvasFor(option) {
+  const m = String(option || '').match(/(\d+)\s*[×xX*]\s*(\d+)/);
+  const a = m ? Number(m[1]) : 40, b = m ? Number(m[2]) : 50;
+  const w = Math.round(Math.min(a, b) / 2.54), h = Math.round(Math.max(a, b) / 2.54);
+  return /landscape|عرضي/i.test(option) ? { size: h + 'x' + w, ratio: h / w } : { size: w + 'x' + h, ratio: w / h };
+}
+
+/** Width/height of a JPEG or PNG (as displayed, honoring the EXIF rotation), or null. */
+function imageSize(b) {
+  const u = function (i) { return b[i] & 0xff; };
+  if (u(0) === 0x89 && u(1) === 0x50) return { w: (u(16) << 24 | u(17) << 16 | u(18) << 8 | u(19)), h: (u(20) << 24 | u(21) << 16 | u(22) << 8 | u(23)) };
+  if (u(0) !== 0xff || u(1) !== 0xd8) return null;
+  let i = 2, rot = 1;
+  while (i < b.length - 9) {
+    if (u(i) !== 0xff) { i++; continue; }
+    const mk = u(i + 1), len = u(i + 2) << 8 | u(i + 3);
+    if (mk === 0xe1 && u(i + 4) === 0x45 && u(i + 5) === 0x78) rot = exifRotation(b, i + 10) || 1;
+    if (mk >= 0xc0 && mk <= 0xcf && mk !== 0xc4 && mk !== 0xc8 && mk !== 0xcc) {
+      const h = u(i + 5) << 8 | u(i + 6), w = u(i + 7) << 8 | u(i + 8);
+      return rot >= 5 && rot <= 8 ? { w: h, h: w } : { w: w, h: h };
+    }
+    i += 2 + len;
+  }
+  return null;
+}
+function exifRotation(b, t) {
+  const u = function (i) { return b[i] & 0xff; };
+  const le = u(t) === 0x49;
+  const r16 = function (i) { return le ? u(i) | u(i + 1) << 8 : u(i) << 8 | u(i + 1); };
+  const r32 = function (i) { return le ? (u(i) | u(i + 1) << 8 | u(i + 2) << 16 | u(i + 3) << 24) : (u(i) << 24 | u(i + 1) << 16 | u(i + 2) << 8 | u(i + 3)); };
+  const ifd = t + r32(t + 4), n = r16(ifd);
+  for (let k = 0; k < n && k < 60; k++) { const e = ifd + 2 + k * 12; if (r16(e) === 0x0112) return r16(e + 8); }
+  return 1;
+}
+/** Centered crop (0–1 coordinates) so the photo matches the canvas shape; null when it already does. */
+function centerCrop(w, h, ratio) {
+  if (!w || !h) return null;
+  const r = w / h, f = function (x) { return Math.round(x * 10000) / 10000; };
+  if (Math.abs(r - ratio) / ratio < 0.015) return null;
+  if (r > ratio) { const cw = ratio * h / w, x1 = (1 - cw) / 2; return { x1: f(x1), y1: 0, x2: f(x1 + cw), y2: 1 }; }
+  const ch = (w / ratio) / h, y1 = (1 - ch) / 2; return { x1: 0, y1: f(y1), x2: 1, y2: f(y1 + ch) };
+}
+function getJobs(sh, r) { try { return JSON.parse(sh.getRange(r, C['Design jobs'] + 1).getValue() || '[]'); } catch (e) { return []; } }
+function setJobs(sh, r, jobs) { sh.getRange(r, C['Design jobs'] + 1).setValue(JSON.stringify(jobs)); sh.getRange(r, C['Last update'] + 1).setValue(new Date()); }
+
+/** Starts the print design automatically for a paid custom order that has none yet. */
+function autoDesign(sh, id) {
+  if (!mimiReady() || cfg('MIMI_AUTO') === 'no') return null;
+  const r = findRow(sh, id); if (!r) return null;
+  if (!String(sh.getRange(r, C['Photo IDs'] + 1).getValue())) return null;
+  if (getJobs(sh, r).length) return null;
+  return designStart(sh, id, {});
+}
+
+function designStart(sh, id, opts) {
+  opts = opts || {};
+  if (!mimiReady()) return { ok: false, error: 'mimi_not_configured' };
+  const r = findRow(sh, id); if (!r) return { ok: false, error: 'not found' };
+  const v = sh.getRange(r, 1, 1, ORDERS_HEADERS.length).getValues()[0];
+  const photoIds = String(v[C['Photo IDs']] || '').split(',').filter(String);
+  if (!photoIds.length) return { ok: false, error: 'no_photo' };
+  let items = []; try { items = JSON.parse(v[C['Items JSON']] || '[]'); } catch (e) {}
+  const customItems = items.filter(function (i) { return i.custom; });
+  const colors = Math.max(7, Math.min(100, Math.round(Number(opts.colors || cfg('MIMI_COLORS')) || 24)));
+  const complexity = ['none', 'level1', 'level2', 'level3', 'simplest'].indexOf(opts.complexity) >= 0 ? opts.complexity : (cfg('MIMI_COMPLEXITY') || 'none');
+  const only = opts.photo && photoIds.indexOf(opts.photo) >= 0 ? [opts.photo] : photoIds;
+  const jobs = getJobs(sh, r).filter(function (j) { return only.indexOf(j.photo) < 0; });
+  only.forEach(function (pid) {
+    const n = photoIds.indexOf(pid), item = customItems[n] || customItems[0] || {};
+    const cv = canvasFor(item.option);
+    const job = { photo: pid, n: n + 1, size: cv.size, colors: colors, complexity: complexity, status: 'starting', at: new Date().toISOString() };
+    try {
+      const blob = DriveApp.getFileById(pid).getBlob();
+      const dim = imageSize(blob.getBytes());
+      const crop = dim ? centerCrop(dim.w, dim.h, cv.ratio) : null;
+      const form = { image: blob, numberOfColors: String(colors), segmentsComplexity: complexity, canvasSize: cv.size };
+      if (crop) { form.crop = 'true'; form.cropCoordinates = JSON.stringify(crop); }
+      let res = mimiFetch('/service/pbn', { method: 'post', payload: form });
+      if (res.getResponseCode() === 404) res = mimiFetch('/pbn', { method: 'post', payload: form });
+      const body = mimiJson(res);
+      if (res.getResponseCode() < 300 && body.key) { job.key = body.key; job.status = body.status || 'in_queue'; }
+      else { job.status = 'failed'; job.error = String(body.error || body.message || ('HTTP ' + res.getResponseCode())).slice(0, 200); }
+    } catch (err) { job.status = 'failed'; job.error = String(err).slice(0, 200); }
+    jobs.push(job);
+  });
+  jobs.sort(function (a, b) { return a.n - b.n; });
+  setJobs(sh, r, jobs);
+  return { ok: true, design: jobs };
+}
+
+/** Checks unfinished jobs; when Mimi Panda is done, saves the files to Drive. */
+function designStatus(sh, id) {
+  const r = findRow(sh, id); if (!r) return { ok: false, error: 'not found' };
+  const jobs = getJobs(sh, r);
+  let changed = false;
+  jobs.forEach(function (j) {
+    if (!j.key || j.status === 'failed' || j.status === 'banned' || (j.status === 'ready' && j.files && j.files.print_pdf)) return;
+    const res = mimiFetch('/service/item/' + j.key);
+    const body = mimiJson(res);
+    if (res.getResponseCode() >= 300) { j.check = 'HTTP ' + res.getResponseCode(); changed = true; return; }
+    if (body.status !== 'ready') { if (body.status && body.status !== j.status) { j.status = body.status; changed = true; } return; }
+    j.files = j.files || {};
+    DESIGN_FILES.forEach(function (f) {
+      if (j.files[f[0]]) return;
+      const fr = mimiFetch('/service/item/' + j.key + f[1]);
+      if (fr.getResponseCode() !== 200) return;
+      const file = folder().createFile(fr.getBlob().setName(id + '-design' + j.n + '-' + f[0] + '.' + f[2]));
+      file.setDescription('NAY ART print design ' + id);
+      j.files[f[0]] = file.getId();
+    });
+    j.palette = (body.colors || []).slice(0, 100).map(function (c) { return { n: c.number, hex: c.hex, name: c.name || '' }; });
+    j.status = j.files.print_pdf ? 'ready' : 'downloading';
+    j.done = new Date().toISOString();
+    changed = true;
+    if (j.status === 'ready') sendWhatsApp('🎨 *ملف الطباعة جاهز*\nالطلب: ' + id + (jobs.length > 1 ? ' (لوحة ' + j.n + ')' : '') + '\nراجع التصميم وابعته للعميل للموافقة من اللوحة:\n' + DASHBOARD_URL);
+  });
+  if (changed) setJobs(sh, r, jobs);
+  return { ok: true, design: jobs };
+}
+
+/** Run from the editor once MIMI_TOKEN is set: checks the token works (no credits used). */
+function testMimi() {
+  const res = mimiFetch('/service/items?limit=1');
+  Logger.log(res.getResponseCode() + ' ' + res.getContentText().slice(0, 300));
+}
+
 /* ---------------- notifications ---------------- */
 
 function notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck) {
@@ -363,6 +519,7 @@ function markPaid(id, ref, amount, how) {
   if (row[C['Payment status']] === 'Paid in full') return { ok: true, paid: true, already: true };
   setOrderField(sh, id, { 'Payment status': 'Paid in full', 'Payment ref': ref || '' });
   kashierLog('paid_' + how, id + ' ' + ref + ' ' + amount);
+  try { autoDesign(sh, id); } catch (e) {}
   sendWhatsApp('✅ *تم الدفع أونلاين*\nرقم الطلب: ' + id + '\nالمبلغ: ' + amount + ' ج.م\nرقم العملية: ' + (ref || '-') + '\n' + DASHBOARD_URL);
   try { MailApp.sendEmail(cfg('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail(), 'تم الدفع أونلاين – ' + id, 'تم دفع الطلب ' + id + ' أونلاين عن طريق Kashier.\nالمبلغ: ' + amount + ' ج.م\nرقم العملية: ' + (ref || '-') + '\n\n' + DASHBOARD_URL); } catch (e) {}
   return { ok: true, paid: true };
@@ -459,8 +616,12 @@ function admin(d) {
     if (!r) return { ok: false, error: 'not found' };
     sh.getRange(r, C['Payment status'] + 1).setValue('Paid in full');
     sh.getRange(r, C['Last update'] + 1).setValue(new Date());
-    return { ok: true };
+    let design = null;
+    try { design = autoDesign(sh, d.id); } catch (e) { design = { ok: false, error: String(e).slice(0, 200) }; }
+    return { ok: true, design: design };
   }
+  if (d.action === 'design_start') return designStart(sh, d.id, { colors: d.colors, complexity: d.complexity, photo: d.photo });
+  if (d.action === 'design_status') return designStatus(sh, d.id);
   if (d.action === 'update') {
     const r = findRow(sh, d.id);
     if (!r) return { ok: false, error: 'not found' };
@@ -489,7 +650,8 @@ function admin(d) {
   }
   if (d.action === 'photo') {
     const r = findRow(sh, d.orderId);
-    const ids = r ? String(sh.getRange(r, C['Photo IDs'] + 1).getValue()).split(',').concat([String(sh.getRange(r, C['Transfer proof'] + 1).getValue())]).filter(String) : [];
+    let ids = r ? String(sh.getRange(r, C['Photo IDs'] + 1).getValue()).split(',').concat([String(sh.getRange(r, C['Transfer proof'] + 1).getValue())]).filter(String) : [];
+    if (r) getJobs(sh, r).forEach(function (j) { Object.keys(j.files || {}).forEach(function (k) { ids.push(j.files[k]); }); });
     if (ids.indexOf(d.fileId) < 0) return { ok: false, error: 'not found' };
     const blob = DriveApp.getFileById(d.fileId).getBlob();
     return { ok: true, data: 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()), name: blob.getName() };
@@ -516,6 +678,7 @@ function listOrders(sh) {
       payment_status: v[C['Payment status']] || 'Unconfirmed',
       payment_ref: v[C['Payment ref']] || '',
       transfer_proof: v[C['Transfer proof']] || '', transfer_ref: v[C['Transfer ref']] || '', proof_check: v[C['Proof check']] || '',
+      design: (function () { try { return JSON.parse(v[C['Design jobs']] || '[]'); } catch (e) { return []; } })(),
       items: items.length ? items : [{ name: v[C['Items']], option: '', qty: v[C['Units']], line: v[C['Subtotal (EGP)']] }],
       units: v[C['Units']], subtotal: v[C['Subtotal (EGP)']], delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']],
       notes: v[C['Customer notes']], internal: v[C['Internal notes']],

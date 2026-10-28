@@ -531,3 +531,22 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .transfer-box img{max-height:220px;width:auto;max-width:100%;object-fit:contain;border:1px solid var(--line);border-radius:4px;align-self:flex-start}
 .transfer-box .tb-ref{font-size:.85rem;color:var(--ink-soft)}
 .transfer-box input#trRef{border:1px solid var(--line);border-radius:var(--radius);padding:9px 12px;background:#fff}
+
+/* custom canvas: live paint-by-numbers preview */
+.upload canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+.pbn-ui{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.pbn-status{margin:0;font-size:.92rem;font-weight:500;text-align:center;min-height:1.4em}
+.pbn-steps{list-style:none;margin:0;padding:0;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;counter-reset:pbn}
+.pbn-steps li{counter-increment:pbn;font-size:.8rem;color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 10px;background:var(--paper);transition:all .25s}
+.pbn-steps li::before{content:counter(pbn);display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--sand);margin-inline-end:6px;font-size:.72rem}
+.pbn-steps li.on{border-color:var(--burgundy);color:var(--burgundy);font-weight:600}
+.pbn-steps li.on::before{background:var(--burgundy);color:#fff}
+.pbn-steps li.done{color:var(--ink)}
+.pbn-steps li.done::before{content:"✓";background:#1f7a4d;color:#fff}
+.pbn-palette{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;min-height:0}
+.pbn-palette i{width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.12);display:inline-block;opacity:0;transform:scale(.4);animation:pbnPop .35s forwards}
+@keyframes pbnPop{to{opacity:1;transform:none}}
+.pbn-views{display:flex;justify-content:center;gap:0;border:1px solid var(--line);border-radius:999px;padding:3px;align-self:center;background:var(--paper)}
+.pbn-views button{border:0;background:none;padding:7px 14px;border-radius:999px;font:inherit;font-size:.84rem;color:var(--ink-soft);cursor:pointer}
+.pbn-views button[aria-pressed="true"]{background:var(--burgundy);color:#fff}
+@media (prefers-reduced-motion:reduce){.pbn-palette i{animation:none;opacity:1;transform:none}}

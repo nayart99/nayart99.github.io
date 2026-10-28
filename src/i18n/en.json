@@ -180,7 +180,7 @@
   "mode_num": "Numbered canvas",
   "mode_paint": "Painted",
   "mode_change": "Change photo",
-  "pv_note": "Once full payment is confirmed, our designer prepares your canvas and sends the design on WhatsApp for approval before printing.",
+  "pv_note": "A quick approximate preview, made on your device. After payment is confirmed, our team prepares the final print file and sends it on WhatsApp for your approval before printing.",
   "need_photo": "Upload a photo to continue.",
   "custom_eta_t": "Design preview on WhatsApp within 48 hours of payment confirmation",
   "custom_eta_s": "We print after you approve. Delivery 5–8 working days after approval.",
@@ -317,5 +317,16 @@
   "err_proof": "Upload the transfer screenshot to confirm your order.",
   "err_proof_rejected": "This doesn't look like a transfer screenshot. Please upload the InstaPay or Vodafone Cash confirmation screen showing the amount. If you're sure it's correct, message us on WhatsApp.",
   "place_order_transfer": "I've transferred – confirm order",
-  "thanks_transfer": "We received your order and transfer screenshot. We'll check the transfer and confirm on WhatsApp, then start preparing your order."
+  "thanks_transfer": "We received your order and transfer screenshot. We'll check the transfer and confirm on WhatsApp, then start preparing your order.",
+  "pbn_s1": "Colors",
+  "pbn_s2": "Outlines",
+  "pbn_s3": "Numbers",
+  "pbn_v_num": "Numbered canvas",
+  "pbn_v_col": "Painted",
+  "pbn_v_photo": "Your photo",
+  "pbn_analyzing": "Turning your photo into a canvas…",
+  "pbn_colors": "Choosing the colors…",
+  "pbn_lines": "Drawing the outlines…",
+  "pbn_numbers": "Adding the numbers…",
+  "pbn_ready": "{n} colors · quick preview"
 }

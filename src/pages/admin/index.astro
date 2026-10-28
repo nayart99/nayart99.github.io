@@ -94,6 +94,24 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
     .tag{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--soft)}
     .tag.unpaid{color:#8A5A00;background:#FFF4D6;border-color:#EBD9A6;font-weight:600}
+    .tag.dsg{color:#1E5B36;background:#EAF6EE;border-color:#B9DEC6;font-weight:600}
+    .tag.dsg-w{color:#6B5310;background:#FFF4D6;border-color:#EBD9A6}
+    .dnote{margin:0 0 8px;font-size:.86rem;color:var(--soft)}
+    .dmeta{font-size:.86rem;color:var(--soft);margin-bottom:8px}
+    .dj+.dj{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+    .dprev{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .dprev figure{margin:0}.dprev .im{aspect-ratio:4/5;background:#fff;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;overflow:hidden;cursor:zoom-in;font-size:.8rem;color:var(--soft)}
+    .dprev .im img{width:100%;height:100%;object-fit:contain}
+    .dprev figcaption{font-size:.8rem;color:var(--soft);text-align:center;margin-top:4px}
+    .palette{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+    .palette span{display:inline-flex;align-items:center;gap:4px;font-size:.78rem;border:1px solid var(--line);border-radius:999px;padding:2px 8px 2px 3px;background:#fff;direction:ltr}
+    .palette i{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.12);display:inline-block}
+    .dwait{display:flex;gap:10px;align-items:center;margin:0;font-size:.9rem}
+    .spin{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--wine);border-radius:50%;animation:spin 1s linear infinite;flex:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .regen{margin-top:12px;font-size:.88rem}.regen summary{cursor:pointer;color:var(--soft)}.regen .acts{margin-top:8px}
+    .in.sm{width:auto;padding:8px 10px;min-height:0}
+    .dapprove{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
     .tag.flag{color:#fff;background:#C62828;border-color:#C62828;font-weight:700}
     .sec.flag{border-color:#C62828;box-shadow:0 0 0 3px rgba(198,40,40,.12)}
     .flagbox{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:8px;margin-bottom:10px;font-size:.88rem}
@@ -458,7 +476,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         return `<div class="ord${fresh.includes(o.id) ? ' fresh' : ''}${sel ? ' sel' : ''}" data-id="${esc(o.id)}" tabindex="0" role="button">
           <input type="checkbox" class="pick" data-pick="${esc(o.id)}" ${sel ? 'checked' : ''} aria-label="تحديد ${esc(o.id)}">
           <div class="th">${th}</div>
-          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}${review(o) && flagLvl(o) === 'bad' ? '<span class="tag flag">🔴 صورة التحويل فيها مشكلة</span>' : review(o) ? '<span class="tag review">💳 تحويل بانتظار المراجعة</span>' : unpaid(o) ? `<span class="tag unpaid">${online(o) ? 'لم يكمل الدفع الأونلاين' : 'بانتظار الدفع'}</span>` : ((custom || online(o) || transferPay(o)) && o.payment_status === 'Paid in full' ? `<span class="tag paid">${online(o) ? 'مدفوع أونلاين' : 'تم الدفع'}</span>` : '')}</div>
+          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}${dState(o) === 'ready' ? '<span class="tag dsg">🎨 ملف الطباعة جاهز</span>' : dState(o) === 'pending' ? '<span class="tag dsg-w">⏳ جارٍ التصميم</span>' : dState(o) === 'failed' ? '<span class="tag flag">التصميم فشل</span>' : ''}${review(o) && flagLvl(o) === 'bad' ? '<span class="tag flag">🔴 صورة التحويل فيها مشكلة</span>' : review(o) ? '<span class="tag review">💳 تحويل بانتظار المراجعة</span>' : unpaid(o) ? `<span class="tag unpaid">${online(o) ? 'لم يكمل الدفع الأونلاين' : 'بانتظار الدفع'}</span>` : ((custom || online(o) || transferPay(o)) && o.payment_status === 'Paid in full' ? `<span class="tag paid">${online(o) ? 'مدفوع أونلاين' : 'تم الدفع'}</span>` : '')}</div>
             <div class="o-who">${esc(o.name)} · ${esc(o.city)}</div><div class="o-items">${esc(items)}</div></div>
           <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></div>`;
       }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب فلتر آخر أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;
@@ -639,6 +657,64 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
 
     /* ---------- order panel ---------- */
     function nextStatus(o) { if (o.status === 'ملغي' || o.status === 'تم التسليم') return ''; let i = STATUSES.indexOf(o.status) + 1; if (STATUSES[i] === 'بانتظار موافقة التصميم' && !isCustom(o)) i++; return STATUSES[i] && STATUSES[i] !== 'ملغي' ? STATUSES[i] : ''; }
+    const DONE = ['ready', 'failed', 'banned'];
+    const dState = (o) => { const j = o.design || []; if (!j.length) return ''; if (j.some((x) => x.status === 'failed' || x.status === 'banned')) return 'failed'; return j.every((x) => x.status === 'ready') ? 'ready' : 'pending'; };
+    let designTimer = null;
+    const colorOpts = (v) => [12, 16, 20, 24, 30, 36, 48].map((n) => `<option value="${n}" ${n == v ? 'selected' : ''}>${n} لون</option>`).join('');
+    const cxOpts = (v) => [['none', 'أعلى تفاصيل'], ['level1', 'تفاصيل عالية'], ['level2', 'متوسط'], ['level3', 'بسيط'], ['simplest', 'أبسط (مساحات كبيرة)']].map(([k, l]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${l}</option>`).join('');
+    function designMsg(o) {
+      const first = (o.name || '').split(' ')[0];
+      return `أهلًا ${first} 🤍\nتصميم لوحتك جاهز 🎨 (أوردر رقم ${o.id})\nهبعتلك دلوقتي صورة المعاينة. لو عجبتك ابعتلنا «موافق» ونبدأ الطباعة والتجهيز على طول، ولو حابب أي تعديل قولنا.`;
+    }
+    function designHTML(o, paid) {
+      const jobs = o.design || [], st = dState(o);
+      let body = '';
+      if (!jobs.length) body = paid
+        ? `<p class="dnote">ملف الطباعة بيتعمل تلقائيًا بعد تأكيد الدفع. لو ما بدأش، ابدأه من هنا:</p><div class="acts"><select class="in sm" id="dColors">${colorOpts(24)}</select><select class="in sm" id="dCx">${cxOpts('none')}</select><button class="btn p" id="dStart">إنشاء ملف الطباعة</button></div>`
+        : '<p class="dnote">بعد تأكيد وصول الدفع، ملف الطباعة المرقّم بيتعمل تلقائيًا على Mimi Panda ويظهر هنا.</p>';
+      jobs.forEach((j) => {
+        const meta = `<div class="dmeta">${jobs.length > 1 ? `<b>لوحة ${j.n}</b> · ` : ''}مقاس ${esc(j.size)} بوصة · ${j.colors} لون</div>`;
+        const f = j.files || {};
+        if (j.status === 'ready') body += `<div class="dj">${meta}
+          <div class="dprev"><figure><div class="im" data-prev="${esc(f.painted || '')}"></div><figcaption>بعد التلوين</figcaption></figure><figure><div class="im" data-prev="${esc(f.numbered || '')}"></div><figcaption>المرقّمة (اللي هتتطبع)</figcaption></figure></div>
+          ${(j.palette || []).length ? `<div class="palette">${j.palette.map((c) => `<span title="${esc(c.name)}"><i style="background:${esc(c.hex)}"></i>${esc(c.n)}</span>`).join('')}</div>` : ''}
+          <div class="acts">${f.print_pdf ? `<button class="btn p" data-dl="${esc(f.print_pdf)}" data-name="${esc(o.id)}-print${jobs.length > 1 ? '-' + j.n : ''}.pdf">تحميل ملف الطباعة PDF</button>` : ''}${f.print_svg ? `<button class="btn" data-dl="${esc(f.print_svg)}" data-name="${esc(o.id)}-print${jobs.length > 1 ? '-' + j.n : ''}.svg">SVG</button>` : ''}${f.colors_pdf ? `<button class="btn" data-dl="${esc(f.colors_pdf)}" data-name="${esc(o.id)}-colors.pdf">جدول الألوان</button>` : ''}${f.painted ? `<button class="btn" data-dl="${esc(f.painted)}" data-name="${esc(o.id)}-preview.png">صورة المعاينة للعميل</button>` : ''}</div></div>`;
+        else if (j.status === 'failed' || j.status === 'banned') body += `<div class="dj">${meta}<div class="flagbox bad"><b>${j.status === 'banned' ? 'Mimi Panda رفض الصورة (فلتر المحتوى)' : 'فشل إنشاء التصميم'}</b><span>${esc(j.error || '')}</span></div></div>`;
+        else body += `<div class="dj">${meta}<p class="dwait"><span class="spin"></span>جارٍ تجهيز التصميم على Mimi Panda… عادةً من دقيقة لـ 3 دقايق. الصفحة بتتحدث لوحدها.</p></div>`;
+      });
+      if (jobs.length && st !== 'pending') body += `<details class="regen" ${st === 'failed' ? 'open' : ''}><summary>${st === 'failed' ? 'حاول تاني' : 'إعادة التصميم بإعدادات مختلفة'}</summary><div class="acts"><select class="in sm" id="dColors">${colorOpts(jobs[0].colors)}</select><select class="in sm" id="dCx">${cxOpts(jobs[0].complexity)}</select><button class="btn" id="dStart">${st === 'failed' ? 'إعادة المحاولة' : 'إعادة التصميم'}</button></div><p class="dnote">كل محاولة بتستهلك تحويل من باقة Mimi Panda.</p></details>`;
+      if (st === 'ready' && ['تم التأكيد', 'بانتظار موافقة التصميم'].includes(o.status)) body += `<div class="dapprove"><p class="dnote">١) حمّل «صورة المعاينة للعميل» ٢) ابعتها له مع الرسالة ٣) لما يوافق دوس «العميل وافق».</p><div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(designMsg(o))}" target="_blank" rel="noopener">رسالة الموافقة لـ${esc((o.name || '').split(' ')[0])}</a><button class="btn ok" id="dApprove">✓ العميل وافق ← قيد التجهيز (طباعة)</button></div></div>`;
+      return `<div class="sec ${st === 'ready' && o.status === 'بانتظار موافقة التصميم' ? 'attn' : st === 'failed' ? 'flag' : ''}"><h3>ملف الطباعة (التصميم)</h3>${body}</div>`;
+    }
+    function wireDesign(o) {
+      clearTimeout(designTimer);
+      $('pBody').querySelectorAll('[data-prev]').forEach((d) => { if (!d.dataset.prev) return; api('photo', { orderId: o.id, fileId: d.dataset.prev }).then((j) => { d.innerHTML = `<img src="${j.data}" alt="">`; d.onclick = () => showImage(j.data, o.id + '-preview.png'); }).catch(() => { d.textContent = 'تعذّر التحميل'; }); });
+      $('pBody').querySelectorAll('[data-dl]').forEach((b) => b.onclick = async () => {
+        const t = b.textContent; b.disabled = true; b.textContent = 'جارٍ التحميل…';
+        try { const j = await api('photo', { orderId: o.id, fileId: b.dataset.dl }); const a = document.createElement('a'); a.href = j.data; a.download = b.dataset.name || j.name; document.body.appendChild(a); a.click(); a.remove(); }
+        catch { toast('تعذّر تحميل الملف'); }
+        b.disabled = false; b.textContent = t;
+      });
+      if ($('dStart')) $('dStart').onclick = async () => {
+        if ((o.design || []).length && !confirm('إعادة التصميم هتستهلك تحويل جديد من باقة Mimi Panda. نكمل؟')) return;
+        const b = $('dStart'); b.disabled = true; b.textContent = 'جارٍ الإرسال…';
+        try { const j = await api('design_start', { id: o.id, colors: $('dColors').value, complexity: $('dCx').value }); o.design = j.design; render(); openPanel(o.id); toast('اتبعتت الصورة لـ Mimi Panda'); }
+        catch (e) { b.disabled = false; b.textContent = 'إنشاء ملف الطباعة'; toast(e.message === 'mimi_not_configured' ? 'لازم تضيف مفتاح Mimi Panda (MIMI_TOKEN) في إعدادات Apps Script' : 'تعذّر بدء التصميم'); }
+      };
+      if ($('dApprove')) $('dApprove').onclick = async () => {
+        const b = $('dApprove'); b.disabled = true;
+        try { await api('update', { id: o.id, status: 'قيد التجهيز' }); o.status = 'قيد التجهيز'; o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تمام — الطلب دلوقتي قيد التجهيز (طباعة)'); }
+        catch (e) { b.disabled = false; toast(e.message === 'payment_required' ? 'لازم تأكيد الدفع الأول' : 'تعذّر تحديث الحالة'); }
+      };
+      if (dState(o) === 'pending') {
+        const poll = async () => {
+          if (openId !== o.id) return;
+          try { const j = await api('design_status', { id: o.id }); const was = dState(o); o.design = j.design; if (dState(o) !== was) { render(); openPanel(o.id); if (dState(o) === 'ready') toast('🎨 ملف الطباعة جاهز'); return; } } catch {}
+          if (openId === o.id) designTimer = setTimeout(poll, 10000);
+        };
+        designTimer = setTimeout(poll, 1500);
+      }
+    }
     const flagLvl = (o) => String(o.proof_check || '').split(':')[0];
     const flagWhy = (o) => String(o.proof_check || '').split(':').slice(1).join(':').trim();
     function confirmMsg(o) {
@@ -676,6 +752,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           <div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(confirmMsg(o))}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>إرسال تأكيد لـ${esc(first)}</a></div>
           <details class="msgprev"><summary>شوف الرسالة</summary><pre>${esc(confirmMsg(o))}</pre></details></div>` : ''}
         ${o.photos.length ? `<div class="sec"><h3>صورة العميل</h3><div class="photos">${o.photos.map((p, i) => `<div class="ph"><div class="im" id="ph${i}">${p.thumb ? `<img src="${p.thumb}" alt="">` : ''}</div><div class="a"><button class="btn" data-full="${esc(p.id)}" data-i="${i}">عرض بالحجم الكامل</button><a class="btn" href="${esc(p.url)}" target="_blank" rel="noopener">فتح في Drive</a></div></div>`).join('')}</div></div>` : ''}
+        ${custom ? designHTML(o, paid) : ''}
         <div class="sec"><h3>العميل</h3>
           <dl class="kv"><dt>الاسم</dt><dd>${esc(o.name)}</dd><dt>الموبايل</dt><dd class="num" style="text-align:right">${esc(o.phone)}</dd>${o.phone_extra ? `<dt>هاتف إضافي</dt><dd class="num">${esc(o.phone_extra)}</dd>` : ''}<dt>المحافظة</dt><dd>${esc(o.city)}</dd><dt>العنوان</dt><dd>${esc(o.address)}</dd>${mapURL ? `<dt>موقع التوصيل</dt><dd><a href="${mapURL}" target="_blank" rel="noopener">فتح الموقع على الخريطة</a></dd>` : ''}${o.notes ? `<dt>ملاحظات</dt><dd>${esc(o.notes)}</dd>` : ''}${o.source ? `<dt>المصدر</dt><dd>${esc(o.source)}${o.campaign ? ' · ' + esc(o.campaign) : ''}</dd>` : ''}</dl>
           <div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(waMsg)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>واتساب</a><a class="btn" href="tel:${esc(o.phone)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>اتصال</a><button class="btn" id="pCopy">نسخ بيانات الشحن</button>${unpaid(o) ? `<a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(payMsg)}" target="_blank" rel="noopener">طلب الدفع على واتساب</a>` : ''}</div>
@@ -696,7 +773,8 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         if (!confirm('هل راجعت في InstaPay / فودافون كاش وتأكدت من وصول ' + money(o.total) + ' كاملًا؟')) return;
         const b = $('pPaid'); b.disabled = true;
         try {
-          await api('confirm_payment', { id: o.id }); o.payment_status = 'Paid in full';
+          const cj = await api('confirm_payment', { id: o.id }); o.payment_status = 'Paid in full';
+          if (cj.design && cj.design.design) o.design = cj.design.design;
           const next = o.status === 'جديد' ? (custom ? 'بانتظار موافقة التصميم' : 'تم التأكيد') : '';
           if (next) { try { await api('update', { id: o.id, status: next }); o.status = next; } catch {} }
           o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تم تأكيد وصول الدفع' + (next ? ' · الحالة: ' + next : ''));
@@ -706,6 +784,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تم تحديث الحالة'); } catch (e) { toast(e.message === 'payment_required' ? 'أكد استلام المبلغ كاملًا قبل بدء التصميم والتنفيذ' : 'تعذّر الحفظ'); } b.disabled = false; };
       if ($('pNext')) $('pNext').onclick = () => { $('pStatus').value = nextStatus(o); $('pSave').click(); };
       $('pPrint').onclick = () => printLabels([o]);
+      wireDesign(o);
       if ($('pRecheck')) $('pRecheck').onclick = async () => { const b = $('pRecheck'); b.disabled = true; b.textContent = 'جارٍ الفحص…'; try { const j = await api('recheck', { id: o.id }); o.proof_check = j.proof_check; render(); openPanel(o.id); } catch { b.disabled = false; b.textContent = 'فحص الصورة آليًا'; toast('تعذّر الفحص'); } };
       if ($('proofBox')) api('photo', { orderId: o.id, fileId: o.transfer_proof }).then((j) => { const b = $('proofBox'); if (b && openId === o.id) { b.innerHTML = `<img src="${j.data}" alt="صورة التحويل"><button class="btn" id="proofFull">عرض بالحجم الكامل</button>`; $('proofFull').onclick = () => showImage(j.data, o.id + '-transfer.jpg'); } }).catch(() => { const b = $('proofBox'); if (b) b.innerHTML = '<span class="none">تعذّر تحميل الصورة</span>'; });
       $('pArchive').onclick = async () => { if (await archive([o.id])) closePanel(); };
@@ -717,7 +796,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         b.disabled = false; b.textContent = 'عرض بالحجم الكامل';
       });
     }
-    function closePanel() { openId = null; $('panel').classList.remove('on'); $('scrim').classList.remove('on'); $('panel').setAttribute('aria-hidden', 'true'); }
+    function closePanel() { openId = null; clearTimeout(designTimer); $('panel').classList.remove('on'); $('scrim').classList.remove('on'); $('panel').setAttribute('aria-hidden', 'true'); }
     $('pClose').addEventListener('click', closePanel); $('scrim').addEventListener('click', closePanel);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const lb = document.querySelector('.lightbox'); if (lb) lb.remove(); else closePanel(); } });
     function showImage(src, name) {
@@ -736,7 +815,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           { id: 'NA-261020-4821', date: t(.2), status: 'جديد', name: 'سارة محمود', phone: '01012345678', city: 'القاهرة', address: 'مدينة نصر، شارع عباس العقاد، عمارة ١٢', payment: 'InstaPay', payment_status: 'Transfer submitted', transfer_proof: 'demo-proof', transfer_ref: '784512', proof_check: 'ok', phone_extra:'01112345678', location:{lat:30.056,lng:31.345}, items: [{ name: 'لوحة من صورتك', option: '50×60 سم / طولي', qty: 1, line: 2200, custom: true, note: 'احذف الخلفية' }], delivery: 120, total: 2320, notes: '', internal: '', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
           { id: 'NA-261020-1937', date: t(1.5), status: 'جديد', name: 'محمد علي', phone: '01198765432', city: 'الجيزة', address: 'الدقي، شارع التحرير ٤٥', payment: 'InstaPay', items: [{ name: 'حلم الورد', option: '40×50 سم', qty: 1, line: 750 }, { name: 'ليلة النجوم', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 1620, notes: 'الاتصال بعد ٥ مساءً', internal: '', source: 'facebook', photos: [] },
           { id: 'NA-261020-5190', date: t(1.5), status: 'جديد', name: 'منة الله عادل', phone: '01223456789', city: 'المنصورة', address: 'حي الجامعة، شارع الجمهورية', payment: 'فودافون كاش', payment_status: 'Transfer submitted', transfer_proof: 'demo-proof', transfer_ref: '', proof_check: 'bad: المبلغ 1070 ج.م مش ظاهر في الصورة · رقم المحفظة/InstaPay بتاعنا مش ظاهر في الصورة', items: [{ name: 'Golden Hour', option: '40×50 سم', qty: 1, line: 950 }], delivery: 120, total: 1070, notes: '', internal: '', source: 'facebook', photos: [] },
-          { id: 'NA-261019-7710', date: t(20), status: 'بانتظار موافقة التصميم', name: 'ندى حسن', phone: '01055512345', city: 'الإسكندرية', address: 'سموحة، شارع فوزي معاذ', payment: 'فودافون كاش', items: [{ name: 'لوحة من صورتك', option: '40×50 سم / عرضي', qty: 1, line: 1800, custom: true }], delivery: 120, total: 1920, notes: '', internal: 'تم إرسال التصميم على واتساب', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
+          { id: 'NA-261019-7710', date: t(20), status: 'بانتظار موافقة التصميم', name: 'ندى حسن', phone: '01055512345', city: 'الإسكندرية', address: 'سموحة، شارع فوزي معاذ', payment: 'فودافون كاش', payment_status: 'Paid in full', design: [{ photo: 'demo', n: 1, size: '20x16', colors: 24, complexity: 'none', status: 'ready', key: 'demo', files: { print_pdf: 'dpdf', print_svg: 'dsvg', numbered: 'dnum', painted: 'dfin', colors_pdf: 'dcol' }, palette: [['#F3E9DC','Cream'],['#2B2B2B','Charcoal'],['#7A1F2B','Wine'],['#D9A88F','Peach'],['#5C7A5A','Sage'],['#E8C872','Honey'],['#3E5A7A','Denim'],['#B5651D','Rust'],['#FFFFFF','White'],['#8C6E5D','Mocha'],['#C94F4F','Rose red'],['#A7BCC9','Sky']].map(([hex, name], i) => ({ n: i + 1, hex, name })) }], items: [{ name: 'لوحة من صورتك', option: '40×50 سم / عرضي', qty: 1, line: 1800, custom: true }], delivery: 120, total: 1920, notes: '', internal: 'تم إرسال التصميم على واتساب', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
           { id: 'NA-261019-3302', date: t(26), status: 'قيد التجهيز', name: 'أحمد سمير', phone: '01234567890', city: 'المنصورة', address: 'شارع الجمهورية', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'حقول الغروب', option: '40×50 سم', qty: 2, line: 1500 }], delivery: 120, total: 1620, notes: '', internal: '', photos: [] },
           { id: 'NA-261018-5520', date: t(50), status: 'تم الشحن', name: 'منة الله', phone: '01511122233', city: 'القاهرة', address: 'التجمع الخامس', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'صباح على البحر', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: 'بوليصة الشحن 88231', photos: [] },
           { id: 'NA-261015-6107', date: t(120), status: 'تم التسليم', name: 'يوسف كمال', phone: '01022233344', city: 'الجيزة', address: 'الشيخ زايد', payment: 'InstaPay', items: [{ name: 'مدينة المظلات', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: '', photos: [] },
@@ -762,6 +841,10 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       if (action === 'archive') { demoApi.data = demoApi.data.filter((d) => !x.ids.includes(d.id)); return Promise.resolve({ ok: true, archived: x.ids.length }); }
       if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }
       if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; return Promise.resolve({ ok: true }); }
+      if (action === 'design_start') { const o = demoApi.data.find((d) => d.id === x.id); o.design = [{ photo: 'demo', n: 1, size: '16x20', colors: +x.colors || 24, complexity: x.complexity || 'none', status: 'in_queue', key: 'demo2' }]; o._polls = 0; return Promise.resolve({ ok: true, design: o.design }); }
+      if (action === 'design_status') { const o = demoApi.data.find((d) => d.id === x.id); o._polls = (o._polls || 0) + 1; if (o._polls >= 2) o.design = o.design.map((j) => ({ ...j, status: 'ready', files: { print_pdf: 'dpdf', print_svg: 'dsvg', numbered: 'dnum', painted: 'dfin', colors_pdf: 'dcol' }, palette: (demoApi.data.find((d) => d.id === 'NA-261019-7710').design || [{}])[0].palette })); else o.design = o.design.map((j) => ({ ...j, status: 'processing' })); return Promise.resolve({ ok: true, design: JSON.parse(JSON.stringify(o.design)) }); }
+      if (action === 'photo' && /^d(fin|num)$/.test(x.fileId)) return Promise.resolve({ ok: true, data: x.fileId === 'dfin' ? '/media/products/couple/fin.webp' : '/media/products/couple/num.webp', name: 'preview.webp' });
+      if (action === 'photo' && /^d(pdf|svg|col)$/.test(x.fileId)) return Promise.resolve({ ok: true, data: 'data:text/plain;charset=utf-8,' + encodeURIComponent('DEMO file – in the live dashboard this is the real print file'), name: 'demo.txt' });
       if (action === 'recheck') return Promise.resolve({ ok: true, proof_check: 'ok' });
       if (action === 'photo' && x.fileId === 'demo-proof') return Promise.resolve({ ok: true, name: 'transfer.svg', data: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="360" height="520"><rect width="360" height="520" fill="#f4f1fb"/><rect x="20" y="20" width="320" height="480" rx="18" fill="#fff"/><circle cx="180" cy="110" r="38" fill="#5b2d90"/><path d="M162 110l12 12 24-26" stroke="#fff" stroke-width="7" fill="none"/><text x="180" y="190" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="700" fill="#222">Transfer successful</text><text x="180" y="240" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="700" fill="#5b2d90">EGP ' + (demoApi.data.find(d => d.id === x.orderId) || {}).total + '</text><text x="40" y="300" font-family="sans-serif" font-size="15" fill="#777">To</text><text x="320" y="300" text-anchor="end" font-family="sans-serif" font-size="15" fill="#222">01033668842</text><text x="40" y="340" font-family="sans-serif" font-size="15" fill="#777">Reference</text><text x="320" y="340" text-anchor="end" font-family="sans-serif" font-size="15" fill="#222">784512</text><text x="180" y="460" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#aaa">DEMO</text></svg>') });
       if (action === 'photo') return Promise.resolve({ ok: true, data: '/media/products/couple/ref.webp', name: 'demo.webp' });

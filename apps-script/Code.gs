@@ -553,6 +553,27 @@ function designStatus(sh, id) {
   return { ok: true, design: jobs };
 }
 
+/** Run from the editor: re-makes the newest website preview with the 'detail' and 'painting' styles so they can be
+ *  compared (uses 2 conversions). The new keys are logged and can be viewed through preview_status. */
+function testMimiStyles() {
+  const sh = sheet(book(), 'Previews', PREVIEW_HEADERS);
+  const rows = sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), PREVIEW_HEADERS.length).getValues().filter(function (r) { return r[1] && !/^nay-team/.test(r[2]); });
+  const last = rows[rows.length - 1];
+  if (!last) { Logger.log('no customer preview yet'); return; }
+  const src = mimiFetch('/service/item/' + last[1] + '/pbn/download/source');
+  if (src.getResponseCode() !== 200) { Logger.log('source ' + src.getResponseCode() + ' ' + src.getContentText().slice(0, 200)); return; }
+  const blob = src.getBlob().setName('photo.jpg');
+  const cache = CacheService.getScriptCache();
+  ['detail', 'painting'].forEach(function (style) {
+    const form = Object.assign({ image: blob, numberOfColors: '24', segmentsComplexity: 'none', canvasSize: last[3] }, mimiStyle(style));
+    if (last[5]) { form.crop = '1'; form.cropCoordinates = last[5]; }
+    const r = mimiFetch('/service/pbn', { method: 'post', payload: form }), body = mimiJson(r);
+    if (body.key) { cache.put('pvk_' + body.key, '1', 21600); sh.appendRow([new Date(), body.key, 'nay-team-' + style, last[3], 24, last[5], body.status || 'in_queue', 'style test of ' + last[1]]); }
+    Logger.log(style + ': ' + r.getResponseCode() + ' ' + (body.key || JSON.stringify(body).slice(0, 200)));
+  });
+  Logger.log('original: ' + last[1]); cache.put('pvk_' + last[1], '1', 21600);
+}
+
 /** Run from the editor once MIMI_TOKEN is set: checks the token works (no credits used). */
 function testMimi() {
   const res = mimiFetch('/service/items?limit=1');

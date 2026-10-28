@@ -328,5 +328,8 @@
   "pbn_colors": "Choosing the colors…",
   "pbn_lines": "Drawing the outlines…",
   "pbn_numbers": "Adding the numbers…",
-  "pbn_ready": "{n} colors · quick preview"
+  "pbn_ready": "{n} colors · quick preview",
+  "pbn_zoom": "Zoom in on the faces",
+  "pbn_frame_tip": "Zoom, then drag the picture to frame it. The closer the faces, the more detail on your canvas. This framing is what we print.",
+  "pbn_framing": "Framing your canvas…"
 }

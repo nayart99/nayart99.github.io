@@ -550,3 +550,10 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .pbn-views button{border:0;background:none;padding:7px 14px;border-radius:999px;font:inherit;font-size:.84rem;color:var(--ink-soft);cursor:pointer}
 .pbn-views button[aria-pressed="true"]{background:var(--burgundy);color:#fff}
 @media (prefers-reduced-motion:reduce){.pbn-palette i{animation:none;opacity:1;transform:none}}
+.pbn-frame{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;padding:10px 12px;border:1px dashed var(--line);border-radius:var(--radius);background:var(--paper)}
+.pbn-frame label{display:inline-flex;align-items:center;gap:6px;font-weight:500;font-size:.9rem}
+.pbn-frame label svg{width:18px;height:18px;stroke:var(--burgundy);fill:none;stroke-width:1.6}
+.pbn-frame input{width:min(320px,100%);accent-color:var(--burgundy)}
+.pbn-frame small{font-size:.78rem;color:var(--ink-soft);max-width:42ch}
+.upload.pannable canvas{touch-action:none;cursor:grab}
+.upload.pannable canvas:active{cursor:grabbing}

@@ -163,7 +163,7 @@ function saveOrderRow(o) {
     const units = (o.items || []).reduce(function (n, i) { return n + Number(i.qty || 0); }, 0);
     const itemText = (o.items || []).map(function (i) { return i.name + ' (' + (i.display || i.option) + ') × ' + i.qty; }).join('\n');
     const hasCustom = (o.items || []).some(function (i) { return i.custom || i.slug === 'custom'; });
-    const cleanItems = (o.items || []).map(function (i) { return { name: i.name, option: i.display || i.option, qty: i.qty, price: i.price, line: i.line, custom: !!i.custom || i.slug === 'custom', note: i.note || '' }; });
+    const cleanItems = (o.items || []).map(function (i) { const c = { name: i.name, option: i.display || i.option, qty: i.qty, price: i.price, line: i.line, custom: !!i.custom || i.slug === 'custom', note: i.note || '' }; const cr = cleanCrop(i.crop); if (cr) c.crop = cr; return c; });
 
     const row = new Array(ORDERS_HEADERS.length).fill('');
     row[C['Date']] = when; row[C['Order ID']] = o.id; row[C['Status']] = STATUSES[0];
@@ -379,6 +379,14 @@ function centerCrop(w, h, ratio) {
   if (r > ratio) { const cw = ratio * h / w, x1 = (1 - cw) / 2; return { x1: f(x1), y1: 0, x2: f(x1 + cw), y2: 1 }; }
   const ch = (w / ratio) / h, y1 = (1 - ch) / 2; return { x1: 0, y1: f(y1), x2: 1, y2: f(y1 + ch) };
 }
+/** The customer's framing from the website (0–1 coordinates), or null when missing / invalid. */
+function cleanCrop(c) {
+  if (!c || typeof c !== 'object') return null;
+  const v = ['x1', 'y1', 'x2', 'y2'].map(function (k) { return Number(c[k]); });
+  if (v.some(function (n) { return !isFinite(n) || n < 0 || n > 1; }) || v[2] - v[0] < 0.05 || v[3] - v[1] < 0.05) return null;
+  if (v[0] === 0 && v[1] === 0 && v[2] === 1 && v[3] === 1) return null;
+  return { x1: v[0], y1: v[1], x2: v[2], y2: v[3] };
+}
 function getJobs(sh, r) { try { return JSON.parse(sh.getRange(r, C['Design jobs'] + 1).getValue() || '[]'); } catch (e) { return []; } }
 function setJobs(sh, r, jobs) { sh.getRange(r, C['Design jobs'] + 1).setValue(JSON.stringify(jobs)); sh.getRange(r, C['Last update'] + 1).setValue(new Date()); }
 
@@ -410,8 +418,10 @@ function designStart(sh, id, opts) {
     const job = { photo: pid, n: n + 1, size: cv.size, colors: colors, complexity: complexity, status: 'starting', at: new Date().toISOString(), trigger: opts.trigger || 'owner' };
     try {
       const blob = DriveApp.getFileById(pid).getBlob();
-      const dim = imageSize(blob.getBytes());
-      const crop = dim ? centerCrop(dim.w, dim.h, cv.ratio) : null;
+      const own = cleanCrop(item.crop);  // framing the customer chose on the website
+      const dim = own ? null : imageSize(blob.getBytes());
+      const crop = own || (dim ? centerCrop(dim.w, dim.h, cv.ratio) : null);
+      if (own) job.framed = true;
       const form = { image: blob, numberOfColors: String(colors), segmentsComplexity: complexity, canvasSize: cv.size };
       if (crop) { form.crop = 'true'; form.cropCoordinates = JSON.stringify(crop); }
       let res = mimiFetch('/service/pbn', { method: 'post', payload: form });

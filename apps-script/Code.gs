@@ -574,6 +574,17 @@ function testMimiStyles() {
   Logger.log('original: ' + last[1]); cache.put('pvk_' + last[1], '1', 21600);
 }
 
+/** Run from the editor: lists the Mimi Panda conversions made by the website + the account's credit balance. */
+function listPreviews() {
+  const sh = sheet(book(), 'Previews', PREVIEW_HEADERS);
+  const rows = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, PREVIEW_HEADERS.length).getValues() : [];
+  rows.forEach(function (r) { Logger.log(Utilities.formatDate(new Date(r[0]), 'Africa/Cairo', 'HH:mm') + ' | ' + r[2] + ' | ' + r[3] + ' | ' + r[6] + ' | ' + r[1]); });
+  Logger.log('total conversions logged: ' + rows.length);
+  const items = mimiJson(mimiFetch('/service/items?per_page=50'));
+  Logger.log('Mimi items: ' + JSON.stringify((items.data || []).map(function (i) { return [i.created, i.type, i.status, i.credits || i.cost || '']; })).slice(0, 3000));
+  Logger.log('meta: ' + JSON.stringify(items.meta || {}));
+}
+
 /** Run from the editor once MIMI_TOKEN is set: checks the token works (no credits used). */
 function testMimi() {
   const res = mimiFetch('/service/items?limit=1');

@@ -434,7 +434,7 @@ function designStart(sh, id, opts) {
       const crop = own || (dim ? centerCrop(dim.w, dim.h, cv.ratio) : null);
       if (own) job.framed = true;
       const form = { image: blob, numberOfColors: String(colors), segmentsComplexity: complexity, canvasSize: cv.size };
-      if (crop) { form.crop = 'true'; form.cropCoordinates = JSON.stringify(crop); }
+      if (crop) { form.crop = '1'; form.cropCoordinates = JSON.stringify(crop); }
       let res = mimiFetch('/service/pbn', { method: 'post', payload: form });
       if (res.getResponseCode() === 404) res = mimiFetch('/pbn', { method: 'post', payload: form });
       const body = mimiJson(res);
@@ -477,7 +477,7 @@ function previewStart(d) {
   const crop = cleanCrop(d.crop);
   const colors = String(Math.max(7, Math.min(100, Number(cfg('MIMI_COLORS')) || 24)));
   const form = { image: Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], 'photo.' + (m[1] === 'image/png' ? 'png' : 'jpg')), numberOfColors: colors, segmentsComplexity: cfg('MIMI_COMPLEXITY') || 'none', canvasSize: cv.size };
-  if (crop) { form.crop = 'true'; form.cropCoordinates = JSON.stringify(crop); }
+  if (crop) { form.crop = '1'; form.cropCoordinates = JSON.stringify(crop); }
   let res = mimiFetch('/service/pbn', { method: 'post', payload: form });
   if (res.getResponseCode() === 404) res = mimiFetch('/pbn', { method: 'post', payload: form });
   const body = mimiJson(res);

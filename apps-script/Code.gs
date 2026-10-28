@@ -27,6 +27,8 @@
 //   MIMI_COMPLEXITY     none, level1, level2, level3 or simplest (default none = most detail)
 //   MIMI_AUTO           yes = start the print design automatically (default yes): when the owner confirms payment, or when the
 //                       transfer screenshot passes every check (amount, our number, today's date, receipt, never used before)
+//   MIMI_PREVIEW_DAILY  max real previews (Mimi Panda conversions) the website may create per day, all customers (default 60)
+//   MIMI_PREVIEW_PER_DEVICE max previews per customer device per 6 hours (default 4)
 //   PAY_ALIASES         optional, comma separated: how our account appears on InstaPay receipts (IPA address, account name)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
@@ -54,6 +56,7 @@ const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governor
 const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
+const PREVIEW_HEADERS = ['Date', 'Mimi key', 'Device', 'Canvas (in)', 'Colors', 'Framing', 'Status', 'Order ID'];
 
 /* ---------------- web endpoints ---------------- */
 
@@ -65,6 +68,8 @@ function doPost(e) {
     if (data.type === 'pay_verify') return json(payVerify(data));
     if (data.type === 'pay_retry') return json(payRetry(data));
     if (data.type === 'subscribe') return json(saveSubscriber(data));
+    if (data.type === 'preview_start') return json(previewStart(data));
+    if (data.type === 'preview_status') return json(previewStatus(data));
     if (data.type === 'admin') return json(admin(data));
     return json({ ok: false, error: 'unknown type' });
   } catch (err) {
@@ -163,7 +168,7 @@ function saveOrderRow(o) {
     const units = (o.items || []).reduce(function (n, i) { return n + Number(i.qty || 0); }, 0);
     const itemText = (o.items || []).map(function (i) { return i.name + ' (' + (i.display || i.option) + ') × ' + i.qty; }).join('\n');
     const hasCustom = (o.items || []).some(function (i) { return i.custom || i.slug === 'custom'; });
-    const cleanItems = (o.items || []).map(function (i) { const c = { name: i.name, option: i.display || i.option, qty: i.qty, price: i.price, line: i.line, custom: !!i.custom || i.slug === 'custom', note: i.note || '' }; const cr = cleanCrop(i.crop); if (cr) c.crop = cr; return c; });
+    const cleanItems = (o.items || []).map(function (i) { const c = { name: i.name, option: i.display || i.option, qty: i.qty, price: i.price, line: i.line, custom: !!i.custom || i.slug === 'custom', note: i.note || '' }; const cr = cleanCrop(i.crop); if (cr) c.crop = cr; const mk = cleanMimiKey(i.mimi_key); if (mk) c.mimi_key = mk; return c; });
 
     const row = new Array(ORDERS_HEADERS.length).fill('');
     row[C['Date']] = when; row[C['Order ID']] = o.id; row[C['Status']] = STATUSES[0];
@@ -412,9 +417,15 @@ function designStart(sh, id, opts) {
   const complexity = ['none', 'level1', 'level2', 'level3', 'simplest'].indexOf(opts.complexity) >= 0 ? opts.complexity : (cfg('MIMI_COMPLEXITY') || 'none');
   const only = opts.photo && photoIds.indexOf(opts.photo) >= 0 ? [opts.photo] : photoIds;
   const jobs = getJobs(sh, r).filter(function (j) { return only.indexOf(j.photo) < 0; });
+  const fresh = !!(opts.colors || opts.complexity || opts.photo);
   only.forEach(function (pid) {
     const n = photoIds.indexOf(pid), item = customItems[n] || customItems[0] || {};
     const cv = canvasFor(item.option);
+    if (!fresh && item.mimi_key) {
+      // the customer already created this exact canvas on the website: reuse it, no new conversion
+      jobs.push({ photo: pid, n: n + 1, size: cv.size, colors: colors, complexity: complexity, status: 'in_queue', key: item.mimi_key, at: new Date().toISOString(), trigger: opts.trigger || 'owner', reused: true });
+      return;
+    }
     const job = { photo: pid, n: n + 1, size: cv.size, colors: colors, complexity: complexity, status: 'starting', at: new Date().toISOString(), trigger: opts.trigger || 'owner' };
     try {
       const blob = DriveApp.getFileById(pid).getBlob();
@@ -435,6 +446,68 @@ function designStart(sh, id, opts) {
   jobs.sort(function (a, b) { return a.n - b.n; });
   setJobs(sh, r, jobs);
   return { ok: true, design: jobs };
+}
+
+/* ---- real previews on the website (before payment) ---- */
+
+function cleanMimiKey(k) { k = String(k || ''); return /^[A-Za-z0-9-]{8,64}$/.test(k) ? k : ''; }
+
+/** The customer pressed "Create my canvas": send the framed photo to Mimi Panda (24 colours, chosen size). */
+function previewStart(d) {
+  if (!mimiReady()) return { ok: false, error: 'mimi_not_configured' };
+  const m = String(d.image || '').match(/^data:(image\/(?:jpeg|png|webp));base64,(.*)$/);
+  if (!m || m[2].length > 12000000) return { ok: false, error: 'bad_image' };
+  const dev = String(d.device || '').replace(/[^\w-]/g, '').slice(0, 40) || 'anon';
+  const day = Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyyMMdd');
+  const perDevice = Number(cfg('MIMI_PREVIEW_PER_DEVICE')) || 4, perDay = Number(cfg('MIMI_PREVIEW_DAILY')) || 60;
+  const props = PropertiesService.getScriptProperties(), cache = CacheService.getScriptCache();
+  const lock = LockService.getScriptLock(); lock.waitLock(15000);
+  let devUsed;
+  try {
+    const used = Number(props.getProperty('PV_COUNT_' + day) || 0);
+    devUsed = Number(cache.get('pvd_' + dev) || 0);
+    if (used >= perDay) return { ok: false, error: 'daily_limit' };
+    if (devUsed >= perDevice) return { ok: false, error: 'device_limit' };
+    props.setProperty('PV_COUNT_' + day, String(used + 1));
+    cache.put('pvd_' + dev, String(devUsed + 1), 21600);
+    // tidy old counters
+    props.getKeys().forEach(function (k) { if (/^PV_COUNT_\d{8}$/.test(k) && k !== 'PV_COUNT_' + day) props.deleteProperty(k); });
+  } finally { lock.releaseLock(); }
+  const cv = canvasFor(String(d.size || '') + ' / ' + String(d.orientation || ''));
+  const crop = cleanCrop(d.crop);
+  const colors = String(Math.max(7, Math.min(100, Number(cfg('MIMI_COLORS')) || 24)));
+  const form = { image: Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], 'photo.' + (m[1] === 'image/png' ? 'png' : 'jpg')), numberOfColors: colors, segmentsComplexity: cfg('MIMI_COMPLEXITY') || 'none', canvasSize: cv.size };
+  if (crop) { form.crop = 'true'; form.cropCoordinates = JSON.stringify(crop); }
+  let res = mimiFetch('/service/pbn', { method: 'post', payload: form });
+  if (res.getResponseCode() === 404) res = mimiFetch('/pbn', { method: 'post', payload: form });
+  const body = mimiJson(res);
+  if (res.getResponseCode() >= 300 || !body.key) {
+    cache.put('pvd_' + dev, String(devUsed), 21600); // failed attempts don't count against the customer
+    return { ok: false, error: 'mimi_error', detail: String(body.error || body.message || res.getResponseCode()).slice(0, 120) };
+  }
+  cache.put('pvk_' + body.key, '1', 21600);
+  try { sheet(book(), 'Previews', PREVIEW_HEADERS).appendRow([new Date(), body.key, dev, cv.size, Number(colors), crop ? JSON.stringify(crop) : '', body.status || 'in_queue', '']); } catch (e) {}
+  return { ok: true, key: body.key, size: cv.size, left: Math.max(0, perDevice - devUsed - 1) };
+}
+
+/** Polled by the website until the preview is ready; then returns the numbered + painted images. */
+function previewStatus(d) {
+  const key = cleanMimiKey(d.key);
+  const cache = CacheService.getScriptCache();
+  if (!key || !cache.get('pvk_' + key)) return { ok: false, error: 'unknown_preview' };
+  const res = mimiFetch('/service/item/' + key);
+  const body = mimiJson(res);
+  if (res.getResponseCode() >= 300) return { ok: true, status: 'processing' };
+  if (body.status !== 'ready') return { ok: true, status: body.status || 'processing' };
+  const img = function (path) {
+    const r = mimiFetch('/service/item/' + key + path);
+    if (r.getResponseCode() !== 200) return '';
+    const b = r.getBlob(); return 'data:' + (b.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(b.getBytes());
+  };
+  const numbered = img('/pbn/download/pbnpng?width=1200'), painted = img('/pbn/download/originpng?width=1200');
+  if (!numbered) return { ok: true, status: 'processing' };
+  try { const sh = sheet(book(), 'Previews', PREVIEW_HEADERS), f = sh.getRange('B:B').createTextFinder(key).matchEntireCell(true).findNext(); if (f) sh.getRange(f.getRow(), 7).setValue('ready'); } catch (e) {}
+  return { ok: true, status: 'ready', numbered: numbered, painted: painted, palette: (body.colors || []).map(function (c) { return c.hex; }).slice(0, 100) };
 }
 
 /** Checks unfinished jobs; when Mimi Panda is done, saves the files to Drive. */

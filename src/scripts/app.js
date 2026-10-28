@@ -1,5 +1,5 @@
 // NAY ART – browser behaviour for every page.
-import { buildPBN, playReveal, showView, cropRect, drawCrop } from './pbn-preview.js';
+import { playReveal, showView, cropRect, drawCrop } from './pbn-preview.js';
 const $ = (id) => document.getElementById(id);
 const DATA = JSON.parse($('store-data').textContent);
 const { lang, settings: S, products: PRODUCTS } = DATA;
@@ -264,7 +264,7 @@ async function placeOrder(btn) {
   const cityIdx = $('f-city').value;
   const customer = { name: $('f-name').value.trim(), phone: phoneNumber($('f-phone').value), phone_extra: phoneNumber($('f-phone-extra').value), location: {...deliveryLocation}, city: T.gov[cityIdx], address: $('f-addr').value.trim(), notes: $('f-note').value.trim() };
   store.set('nay-customer', { name: customer.name, phone: customer.phone, phone_extra:customer.phone_extra, location:customer.location, city: cityIdx, addr: customer.address });
-  const items = cart.map((c) => { const l = lineInfo(c); return { slug: c.kind === 'custom' ? 'custom' : c.slug, name: l.name, option: l.option, display: l.display, qty: c.q, price: l.price, line: l.price * c.q, custom: c.kind === 'custom', note: c.note || '', key: c.key, thumb: c.kind === 'custom' ? c.thumb || '' : '', ...(c.kind === 'custom' && c.crop ? { crop: c.crop } : {}) }; });
+  const items = cart.map((c) => { const l = lineInfo(c); return { slug: c.kind === 'custom' ? 'custom' : c.slug, name: l.name, option: l.option, display: l.display, qty: c.q, price: l.price, line: l.price * c.q, custom: c.kind === 'custom', note: c.note || '', key: c.key, thumb: c.kind === 'custom' ? c.thumb || '' : '', ...(c.kind === 'custom' && c.crop ? { crop: c.crop } : {}), ...(c.kind === 'custom' && c.mimi ? { mimi_key: c.mimi } : {}) }; });
   const order = { type: 'order', id, created: d.toISOString(), lang, customer, payment: payV, payment_label: payLabel, items, subtotal: t.sub, delivery: t.ship, total: t.total, source: source(), page: location.href };
   const transfer = isTransfer(payV) && transferProof ? { data: transferProof, ref: ($('trRef')?.value || '').trim() } : null;
   placingOrder = true; btn.disabled = true; btn.textContent = tr('placing');
@@ -454,68 +454,125 @@ if (pick) pick.addEventListener('click', (e) => {
 });
 
 /* ---------- custom page ---------- */
-// The customer uploads a photo and watches a quick paint-by-numbers preview build up (made in the browser).
-// The real print file is made after payment (Mimi Panda, from the dashboard).
+// The customer uploads a photo, frames it (zoom / drag), picks the size, then presses "Create my canvas":
+// the real paint-by-numbers is made by Mimi Panda (24 colours, chosen size) and shown here, numbered and painted.
+// The same Mimi Panda result becomes the print file once payment is confirmed (no second conversion).
 const customPage = $('customPage');
 if (customPage) {
-  let has = false, cSize = 0, cOr = 'Portrait', cOrLabel = tr('portrait'), cQty = 1, cThumb = null, cPhoto = null, cFile = '', cImg = null;
-  let pvRun = 0, pvRes = null, pvTimer = null, pvShape = '', pvView = { z: 1, cx: 0.5, cy: 0.5 };
+  let has = false, cSize = 0, cOr = 'Portrait', cOrLabel = tr('portrait'), cQty = 1, cThumb = null, cPhoto = null, cFile = '', cImg = null, cSend = null;
+  let pvView = { z: 1, cx: 0.5, cy: 0.5 }, pv = null, pvRun = 0, pvShown = null;
+  const device = (() => { let d = store.get('nay-device', ''); if (!d) { d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); store.set('nay-device', d); } return d; })();
   const canvasRatio = () => { const m = String(S.custom_sizes[cSize].label).match(/(\d+)\s*[×x]\s*(\d+)/); const a = m ? +m[1] : 4, b = m ? +m[2] : 5; return cOr === 'Landscape' ? Math.max(a, b) / Math.min(a, b) : Math.min(a, b) / Math.max(a, b); };
+  const curCrop = () => cropRect(cImg.naturalWidth, cImg.naturalHeight, canvasRatio(), pvView);
+  const sig = () => cImg ? [cSize, cOr, ...Object.values(curCrop())].join('|') : '';
   const PV_STEPS = ['colors', 'lines', 'numbers'];
-  function pvStep(st) {
-    $('pbnStatus').textContent = st === 'done' ? tr('pbn_ready', { n: pvRes ? pvRes.palette.length : '' }) : tr('pbn_' + st);
+  function steps(st) {
     const i = PV_STEPS.indexOf(st);
     $('pbnSteps').querySelectorAll('li').forEach((li, j) => { li.classList.toggle('on', j === i); li.classList.toggle('done', st === 'done' || (i >= 0 && j < i)); });
-    if (st === 'colors' && pvRes) $('pbnPalette').innerHTML = pvRes.palette.map((c, j) => `<i style="background:${c};animation-delay:${j * 35}ms" title="${j + 1}"></i>`).join('');
   }
-  async function runPreview(fast) {
-    if (!cImg) return;
-    const ratio = canvasRatio(), shape = ratio.toFixed(3) + '|' + pvView.z.toFixed(2) + '|' + pvView.cx.toFixed(3) + '|' + pvView.cy.toFixed(3);
-    if (shape === pvShape && pvRes) return;
-    const run = ++pvRun; pvShape = shape;
-    $('drop').style.aspectRatio = String(ratio);
-    $('pbnUi').hidden = false; $('pbnViews').hidden = true; $('pbnPalette').innerHTML = ''; pvStep('analyzing');
-    try {
-      await new Promise((r) => setTimeout(r, 40));
-      const r = await buildPBN(cImg, ratio, 24, Math.min(innerWidth, innerHeight) < 700 ? 820 : 900, pvView);
-      if (run !== pvRun) return;
-      pvRes = r; $('pvImg').hidden = true; $('pbnCanvas').hidden = false;
-      const ok = await playReveal($('pbnCanvas'), r, pvStep, () => run === pvRun, fast);
-      if (ok && run === pvRun) { $('pbnViews').hidden = false; $('pbnFrame').hidden = false; $('pbnViews').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === 'numbers' ? 'true' : 'false')); }
-    } catch (err) {
-      if (run !== pvRun) return;
-      pvRes = null; $('pbnCanvas').hidden = true; $('pvImg').hidden = false; $('pbnUi').hidden = true; $('drop').style.aspectRatio = '';
-    }
+  const status = (t) => { $('pbnStatus').textContent = t; };
+  function setCreate(mode) {
+    // mode: 'create' | 'update' | 'busy' | 'hide'
+    const b = $('pbnCreate'); b.hidden = mode === 'hide'; b.disabled = mode === 'busy';
+    b.textContent = mode === 'update' ? tr('pbn_update') : mode === 'busy' ? tr('pbn_working') : tr('pbn_create');
   }
-  const schedulePreview = (ms = 250) => { clearTimeout(pvTimer); if (has) pvTimer = setTimeout(() => runPreview(true), ms); };
-  // Framing: zoom slider + drag on the picture, so small faces fill the canvas (the same framing goes to the print file).
-  const liveFrame = () => {
-    if (!cImg) return; pvRun++; const cv = $('pbnCanvas'), ratio = canvasRatio();
-    const W = ratio >= 1 ? 900 : Math.round(900 * ratio), H = ratio >= 1 ? Math.round(900 / ratio) : 900;
+  // Framing view: the photo cut to the canvas shape (what will be printed)
+  function liveFrame() {
+    if (!cImg) return; const cv = $('pbnCanvas'), ratio = canvasRatio();
+    const W = ratio >= 1 ? 1000 : Math.round(1000 * ratio), H = ratio >= 1 ? Math.round(1000 / ratio) : 1000;
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-    const c = cropRect(cImg.naturalWidth, cImg.naturalHeight, ratio, pvView); pvView.cx = (c.x1 + c.x2) / 2; pvView.cy = (c.y1 + c.y2) / 2;
-    drawCrop(cv, cImg, c); $('pbnCanvas').hidden = false; $('pvImg').hidden = true; $('pbnViews').hidden = true; $('pbnStatus').textContent = tr('pbn_framing');
-  };
-  $('pbnZoom').addEventListener('input', (e) => { pvView.z = +e.target.value; $('drop').classList.toggle('pannable', pvView.z > 1.001); liveFrame(); schedulePreview(600); });
+    const c = curCrop(); pvView.cx = (c.x1 + c.x2) / 2; pvView.cy = (c.y1 + c.y2) / 2;
+    $('drop').style.aspectRatio = String(ratio);
+    drawCrop(cv, cImg, c); cv.hidden = false; $('pvImg').hidden = true;
+  }
+  function refreshState() {
+    if (!cImg) return;
+    $('pbnUi').hidden = false; $('pbnFrame').hidden = false;
+    if (pv && pv.state === 'busy') return;
+    if (pvShown && pvShown.sig === sig()) {
+      // back to the canvas that was already made: show it again (no new conversion)
+      setCreate('hide'); $('drop').style.aspectRatio = String(pvShown.r.W / pvShown.r.H);
+      const cv = $('pbnCanvas'); cv.width = pvShown.r.W; cv.height = pvShown.r.H; cv.hidden = false;
+      const v = ($('pbnViews').querySelector('[aria-pressed="true"]') || {}).dataset?.v || 'numbers'; showView(cv, pvShown.r, v);
+      $('pbnViews').hidden = false; steps('done'); status(tr('pbn_ready_real', { n: pvShown.r.palette.length || 24 }));
+      $('pbnPalette').innerHTML = pvShown.r.palette.map((c, k) => `<i style="background:${c};animation:none;opacity:1;transform:none" title="${k + 1}"></i>`).join('');
+      return;
+    }
+    $('pbnViews').hidden = true; $('pbnPalette').innerHTML = ''; steps('');
+    liveFrame();
+    setCreate(pvShown ? 'update' : 'create');
+    status(pvShown ? tr('pbn_changed') : tr('pbn_frame_first'));
+  }
+  const watermark = (cv) => { const g = cv.getContext('2d'); g.save(); g.globalAlpha = 0.13; g.fillStyle = '#7A1F2B'; g.font = `600 ${Math.round(cv.width / 22)}px system-ui, sans-serif`; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 6); for (let y = -cv.height; y < cv.height; y += cv.width / 5) for (let x = -cv.width; x < cv.width; x += cv.width / 2.2) g.fillText('NAY ART · PREVIEW', x, y); g.restore(); };
+  const toCanvas = (img, W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(img, 0, 0, W, H); return c; };
+  const loadImg = (src) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+  const api = async (body) => { const r = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify(body) }); return r.json(); };
+  async function createCanvas() {
+    if (!cImg || !S.orders_endpoint) return;
+    const run = ++pvRun, mySig = sig(), crop = curCrop();
+    pv = { state: 'busy' }; setCreate('busy'); $('pbnViews').hidden = true; $('pbnPalette').innerHTML = '';
+    liveFrame(); $('drop').classList.add('working');
+    // friendly progress while Mimi Panda works (usually 30–90 s)
+    const t0 = Date.now(); steps('colors'); status(tr('pbn_colors_real'));
+    const tick = setInterval(() => { const s = (Date.now() - t0) / 1000; const st = s < 20 ? 'colors' : s < 45 ? 'lines' : 'numbers'; steps(st); status(tr(st === 'colors' ? 'pbn_colors_real' : st === 'lines' ? 'pbn_lines' : 'pbn_numbers') + ' ' + tr('pbn_wait')); }, 1500);
+    const stop = (msg) => { clearInterval(tick); $('drop').classList.remove('working'); if (run !== pvRun) return; pv = null; steps(''); setCreate(pvShown ? 'update' : 'create'); status(msg); };
+    try {
+      const st = await api({ type: 'preview_start', image: cSend, size: S.custom_sizes[cSize].label, orientation: cOr, crop, device, lang });
+      if (!st.ok) return stop(tr({ device_limit: 'pbn_err_limit', daily_limit: 'pbn_err_limit', mimi_not_configured: 'pbn_err_off' }[st.error] || 'pbn_err'));
+      if (typeof st.left === 'number') $('pbnLeft').textContent = st.left > 0 ? tr('pbn_left', { n: st.left }) : '';
+      let res = null;
+      for (let i = 0; i < 90 && run === pvRun; i++) {
+        await new Promise((r) => setTimeout(r, i < 3 ? 6000 : 4000));
+        const j = await api({ type: 'preview_status', key: st.key }).catch(() => ({}));
+        if (j.status === 'ready' && j.numbered) { res = j; break; }
+        if (j.status === 'failed' || j.status === 'banned' || j.error) return stop(tr(j.status === 'banned' ? 'pbn_err_banned' : 'pbn_err'));
+      }
+      if (run !== pvRun) return;
+      if (!res) return stop(tr('pbn_err_slow'));
+      const [num, col] = await Promise.all([loadImg(res.numbered), loadImg(res.painted || res.numbered)]);
+      clearInterval(tick); $('drop').classList.remove('working');
+      const W = num.naturalWidth, H = num.naturalHeight;
+      const photo = document.createElement('canvas'); photo.width = W; photo.height = H; drawCrop(photo, cImg, crop);
+      const color = toCanvas(col, W, H), lines = toCanvas(num, W, H); watermark(color); watermark(lines);
+      const r = { W, H, photo, color, lines, numbers: [], palette: res.palette || [] };
+      pvShown = { sig: mySig, key: st.key, r }; pv = null;
+      $('drop').style.aspectRatio = String(W / H);
+      $('pbnPalette').innerHTML = r.palette.map((c, k) => `<i style="background:${c};animation-delay:${k * 35}ms" title="${k + 1}"></i>`).join('');
+      setCreate('hide');
+      const ok = await playReveal($('pbnCanvas'), r, (s) => { steps(s); if (s !== 'done') status(tr('pbn_' + s)); }, () => run === pvRun, true);
+      if (ok && run === pvRun) {
+        status(tr('pbn_ready_real', { n: r.palette.length || 24 })); steps('done');
+        $('pbnViews').hidden = false; $('pbnViews').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === 'numbers' ? 'true' : 'false'));
+        track('view_item', { item_id: 'custom-preview', currency: 'EGP', value: S.custom_sizes[cSize].price });
+      }
+    } catch (err) { stop(tr('pbn_err')); }
+  }
+  $('pbnCreate').addEventListener('click', createCanvas);
+  $('pbnViews').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (!b || !pvShown) return; $('pbnViews').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); showView($('pbnCanvas'), pvShown.r, b.dataset.v); });
+  // framing: zoom slider + drag on the picture
+  const reframe = () => { pvRun += pv && pv.state === 'busy' ? 0 : 1; refreshState(); };
+  $('pbnZoom').addEventListener('input', (e) => { if (pv && pv.state === 'busy') return; pvView.z = +e.target.value; $('drop').classList.toggle('pannable', pvView.z > 1.001); reframe(); });
   let drag = null;
-  $('pbnCanvas').addEventListener('pointerdown', (e) => { if (!cImg || pvView.z <= 1.001) return; drag = { x: e.clientX, y: e.clientY, cx: pvView.cx, cy: pvView.cy }; e.target.setPointerCapture(e.pointerId); e.preventDefault(); });
+  $('pbnCanvas').addEventListener('pointerdown', (e) => { if (!cImg || pvView.z <= 1.001 || (pv && pv.state === 'busy')) return; drag = { x: e.clientX, y: e.clientY, cx: pvView.cx, cy: pvView.cy }; e.target.setPointerCapture(e.pointerId); e.preventDefault(); });
   $('pbnCanvas').addEventListener('pointermove', (e) => {
-    if (!drag) return; const rect = e.target.getBoundingClientRect(), c = cropRect(cImg.naturalWidth, cImg.naturalHeight, canvasRatio(), pvView);
-    pvView.cx = drag.cx - ((e.clientX - drag.x) / rect.width) * (c.x2 - c.x1); pvView.cy = drag.cy - ((e.clientY - drag.y) / rect.height) * (c.y2 - c.y1); liveFrame();
+    if (!drag) return; const rect = e.target.getBoundingClientRect(), c = curCrop();
+    pvView.cx = drag.cx - ((e.clientX - drag.x) / rect.width) * (c.x2 - c.x1); pvView.cy = drag.cy - ((e.clientY - drag.y) / rect.height) * (c.y2 - c.y1); reframe();
   });
-  const endDrag = () => { if (drag) { drag = null; schedulePreview(450); } };
+  const endDrag = () => { drag = null; };
   $('pbnCanvas').addEventListener('pointerup', endDrag); $('pbnCanvas').addEventListener('pointercancel', endDrag);
-  $('pbnViews').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (!b || !pvRes) return; $('pbnViews').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); showView($('pbnCanvas'), pvRes, b.dataset.v); });
   function loadPhoto(file) {
     if (!file || !file.type.startsWith('image/')) { toast(tr('bad_file')); return; }
     cFile = file.name; const r = new FileReader();
     r.onload = () => { const im = new Image(); im.onload = () => {
       cPhoto = shrink(im, 3600, 0.92); // re-encoded: rotation baked in, so the saved framing matches what the customer saw
+      cSend = shrink(im, 2400, 0.9);   // what Mimi Panda receives for the preview
       cThumb = shrink(im, 160, 0.75);
-      const img = $('pvImg'); img.src = shrink(im, 1200, 0.85); img.hidden = false;
+      const img = $('pvImg'); img.src = shrink(im, 1200, 0.85);
       $('upEmpty').hidden = true; $('drop').classList.add('has-photo'); $('upDone').hidden = false; $('pvNote').hidden = false;
       has = true; upd(); track('generate_lead', { method: 'custom_photo' });
-      cImg = im; pvRes = null; pvShape = ''; pvView = { z: 1, cx: 0.5, cy: 0.5 }; $('pbnZoom').value = 1; $('drop').classList.remove('pannable'); runPreview(false);
+      cImg = im; pvRun++; pv = null; pvShown = null; pvView = { z: 1, cx: 0.5, cy: 0.5 }; $('pbnZoom').value = 1; $('drop').classList.remove('pannable');
+      if (!S.orders_endpoint) { img.hidden = false; return; }
+      refreshState();
     }; im.src = r.result; };
     r.readAsDataURL(file);
   }
@@ -534,15 +591,17 @@ if (customPage) {
   drop.addEventListener('drop', (e) => loadPhoto(e.dataTransfer.files[0]));
   drop.addEventListener('click', (e) => { if (has) e.preventDefault(); });
   $('changePhoto').addEventListener('click', () => $('photo').click());
-  document.querySelectorAll('#cSizes .opt').forEach((b) => b.addEventListener('click', () => { cSize = +b.dataset.size; upd(); schedulePreview(); }));
-  document.querySelectorAll('#cOrient .opt').forEach((b) => b.addEventListener('click', () => { cOr = b.dataset.or; cOrLabel = b.dataset.orLabel; upd(); schedulePreview(); }));
+  const busy = () => pv && pv.state === 'busy';
+  document.querySelectorAll('#cSizes .opt').forEach((b) => b.addEventListener('click', () => { if (busy()) return toast(tr('pbn_wait_toast')); cSize = +b.dataset.size; upd(); reframe(); }));
+  document.querySelectorAll('#cOrient .opt').forEach((b) => b.addEventListener('click', () => { if (busy()) return toast(tr('pbn_wait_toast')); cOr = b.dataset.or; cOrLabel = b.dataset.orLabel; upd(); reframe(); }));
   $('cDec').addEventListener('click', () => { cQty = Math.max(1, cQty - 1); upd(); });
   $('cInc').addEventListener('click', () => { cQty = Math.min(5, cQty + 1); upd(); });
   $('cAdd').addEventListener('click', async () => {
     if (!has) return; const key = 'custom-' + Date.now();
     photos[key] = cPhoto; await photoDB.put(key, cPhoto);
-    const crop = cImg ? cropRect(cImg.naturalWidth, cImg.naturalHeight, canvasRatio(), pvView) : null;
-    cart.push({ key, kind: 'custom', size: cSize, or: cOr, orLabel: cOrLabel, file: cFile, note: $('cNote').value.trim(), thumb: cThumb, q: cQty, crop });
+    const crop = cImg ? curCrop() : null;
+    const mimi = pvShown && pvShown.sig === sig() ? pvShown.key : '';
+    cart.push({ key, kind: 'custom', size: cSize, or: cOr, orLabel: cOrLabel, file: cFile, note: $('cNote').value.trim(), thumb: cThumb, q: cQty, crop, mimi });
     save(); counts(); bump(); toast(tr('custom_added'));
     const s = S.custom_sizes[cSize]; track('add_to_cart', { currency: 'EGP', value: s.price * cQty, items: [{ item_id: 'custom-' + s.label, item_name: 'Custom Canvas', price: s.price, quantity: cQty }] });
     openDrawer();

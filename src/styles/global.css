@@ -557,3 +557,9 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .pbn-frame small{font-size:.78rem;color:var(--ink-soft);max-width:42ch}
 .upload.pannable canvas{touch-action:none;cursor:grab}
 .upload.pannable canvas:active{cursor:grabbing}
+.pbn-create{align-self:center;min-width:240px}
+.pbn-left{font-size:.76rem;color:var(--ink-soft)}
+.upload.working::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,rgba(122,31,43,.0) 40%,rgba(122,31,43,.22) 50%,rgba(122,31,43,0) 60%,transparent 100%);background-size:100% 220%;animation:pbnScan 2.2s linear infinite;pointer-events:none}
+.upload.working canvas{filter:saturate(.7) brightness(1.04)}
+@keyframes pbnScan{from{background-position:0 120%}to{background-position:0 -120%}}
+@media (prefers-reduced-motion:reduce){.upload.working::after{animation:none}}

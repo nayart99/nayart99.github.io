@@ -11,7 +11,9 @@ const phoneNumber = (v) => String(v || '').replace(/[٠-٩]/g, c => c.charCodeAt
 const validPhone = (v) => /^01[0125]\d{8}$/.test(phoneNumber(v));
 const validLocation = (v) => v && Number.isFinite(v.lat) && Number.isFinite(v.lng) && Math.abs(v.lat) <= 90 && Math.abs(v.lng) <= 180;
 const mapsURL = (v) => 'https://www.google.com/maps?q=' + v.lat + ',' + v.lng;
-let deliveryLocation = null, checkoutMap = null, mapMarker = null, checkoutDraft = null, placingOrder = false;
+let deliveryLocation = null, checkoutMap = null, mapMarker = null, checkoutDraft = null, placingOrder = false, transferProof = null;
+const isTransfer = (v) => v === 'instapay' || v === 'vodafone';
+const transferNumber = (v) => (v === 'vodafone' ? S.vodafone_cash : S.instapay) || S.instapay || S.vodafone_cash || '';
 let addressTimer, addressRequest, addressVersion = 0;
 const addressCache = new Map();
 function cancelAddressLookup() {
@@ -203,10 +205,36 @@ function renderDrawer() {
     <div class="field location-field"><label id="locationLabel">${tr('f_location')}</label><p class="field-help">${tr('location_hint')}</p><div class="delivery-map" id="deliveryMap" role="region" aria-labelledby="locationLabel"></div><div class="location-actions"><button class="btn" type="button" id="locateMe">${tr('location_use_mine')}</button><button class="btn" type="button" id="useMapCenter">${tr('location_center')}</button></div><p class="field-help" id="locationStatus" aria-live="polite">${tr('location_not_selected')}</p><a id="locationLink" target="_blank" rel="noopener" hidden>${tr('location_open')}</a><span class="err" id="locationError" hidden></span></div>
     ${hasCustom ? '<p class="order-note">' + tr('custom_payment_notice') + ((S.instapay || S.vodafone_cash) ? '<br><b>' + tr('custom_pay_numbers', { num: S.instapay || S.vodafone_cash }) + '</b>' : '') + '</p>' : ''}
     <div class="field"><label>${tr('f_pay')}</label><div class="pay">${pays.map(([v, l], i) => `<label><input type="radio" name="pay" id="pay-${v}" value="${v}" ${i === 0 ? 'checked' : ''}> ${l}</label>`).join('')}</div><span class="err" id="paymentError" hidden></span>${!pays.length ? '<p class="err">' + tr('payment_unavailable') + '</p>' : ''}</div>
+    <div class="transfer-box" id="transferBox" hidden>
+      <b class="tb-title">${tr('tr_title')}</b>
+      <p id="trStep"></p>
+      <p>${tr('tr_step2')}</p>
+      <label class="btn tb-upload" for="trProof"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg><span id="trUploadLbl">${tr('tr_upload')}</span></label>
+      <input type="file" id="trProof" accept="image/*" hidden>
+      <img id="trPreview" alt="" hidden>
+      <span class="err" id="trError" hidden></span>
+      <label for="trRef" class="tb-ref">${tr('tr_ref')}</label><input id="trRef" inputmode="numeric" autocomplete="off">
+    </div>
     <div class="field"><label for="f-note">${tr('f_note')}</label><input id="f-note" value="${esc(saved.notes)}"></div>
   </form>`;
   foot.innerHTML = `<div class="row"><span>${tr('delivery')}</span><span class="price">${money(t.ship)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(t.total)}</span></div><button class="btn btn-primary" id="placeOrder" ${!pays.length ? 'disabled' : ''}>${tr('place_order')}</button>`;
   $('coForm').addEventListener('submit', e => { e.preventDefault(); placeOrder($('placeOrder')); });
+  const syncPay = () => {
+    const v = document.querySelector('input[name=pay]:checked')?.value, on = isTransfer(v) && !!S.orders_endpoint;
+    $('transferBox').hidden = !on;
+    $('placeOrder').textContent = on ? tr('place_order_transfer') : tr('place_order');
+    if (on) { const num = transferNumber(v); $('trStep').innerHTML = escapeHTML(tr('tr_step', { amount: money(t.total), num, method: v === 'vodafone' ? tr('pay_vodafone') : 'InstaPay' })) + (num ? ` <button type="button" class="sup-copy" data-copy="${escapeHTML(num)}">${tr('copy')}</button><span class="num" hidden>${escapeHTML(num)}</span>` : ''); }
+  };
+  document.querySelectorAll('input[name=pay]').forEach((r) => r.addEventListener('change', syncPay));
+  $('trProof').addEventListener('change', (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (!f.type.startsWith('image/')) { toast(tr('bad_file')); return; }
+    const r = new FileReader();
+    r.onload = () => { const im = new Image(); im.onload = () => { const s = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); transferProof = c.toDataURL('image/jpeg', 0.85); showProof(); }; im.src = r.result; };
+    r.readAsDataURL(f);
+  });
+  const showProof = () => { const i = $('trPreview'); if (!i) return; i.hidden = !transferProof; if (transferProof) { i.src = transferProof; $('trUploadLbl').textContent = tr('tr_change'); $('trError').hidden = true; } };
+  showProof(); syncPay();
   initDeliveryMap();
 }
 
@@ -226,6 +254,7 @@ async function placeOrder(btn) {
   const payV = document.querySelector('input[name=pay]:checked')?.value;
   const allowed = {kashier:S.payments.kashier && S.orders_endpoint,cod:!hasCustom && S.payments.cod,instapay:S.payments.instapay,vodafone:S.payments.vodafone_cash};
   if (!allowed[payV]) { ok = false; $('paymentError').textContent = tr('err_payment'); $('paymentError').hidden = false; }
+  if (allowed[payV] && isTransfer(payV) && S.orders_endpoint && !transferProof) { ok = false; $('trError').textContent = tr('err_proof'); $('trError').hidden = false; }
   if (!ok) { $('coForm').querySelector('.err:not([hidden])')?.parentElement.scrollIntoView({block:'center',behavior:'smooth'}); return; }
   const t = totals();
   const payLabel = { kashier: tr('pay_kashier'), cod: tr('pay_cod'), instapay: 'InstaPay', vodafone: tr('pay_vodafone') }[payV];
@@ -236,6 +265,7 @@ async function placeOrder(btn) {
   store.set('nay-customer', { name: customer.name, phone: customer.phone, phone_extra:customer.phone_extra, location:customer.location, city: cityIdx, addr: customer.address });
   const items = cart.map((c) => { const l = lineInfo(c); return { slug: c.kind === 'custom' ? 'custom' : c.slug, name: l.name, option: l.option, display: l.display, qty: c.q, price: l.price, line: l.price * c.q, custom: c.kind === 'custom', note: c.note || '', key: c.key, thumb: c.kind === 'custom' ? c.thumb || '' : '' }; });
   const order = { type: 'order', id, created: d.toISOString(), lang, customer, payment: payV, payment_label: payLabel, items, subtotal: t.sub, delivery: t.ship, total: t.total, source: source(), page: location.href };
+  const transfer = isTransfer(payV) && transferProof ? { data: transferProof, ref: ($('trRef')?.value || '').trim() } : null;
   placingOrder = true; btn.disabled = true; btn.textContent = tr('placing');
   const photoList = (await Promise.all(cart.filter((c) => c.kind === 'custom').map(async (c) => ({ key: c.key, name: c.file || 'photo.jpg', data: photos[c.key] || (await photoDB.get(c.key)) || store.get('nay-photo-' + c.key, '') })))).filter((p) => p.data);
 
@@ -243,12 +273,21 @@ async function placeOrder(btn) {
   let sent = false, reply = {};
   if (S.orders_endpoint) {
     try {
-      const res = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify({ ...order, photos: photoList }) });
+      const res = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify({ ...order, photos: photoList, ...(transfer ? { transfer } : {}) }) });
       reply = await res.json().catch(() => ({}));
       sent = res.ok && reply.ok !== false;
     } catch { sent = false; }
   }
-  placingOrder = false; checkoutDraft = null;
+  placingOrder = false;
+  if (reply.error === 'proof_rejected' || reply.error === 'transfer_proof_required') {
+    // The screenshot isn't a transfer receipt: keep the cart and ask for the right screenshot.
+    btn.disabled = false; btn.textContent = tr('place_order_transfer');
+    transferProof = null; if ($('trPreview')) { $('trPreview').hidden = true; $('trPreview').removeAttribute('src'); } if ($('trUploadLbl')) $('trUploadLbl').textContent = tr('tr_upload'); if ($('trProof')) $('trProof').value = '';
+    $('trError').textContent = tr(reply.error === 'proof_rejected' ? 'err_proof_rejected' : 'err_proof'); $('trError').hidden = false;
+    $('transferBox')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+  checkoutDraft = null;
   if (payV === 'kashier' && sent && reply.payUrl) {
     // Card / wallet: go to Kashier's secure page; the purchase is tracked when the payment is confirmed on /pay.
     store.set('nay-pending-pay', { id, total: t.total, ship: t.ship, items: gaItems(), custom: order.items.some((i) => i.custom), at: Date.now() });
@@ -269,11 +308,13 @@ function showDone(o, sent) {
   const hasCustom = o.items.some((i) => i.custom);
   const first = o.customer.name.split(' ')[0];
   $('drawerTitle').textContent = tr('order_placed');
-  const payNote = o.payment === 'kashier' ? tr('pay_online_fail') : o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : o.payment !== 'cod' ? tr('pay_after_wa') : '';
+  const proofSent = sent && isTransfer(o.payment) && !!S.orders_endpoint;
+  if (proofSent) transferProof = null;
+  const payNote = proofSent ? '' : o.payment === 'kashier' ? tr('pay_online_fail') : o.payment === 'instapay' && S.instapay ? tr('pay_after_insta', { id: S.instapay }) : o.payment === 'vodafone' && S.vodafone_cash ? tr('pay_after_voda', { id: S.vodafone_cash }) : o.payment !== 'cod' ? tr('pay_after_wa') : '';
   const rows = o.items.map((i) => `<div class="row"><span>${i.name} (${i.display}) × ${i.qty}</span><span class="price">${money(i.line)}</span></div>`).join('');
   $('drawerBody').innerHTML = `<div class="done-box"><img src="/media/brand/mark.png" alt=""><h2 style="font-size:2rem">${escapeHTML(tr('thanks', { name: first }))}</h2>
-    <p style="color:var(--ink-soft)">${sent ? (hasCustom ? tr('thanks_custom') : tr('thanks_kit')) : S.orders_endpoint ? tr('order_fail') : tr('order_wa_step')}</p><span class="ord">${o.id}</span></div>
-    ${hasCustom ? `<p class="order-note">${tr('custom_payment_notice')}</p>` : ''}
+    <p style="color:var(--ink-soft)">${sent ? (proofSent ? tr('thanks_transfer') : hasCustom ? tr('thanks_custom') : tr('thanks_kit')) : S.orders_endpoint ? tr('order_fail') : tr('order_wa_step')}</p><span class="ord">${o.id}</span></div>
+    ${hasCustom && !proofSent ? `<p class="order-note">${tr('custom_payment_notice')}</p>` : ''}
     ${payNote ? `<p class="order-note">${payNote}</p>` : ''}
     <div class="summary-mini">${rows}<div class="row"><span>${tr('delivery')}</span><span class="price">${money(o.delivery)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(o.total)}</span></div><div class="row"><span>${tr('payment')}</span><span>${o.payment_label}</span></div></div>`;
   const wa = `<a class="btn wa-btn${sent ? '' : ' btn-primary'}" href="${waLink(orderText(o))}" target="_blank" rel="noopener">${tr('send_wa')}</a>`;

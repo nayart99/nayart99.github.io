@@ -41,7 +41,7 @@ function cfg(k) { return PropertiesService.getScriptProperties().getProperty(k) 
 const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 const CANCELLED = 'ملغي';
 
-const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session'];
+const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session', 'Transfer proof', 'Transfer ref', 'Transfer hash', 'Proof check'];
 const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
@@ -83,6 +83,7 @@ function validateOrder(o) {
   if (!Array.isArray(o.items) || !o.items.length) return 'items_required';
   if (['cod', 'instapay', 'vodafone', 'kashier'].indexOf(o.payment) < 0) return 'invalid_payment';
   if (o.payment === 'kashier' && !kashierReady()) return 'online_payment_unavailable';
+  if ((o.payment === 'instapay' || o.payment === 'vodafone') && !/^data:image\/(jpeg|png|webp);base64,/.test(String((o.transfer || {}).data || ''))) return 'transfer_proof_required';
   if (o.items.some(function(i) { return i.custom || i.slug === 'custom'; }) && o.payment === 'cod') return 'custom_prepayment_required';
   return '';
 }
@@ -90,6 +91,12 @@ function validateOrder(o) {
 function saveOrder(o) {
   const invalid = validateOrder(o);
   if (invalid) return { ok: false, error: invalid };
+  // Automatic check of the transfer screenshot (OCR + duplicate detection). Clear junk is refused at checkout.
+  let proofCheck = null;
+  if (o.transfer && o.transfer.data && !findRow(sheet(book(), 'Orders', ORDERS_HEADERS), o.id)) {
+    proofCheck = checkProof(o);
+    if (proofCheck.level === 'reject') return { ok: false, error: 'proof_rejected' };
+  }
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -119,6 +126,19 @@ function saveOrder(o) {
       }
     });
 
+    // transfer screenshot (InstaPay / Vodafone Cash) → Drive
+    let proofId = '', proofLink = '';
+    if (o.transfer && o.transfer.data) {
+      try {
+        const pm = String(o.transfer.data).match(/^data:(image\/(?:jpeg|png|webp));base64,(.*)$/);
+        if (pm && pm[2].length < 8000000) {
+          const pf = folder().createFile(Utilities.newBlob(Utilities.base64Decode(pm[2]), pm[1], o.id + '-transfer.' + (pm[1].split('/')[1] === 'jpeg' ? 'jpg' : pm[1].split('/')[1])));
+          pf.setDescription('NAY ART transfer proof ' + o.id);
+          proofId = pf.getId(); proofLink = pf.getUrl();
+        }
+      } catch (err) { proofLink = 'Proof failed: ' + err; }
+    }
+
     const c = o.customer || {};
     const s = o.source || {};
     const units = (o.items || []).reduce(function (n, i) { return n + Number(i.qty || 0); }, 0);
@@ -138,14 +158,16 @@ function saveOrder(o) {
     row[C['Additional phone']] = c.phone_extra ? "'" + c.phone_extra : '';
     row[C['Delivery latitude']] = c.location.lat; row[C['Delivery longitude']] = c.location.lng;
     row[C['Delivery map']] = deliveryMap(c);
-    row[C['Payment status']] = o.payment === 'kashier' ? 'Awaiting online payment' : hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
+    row[C['Payment status']] = o.payment === 'kashier' ? 'Awaiting online payment' : proofId ? 'Transfer submitted' : hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
+    row[C['Transfer proof']] = proofId; row[C['Transfer ref']] = String((o.transfer || {}).ref || '').slice(0, 60);
+    if (proofCheck) { row[C['Transfer hash']] = proofCheck.hash; row[C['Proof check']] = proofCheck.level + (proofCheck.reasons.length ? ': ' + proofCheck.reasons.join(' · ') : ''); }
     orders.appendRow(row);
     (o.items || []).forEach(function (i) {
       items.appendRow([when, o.id, month, i.name, i.display || i.option, i.qty, i.price, i.line, i.note || '']);
     });
     updateMonthly(ss);
 
-    notifyOwner(o, itemText, hasCustom, links);
+    notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck);
     if (o.payment === 'kashier') {
       const pay = kashierSession(o.id, o.id, Number(o.total || 0), o.lang, (o.customer || {}).phone);
       if (pay.url) setOrderField(orders, o.id, { 'Kashier session': pay.sessionId });
@@ -163,17 +185,98 @@ function saveSubscriber(d) {
   return { ok: true };
 }
 
+/* ---------------- transfer screenshot check ---------------- */
+
+const PROOF_WORDS = /instapay|insta pay|انستا|إنستا|انستاباي|vodafone|فودافون|cash|كاش|transfer|تحويل|حوال|successful|success|completed|بنجاح|ناجح|تمت|تم ال|sent|reference|ref\b|مرجع|egp|جنيه|ج\.م|amount|المبلغ|wallet|محفظ|ipa\b/i;
+
+/** Returns { level: 'ok' | 'warn' | 'bad' | 'reject' | 'unchecked', reasons: [], hash, text }. */
+function checkProof(o) {
+  const out = { level: 'ok', reasons: [], hash: '', text: '' };
+  const m = String((o.transfer || {}).data || '').match(/^data:(image\/(?:jpeg|png|webp));base64,(.*)$/);
+  if (!m) return { level: 'reject', reasons: ['ليست صورة'], hash: '', text: '' };
+  const bytes = Utilities.base64Decode(m[2]);
+  out.hash = hex(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, bytes));
+
+  // the same screenshot or reference number already used on another order
+  try {
+    const sh = sheet(book(), 'Orders', ORDERS_HEADERS);
+    if (sh.getLastRow() > 1) {
+      const vals = sh.getRange(2, 1, sh.getLastRow() - 1, ORDERS_HEADERS.length).getValues();
+      const ref = String((o.transfer || {}).ref || '').replace(/\s/g, '');
+      vals.forEach(function (v) {
+        if (String(v[C['Order ID']]) === String(o.id)) return;
+        if (v[C['Transfer hash']] && v[C['Transfer hash']] === out.hash) out.reasons.push('نفس صورة التحويل اتبعتت قبل كده في طلب ' + v[C['Order ID']]);
+        else if (ref.length >= 4 && String(v[C['Transfer ref']]).replace(/\s/g, '') === ref) out.reasons.push('رقم العملية ده اتستخدم قبل كده في طلب ' + v[C['Order ID']]);
+      });
+      if (out.reasons.length) out.level = 'bad';
+    }
+  } catch (err) {}
+
+  let text = '';
+  try { text = ocrText(Utilities.newBlob(bytes, m[1] === 'image/webp' ? 'image/jpeg' : m[1], 'proof')); }
+  catch (err) { if (out.level === 'ok') { out.level = 'unchecked'; out.reasons.push('تعذّر الفحص الآلي للصورة'); } return out; }
+  out.text = text.slice(0, 1500);
+  const norm = text.replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); }).replace(/[,٬،]/g, '');
+  const digits = norm.replace(/\D/g, '');
+  const total = Math.round(Number(o.total || 0));
+  const amountOk = total > 0 && new RegExp('(^|[^\\d])' + total + '([.٫]0+)?([^\\d]|$)').test(norm);
+  const words = PROOF_WORDS.test(norm);
+  const pay = String(cfg('PAY_NUMBER') || '01033668842').replace(/\D/g, '');
+  const toOk = pay && (digits.indexOf(pay.slice(1)) >= 0 || norm.indexOf(pay.slice(-4)) >= 0);
+
+  if (!norm.trim() || (!words && !amountOk && !toOk)) {
+    out.level = 'reject'; out.reasons.push('الصورة لا تبدو إيصال تحويل');
+    return out;
+  }
+  if (!amountOk) { out.level = 'bad'; out.reasons.push('المبلغ ' + total + ' ج.م مش ظاهر في الصورة'); }
+  if (!toOk && out.level === 'ok') { out.level = 'warn'; }
+  if (!toOk) out.reasons.push('رقم المحفظة/InstaPay بتاعنا مش ظاهر في الصورة');
+  return out;
+}
+
+/** OCR through Google Drive: upload the image as a Google Doc, export its text, then move the temp doc to trash. */
+function ocrText(blob) {
+  const boundary = 'nayart' + Date.now();
+  const head = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify({ name: 'nay-ocr-tmp', mimeType: 'application/vnd.google-apps.document' }) +
+    '\r\n--' + boundary + '\r\nContent-Type: ' + blob.getContentType() + '\r\n\r\n';
+  const payload = Utilities.newBlob(head).getBytes().concat(blob.getBytes()).concat(Utilities.newBlob('\r\n--' + boundary + '--').getBytes());
+  const auth = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  const up = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&ocrLanguage=ar&fields=id', {
+    method: 'post', contentType: 'multipart/related; boundary=' + boundary, payload: payload, headers: auth, muteHttpExceptions: true });
+  if (up.getResponseCode() !== 200) throw new Error('ocr upload ' + up.getResponseCode() + ' ' + up.getContentText().slice(0, 200));
+  const id = JSON.parse(up.getContentText()).id;
+  try {
+    const ex = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '/export?mimeType=text/plain', { headers: auth, muteHttpExceptions: true });
+    if (ex.getResponseCode() !== 200) throw new Error('ocr export ' + ex.getResponseCode());
+    return ex.getContentText('UTF-8');
+  } finally {
+    try { DriveApp.getFileById(id).setTrashed(true); } catch (err) {}
+  }
+}
+
+/** Run from the editor to test the screenshot check on a sample image. */
+function testProofCheck() {
+  const url = 'https://raw.githubusercontent.com/nayart99/nayart99.github.io/main/apps-script/sample-transfer.jpg';
+  const b = UrlFetchApp.fetch(url).getBlob();
+  const r = checkProof({ id: 'TEST', total: 2320, transfer: { data: 'data:image/jpeg;base64,' + Utilities.base64Encode(b.getBytes()) } });
+  Logger.log(JSON.stringify(r));
+  const junk = Utilities.newBlob(Utilities.base64Decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA='), 'image/jpeg');
+  Logger.log(JSON.stringify(checkProof({ id: 'TEST2', total: 2320, transfer: { data: 'data:image/jpeg;base64,' + Utilities.base64Encode(junk.getBytes()) } })));
+}
+
 /* ---------------- notifications ---------------- */
 
-function notifyOwner(o, itemText, hasCustom, links) {
+function notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck) {
   const c = o.customer || {};
+  const flag = proofCheck && proofCheck.level === 'bad' ? '🔴 *تنبيه: صورة التحويل فيها مشكلة* — ' + proofCheck.reasons.join(' · ') + '\n' : proofCheck && proofCheck.level === 'warn' ? '🟠 راجع صورة التحويل كويس: ' + proofCheck.reasons.join(' · ') + '\n' : '';
   const wa = '🔔 *طلب جديد على NAY ART*\n' +
     'رقم الطلب: ' + o.id + '\n' +
     'العميل: ' + (c.name || '') + ' – ' + (c.city || '') + '\n' +
     'الإجمالي: ' + o.total + ' ج.م' + (hasCustom ? '\n📷 لوحة من صورة العميل' : '') + '\n\n' +
     'هاتف التواصل: ' + (c.phone || '') + (c.phone_extra ? '\nهاتف إضافي: ' + c.phone_extra : '') + '\n' +
     (deliveryMap(c) ? 'موقع التوصيل: ' + deliveryMap(c) + '\n' : '') +
-    (hasCustom ? '⚠️ سداد المبلغ كاملًا وتأكيد استلامه قبل التصميم والتنفيذ.\n' : '') +
+    (proofLink ? '💳 العميل رفع صورة التحويل (' + (o.payment_label || o.payment) + ') — راجعها وأكد وصول المبلغ من اللوحة.\n' + flag : hasCustom ? '⚠️ سداد المبلغ كاملًا وتأكيد استلامه قبل التصميم والتنفيذ.\n' : '') +
     'افتح لوحة الطلبات:\n' + DASHBOARD_URL;
   sendWhatsApp(wa);
 
@@ -184,7 +287,7 @@ function notifyOwner(o, itemText, hasCustom, links) {
       body: 'طلب جديد على NAY ART\n\nرقم الطلب: ' + o.id + '\n\n' + itemText +
         '\n\nالتوصيل: ' + o.delivery + ' ج.م\nالإجمالي: ' + o.total + ' ج.م\nالدفع: ' + (o.payment_label || o.payment) +
         '\n\n' + (c.name || '') + '\n' + (c.phone || '') + (c.phone_extra ? '\nهاتف إضافي: ' + c.phone_extra : '') + (deliveryMap(c) ? '\nالموقع: ' + deliveryMap(c) : '') + (hasCustom ? '\nيشترط سداد المبلغ كاملًا قبل التنفيذ.' : '') + '\n' + (c.city || '') + ' – ' + (c.address || '') + (c.notes ? '\nملاحظات: ' + c.notes : '') +
-        (links.length ? '\n\nصورة العميل:\n' + links.join('\n') : '') + '\n\nلوحة الطلبات: ' + DASHBOARD_URL,
+        (links.length ? '\n\nصورة العميل:\n' + links.join('\n') : '') + (proofLink ? '\n\nصورة التحويل (راجعها قبل التأكيد):\n' + proofLink + (flag ? '\n' + flag.replace(/\*/g, '') : '') + ((o.transfer || {}).ref ? '\nرقم العملية: ' + o.transfer.ref : '') : '') + '\n\nلوحة الطلبات: ' + DASHBOARD_URL,
     });
   } catch (err) { /* email quota – the order is still saved */ }
 }
@@ -372,9 +475,21 @@ function admin(d) {
     sh.getRange(r, C['Last update'] + 1).setValue(new Date());
     return { ok: true };
   }
+  if (d.action === 'recheck') {
+    const r = findRow(sh, d.id);
+    if (!r) return { ok: false, error: 'not found' };
+    const v = sh.getRange(r, 1, 1, ORDERS_HEADERS.length).getValues()[0];
+    if (!v[C['Transfer proof']]) return { ok: false, error: 'no proof' };
+    const blob = DriveApp.getFileById(v[C['Transfer proof']]).getBlob();
+    const res = checkProof({ id: d.id, total: v[C['Total (EGP)']], transfer: { ref: v[C['Transfer ref']], data: 'data:image/jpeg;base64,' + Utilities.base64Encode(blob.getBytes()) } });
+    const level = res.level === 'reject' ? 'bad' : res.level;
+    const txt = level + (res.reasons.length ? ': ' + res.reasons.join(' · ') : '');
+    setOrderField(sh, d.id, { 'Transfer hash': res.hash, 'Proof check': txt });
+    return { ok: true, proof_check: txt };
+  }
   if (d.action === 'photo') {
     const r = findRow(sh, d.orderId);
-    const ids = r ? String(sh.getRange(r, C['Photo IDs'] + 1).getValue()).split(',') : [];
+    const ids = r ? String(sh.getRange(r, C['Photo IDs'] + 1).getValue()).split(',').concat([String(sh.getRange(r, C['Transfer proof'] + 1).getValue())]).filter(String) : [];
     if (ids.indexOf(d.fileId) < 0) return { ok: false, error: 'not found' };
     const blob = DriveApp.getFileById(d.fileId).getBlob();
     return { ok: true, data: 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()), name: blob.getName() };
@@ -400,6 +515,7 @@ function listOrders(sh) {
       location: v[C['Delivery latitude']] !== '' && v[C['Delivery longitude']] !== '' ? { lat: Number(v[C['Delivery latitude']]), lng: Number(v[C['Delivery longitude']]) } : null,
       payment_status: v[C['Payment status']] || 'Unconfirmed',
       payment_ref: v[C['Payment ref']] || '',
+      transfer_proof: v[C['Transfer proof']] || '', transfer_ref: v[C['Transfer ref']] || '', proof_check: v[C['Proof check']] || '',
       items: items.length ? items : [{ name: v[C['Items']], option: '', qty: v[C['Units']], line: v[C['Subtotal (EGP)']] }],
       units: v[C['Units']], subtotal: v[C['Subtotal (EGP)']], delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']],
       notes: v[C['Customer notes']], internal: v[C['Internal notes']],

@@ -293,7 +293,7 @@
   "address_review": "Review the address and add the building, floor and apartment. A written address is required.",
   "address_manual": "The address could not be found automatically. Enter the full address; your map pin is saved.",
   "address_use_map": "Use map address",
-  "custom_pay_numbers": "Transfer the full total to {num} by InstaPay or Vodafone Cash, then send the transfer screenshot on WhatsApp.",
+  "custom_pay_numbers": "Transfer the full total to {num} by InstaPay or Vodafone Cash, and upload the transfer screenshot at checkout.",
   "pay_kashier": "Pay online now (card or wallet)",
   "pay_redirecting": "Taking you to secure payment…",
   "pay_online_fail": "We saved your order, but the payment page did not open. Tap below to send it on WhatsApp and we will help you pay.",
@@ -307,5 +307,15 @@
   "pay_retry": "Try paying again",
   "pay_unknown_t": "We could not confirm the payment yet",
   "pay_unknown_p": "If money was taken from your card or wallet, don't pay again. Send us your order number {id} on WhatsApp and we will confirm it.",
-  "pay_secure": "Secure payment by Kashier"
+  "pay_secure": "Secure payment by Kashier",
+  "tr_title": "Transfer first, then confirm your order",
+  "tr_step": "1. Transfer {amount} to {num} by {method}.",
+  "tr_step2": "2. Upload a screenshot of the transfer.",
+  "tr_upload": "Upload transfer screenshot",
+  "tr_change": "Change screenshot",
+  "tr_ref": "Transfer reference number (optional)",
+  "err_proof": "Upload the transfer screenshot to confirm your order.",
+  "err_proof_rejected": "This doesn't look like a transfer screenshot. Please upload the InstaPay or Vodafone Cash confirmation screen showing the amount. If you're sure it's correct, message us on WhatsApp.",
+  "place_order_transfer": "I've transferred – confirm order",
+  "thanks_transfer": "We received your order and transfer screenshot. We'll check the transfer and confirm on WhatsApp, then start preparing your order."
 }

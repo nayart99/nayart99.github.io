@@ -519,3 +519,15 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .pay-icon.ok{background:#1f7a4d}.pay-icon.fail{background:var(--burgundy)}
 .pay-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px}
 .pay-secure{text-align:center;color:var(--ink-soft);font-size:.82rem;margin-top:16px}
+
+/* transfer proof at checkout */
+.transfer-box{border:1.5px solid var(--burgundy);border-radius:var(--radius);background:color-mix(in srgb,var(--blush) 16%,var(--paper));padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:.92rem}
+.transfer-box[hidden]{display:none!important}
+.transfer-box .tb-title{font-size:1rem;color:var(--burgundy)}
+.transfer-box p{margin:0}
+.transfer-box .sup-copy{margin-inline-start:6px}
+.transfer-box .tb-upload{display:inline-flex;gap:8px;align-items:center;justify-content:center;cursor:pointer;background:var(--paper)}
+.transfer-box .tb-upload svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}
+.transfer-box img{max-height:220px;width:auto;max-width:100%;object-fit:contain;border:1px solid var(--line);border-radius:4px;align-self:flex-start}
+.transfer-box .tb-ref{font-size:.85rem;color:var(--ink-soft)}
+.transfer-box input#trRef{border:1px solid var(--line);border-radius:var(--radius);padding:9px 12px;background:#fff}

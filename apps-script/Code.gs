@@ -29,6 +29,9 @@
 //                       transfer screenshot passes every check (amount, our number, today's date, receipt, never used before)
 //   MIMI_PREVIEW_DAILY  max real previews (Mimi Panda conversions) the website may create per day, all customers (default 60)
 //   MIMI_PREVIEW_PER_DEVICE max previews per customer device per 6 hours (default 4)
+//   MIMI_STYLE          detail (default: keeps faces), standard (Mimi defaults, smoother) or painting (adds a painterly filter)
+//   MIMI_MIN_AREA       smallest paint area, % of the canvas short side (default 0.5)
+//   MIMI_FILTER         painting filter for MIMI_STYLE=painting (default painting-general)
 //   PAY_ALIASES         optional, comma separated: how our account appears on InstaPay receipts (IPA address, account name)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
@@ -433,7 +436,7 @@ function designStart(sh, id, opts) {
       const dim = own ? null : imageSize(blob.getBytes());
       const crop = own || (dim ? centerCrop(dim.w, dim.h, cv.ratio) : null);
       if (own) job.framed = true;
-      const form = { image: blob, numberOfColors: String(colors), segmentsComplexity: complexity, canvasSize: cv.size };
+      const form = Object.assign({ image: blob, numberOfColors: String(colors), segmentsComplexity: complexity, canvasSize: cv.size }, mimiStyle(cfg('MIMI_STYLE') || 'detail'));
       if (crop) { form.crop = '1'; form.cropCoordinates = JSON.stringify(crop); }
       let res = mimiFetch('/service/pbn', { method: 'post', payload: form });
       if (res.getResponseCode() === 404) res = mimiFetch('/pbn', { method: 'post', payload: form });
@@ -451,6 +454,15 @@ function designStart(sh, id, opts) {
 /* ---- real previews on the website (before payment) ---- */
 
 function cleanMimiKey(k) { k = String(k || ''); return /^[A-Za-z0-9-]{8,64}$/.test(k) ? k : ''; }
+
+/** Detail presets for Mimi Panda. 'standard' = Mimi defaults (smooths away small details);
+ *  'detail' keeps faces and small features; 'painting' adds a painterly AI filter on top. */
+function mimiStyle(name) {
+  const minArea = String(cfg('MIMI_MIN_AREA') || '0.5');
+  if (name === 'standard') return {};
+  if (name === 'painting') return { enhancement: '0', minArea: minArea, aiFilterType: cfg('MIMI_FILTER') || 'painting-general' };
+  return { enhancement: '0', minArea: minArea };
+}
 
 /** The customer pressed "Create my canvas": send the framed photo to Mimi Panda (24 colours, chosen size). */
 function previewStart(d) {
@@ -477,6 +489,7 @@ function previewStart(d) {
   const crop = cleanCrop(d.crop);
   const colors = String(Math.max(7, Math.min(100, Number(cfg('MIMI_COLORS')) || 24)));
   const form = { image: Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], 'photo.' + (m[1] === 'image/png' ? 'png' : 'jpg')), numberOfColors: colors, segmentsComplexity: cfg('MIMI_COMPLEXITY') || 'none', canvasSize: cv.size };
+  Object.assign(form, mimiStyle(d.style || cfg('MIMI_STYLE') || 'detail'));
   if (crop) { form.crop = '1'; form.cropCoordinates = JSON.stringify(crop); }
   let res = mimiFetch('/service/pbn', { method: 'post', payload: form });
   if (res.getResponseCode() === 404) res = mimiFetch('/pbn', { method: 'post', payload: form });
@@ -507,7 +520,7 @@ function previewStatus(d) {
   const numbered = img('/pbn/download/pbnpng?width=1200'), painted = img('/pbn/download/originpng?width=1200');
   if (!numbered) return { ok: true, status: 'processing' };
   try { const sh = sheet(book(), 'Previews', PREVIEW_HEADERS), f = sh.getRange('B:B').createTextFinder(key).matchEntireCell(true).findNext(); if (f) sh.getRange(f.getRow(), 7).setValue('ready'); } catch (e) {}
-  return { ok: true, status: 'ready', numbered: numbered, painted: painted, palette: (body.colors || []).map(function (c) { return c.hex; }).slice(0, 100) };
+  return { ok: true, status: 'ready', numbered: numbered, painted: painted, palette: (body.colors || []).map(function (c) { const h = String(c.hex || c.color || '').trim(); return /^#/.test(h) ? h : '#' + h; }).slice(0, 100) };
 }
 
 /** Checks unfinished jobs; when Mimi Panda is done, saves the files to Drive. */
@@ -530,7 +543,7 @@ function designStatus(sh, id) {
       file.setDescription('NAY ART print design ' + id);
       j.files[f[0]] = file.getId();
     });
-    j.palette = (body.colors || []).slice(0, 100).map(function (c) { return { n: c.number, hex: c.hex, name: c.name || '' }; });
+    j.palette = (body.colors || []).slice(0, 100).map(function (c) { const h = String(c.hex || c.color || '').trim(); return { n: c.number, hex: /^#/.test(h) ? h : '#' + h, name: c.name || '' }; });
     j.status = j.files.print_pdf ? 'ready' : 'downloading';
     j.done = new Date().toISOString();
     changed = true;

@@ -503,7 +503,7 @@ if (customPage) {
     setCreate(pvShown ? 'update' : 'create');
     status(pvShown ? tr('pbn_changed') : tr('pbn_frame_first'));
   }
-  const watermark = (cv) => { const g = cv.getContext('2d'); g.save(); g.globalAlpha = 0.13; g.fillStyle = '#7A1F2B'; g.font = `600 ${Math.round(cv.width / 22)}px system-ui, sans-serif`; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 6); for (let y = -cv.height; y < cv.height; y += cv.width / 5) for (let x = -cv.width; x < cv.width; x += cv.width / 2.2) g.fillText('NAY ART · PREVIEW', x, y); g.restore(); };
+  const watermark = (cv) => { const g = cv.getContext('2d'); g.save(); g.globalAlpha = 0.09; g.fillStyle = '#7A1F2B'; g.font = `600 ${Math.round(cv.width / 22)}px system-ui, sans-serif`; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 6); for (let y = -cv.height; y < cv.height; y += cv.width / 5) for (let x = -cv.width; x < cv.width; x += cv.width / 2.2) g.fillText('NAY ART · PREVIEW', x, y); g.restore(); };
   const toCanvas = (img, W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(img, 0, 0, W, H); return c; };
   const loadImg = (src) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
   const api = async (body) => { const r = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify(body) }); return r.json(); };
@@ -534,7 +534,7 @@ if (customPage) {
       const W = num.naturalWidth, H = num.naturalHeight;
       const photo = document.createElement('canvas'); photo.width = W; photo.height = H; drawCrop(photo, cImg, crop);
       const color = toCanvas(col, W, H), lines = toCanvas(num, W, H); watermark(color); watermark(lines);
-      const r = { W, H, photo, color, lines, numbers: [], palette: res.palette || [] };
+      const r = { W, H, photo, color, lines, numbers: [], palette: (res.palette || []).map((h) => (/^#/.test(h) ? h : '#' + h)) };
       pvShown = { sig: mySig, key: st.key, r }; pv = null;
       $('drop').style.aspectRatio = String(W / H);
       $('pbnPalette').innerHTML = r.palette.map((c, k) => `<i style="background:${c};animation-delay:${k * 35}ms" title="${k + 1}"></i>`).join('');

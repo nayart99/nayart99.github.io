@@ -1,5 +1,5 @@
 // NAY ART – browser behaviour for every page.
-import { playReveal, showView, cropRect, drawCrop } from './pbn-preview.js';
+import { buildPBN, playReveal, showView, cropRect, drawCrop } from './pbn-preview.js';
 const $ = (id) => document.getElementById(id);
 const DATA = JSON.parse($('store-data').textContent);
 const { lang, settings: S, products: PRODUCTS } = DATA;
@@ -465,6 +465,10 @@ if (customPage) {
   const canvasRatio = () => { const m = String(S.custom_sizes[cSize].label).match(/(\d+)\s*[×x]\s*(\d+)/); const a = m ? +m[1] : 4, b = m ? +m[2] : 5; return cOr === 'Landscape' ? Math.max(a, b) / Math.min(a, b) : Math.min(a, b) / Math.max(a, b); };
   const curCrop = () => cropRect(cImg.naturalWidth, cImg.naturalHeight, canvasRatio(), pvView);
   const sig = () => cImg ? [cSize, cOr, ...Object.values(curCrop())].join('|') : '';
+  // 'local' (default): free preview made in the browser; Mimi Panda is used only after payment (print file).
+  // 'mimi': the real Mimi Panda canvas on demand (costs credits per preview).
+  const REAL = S.preview_mode === 'mimi' && !!S.orders_endpoint;
+  let localTimer = null, localDone = false;
   const PV_STEPS = ['colors', 'lines', 'numbers'];
   function steps(st) {
     const i = PV_STEPS.indexOf(st);
@@ -494,14 +498,36 @@ if (customPage) {
       setCreate('hide'); $('drop').style.aspectRatio = String(pvShown.r.W / pvShown.r.H);
       const cv = $('pbnCanvas'); cv.width = pvShown.r.W; cv.height = pvShown.r.H; cv.hidden = false;
       const v = ($('pbnViews').querySelector('[aria-pressed="true"]') || {}).dataset?.v || 'numbers'; showView(cv, pvShown.r, v);
-      $('pbnViews').hidden = false; steps('done'); status(tr('pbn_ready_real', { n: pvShown.r.palette.length || 24 }));
+      $('pbnViews').hidden = false; steps('done'); status(tr(REAL ? 'pbn_ready_real' : 'pbn_ready', { n: pvShown.r.palette.length || 24 }));
       $('pbnPalette').innerHTML = pvShown.r.palette.map((c, k) => `<i style="background:${c};animation:none;opacity:1;transform:none" title="${k + 1}"></i>`).join('');
       return;
     }
     $('pbnViews').hidden = true; $('pbnPalette').innerHTML = ''; steps('');
     liveFrame();
+    if (!REAL) { setCreate('hide'); status(tr('pbn_analyzing')); clearTimeout(localTimer); localTimer = setTimeout(makeLocal, 450); return; }
     setCreate(pvShown ? 'update' : 'create');
     status(pvShown ? tr('pbn_changed') : tr('pbn_frame_first'));
+  }
+  // free preview, made on the customer's phone (no Mimi Panda credits)
+  async function makeLocal() {
+    if (!cImg) return;
+    const run = ++pvRun, mySig = sig(), ratio = canvasRatio();
+    try {
+      await new Promise((r) => setTimeout(r, 30));
+      const r = await buildPBN(cImg, ratio, 24, Math.min(innerWidth, innerHeight) < 700 ? 900 : 1100, pvView);
+      if (run !== pvRun) return;
+      pvShown = { sig: mySig, key: '', r };
+      $('drop').style.aspectRatio = String(r.W / r.H); $('pvImg').hidden = true; $('pbnCanvas').hidden = false;
+      $('pbnPalette').innerHTML = r.palette.map((c, k) => `<i style="background:${c};animation-delay:${k * 35}ms" title="${k + 1}"></i>`).join('');
+      const ok = await playReveal($('pbnCanvas'), r, (st) => { steps(st); if (st !== 'done') status(tr('pbn_' + st)); }, () => run === pvRun, localDone);
+      if (ok && run === pvRun) {
+        localDone = true; steps('done'); status(tr('pbn_ready', { n: r.palette.length }));
+        $('pbnViews').hidden = false; $('pbnViews').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === 'numbers' ? 'true' : 'false'));
+      }
+    } catch (err) {
+      if (run !== pvRun) return;
+      status(''); $('pbnCanvas').hidden = true; $('pvImg').hidden = false;
+    }
   }
   const watermark = (cv) => { const g = cv.getContext('2d'); g.save(); g.globalAlpha = 0.09; g.fillStyle = '#7A1F2B'; g.font = `600 ${Math.round(cv.width / 22)}px system-ui, sans-serif`; g.translate(cv.width / 2, cv.height / 2); g.rotate(-Math.PI / 6); for (let y = -cv.height; y < cv.height; y += cv.width / 5) for (let x = -cv.width; x < cv.width; x += cv.width / 2.2) g.fillText('NAY ART · PREVIEW', x, y); g.restore(); };
   const toCanvas = (img, W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(img, 0, 0, W, H); return c; };
@@ -570,7 +596,7 @@ if (customPage) {
       const img = $('pvImg'); img.src = shrink(im, 1200, 0.85);
       $('upEmpty').hidden = true; $('drop').classList.add('has-photo'); $('upDone').hidden = false; $('pvNote').hidden = false;
       has = true; upd(); track('generate_lead', { method: 'custom_photo' });
-      cImg = im; pvRun++; pv = null; pvShown = null; pvView = { z: 1, cx: 0.5, cy: 0.5 }; $('pbnZoom').value = 1; $('drop').classList.remove('pannable');
+      cImg = im; pvRun++; pv = null; pvShown = null; localDone = false; pvView = { z: 1, cx: 0.5, cy: 0.5 }; $('pbnZoom').value = 1; $('drop').classList.remove('pannable');
       if (!S.orders_endpoint) { img.hidden = false; return; }
       refreshState();
     }; im.src = r.result; };

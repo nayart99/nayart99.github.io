@@ -27,6 +27,8 @@
 //   MIMI_COMPLEXITY     none, level1, level2, level3 or simplest (default none = most detail)
 //   MIMI_AUTO           yes = start the print design automatically (default yes): when the owner confirms payment, or when the
 //                       transfer screenshot passes every check (amount, our number, today's date, receipt, never used before)
+//   MIMI_PREVIEW        on = allow real Mimi Panda previews before payment (costs credits). Default off: the website
+//                       shows a free preview and Mimi Panda is only used after the payment is confirmed.
 //   MIMI_PREVIEW_DAILY  max real previews (Mimi Panda conversions) the website may create per day, all customers (default 60)
 //   MIMI_PREVIEW_PER_DEVICE max previews per customer device per 6 hours (default 4)
 //   MIMI_STYLE          detail (default: keeps faces), standard (Mimi defaults, smoother) or painting (adds a painterly filter)
@@ -466,6 +468,8 @@ function mimiStyle(name) {
 
 /** The customer pressed "Create my canvas": send the framed photo to Mimi Panda (24 colours, chosen size). */
 function previewStart(d) {
+  // Real previews before payment cost credits, so they are off unless MIMI_PREVIEW = on (the site uses a free preview).
+  if (cfg('MIMI_PREVIEW') !== 'on') return { ok: false, error: 'preview_off' };
   if (!mimiReady()) return { ok: false, error: 'mimi_not_configured' };
   const m = String(d.image || '').match(/^data:(image\/(?:jpeg|png|webp));base64,(.*)$/);
   if (!m || m[2].length > 12000000) return { ok: false, error: 'bad_image' };

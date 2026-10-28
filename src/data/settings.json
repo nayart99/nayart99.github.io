@@ -55,5 +55,6 @@
     "facebook": "https://www.facebook.com/share/19dKDBqs9m/",
     "tiktok": "https://www.tiktok.com/@nayart55"
   },
-  "launch_offer": true
+  "launch_offer": true,
+  "preview_mode": "local"
 }

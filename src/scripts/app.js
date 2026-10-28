@@ -489,8 +489,9 @@ if (customPage) {
     $('drop').style.aspectRatio = String(ratio);
     drawCrop(cv, cImg, c); cv.hidden = false; $('pvImg').hidden = true;
   }
+  const NO_PREVIEW = S.preview_mode === 'none';
   function refreshState() {
-    if (!cImg) return;
+    if (!cImg || NO_PREVIEW) return;
     $('pbnUi').hidden = false; $('pbnFrame').hidden = false;
     if (pv && pv.state === 'busy') return;
     if (pvShown && pvShown.sig === sig()) {
@@ -597,7 +598,7 @@ if (customPage) {
       $('upEmpty').hidden = true; $('drop').classList.add('has-photo'); $('upDone').hidden = false; $('pvNote').hidden = false;
       has = true; upd(); track('generate_lead', { method: 'custom_photo' });
       cImg = im; pvRun++; pv = null; pvShown = null; localDone = false; pvView = { z: 1, cx: 0.5, cy: 0.5 }; $('pbnZoom').value = 1; $('drop').classList.remove('pannable');
-      if (!S.orders_endpoint) { img.hidden = false; return; }
+      if (NO_PREVIEW || !S.orders_endpoint) { img.hidden = false; return; } // photo only: the design is sent after payment
       refreshState();
     }; im.src = r.result; };
     r.readAsDataURL(file);

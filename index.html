@@ -388,6 +388,11 @@ html[dir="rtl"] .flipx{display:inline-block;transform:scaleX(-1)}
 .pay .row b{display:block;font-weight:600;margin-bottom:4px}
 .pay .row span{color:var(--stone);font-size:.95rem}
 .pay .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.pay .logos{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.pay .lg{display:grid;place-items:center;width:112px;height:56px;padding:9px 12px;border-radius:14px;background:#fff;border:1px solid var(--line);box-sizing:border-box}
+.pay .lg img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.pay .lg.more{width:auto;padding-inline:16px;font-size:.88rem;color:var(--stone);background:transparent;border-style:dashed}
+@media (max-width:480px){.pay .lg{width:96px;height:50px}}
 .pay .chips i{font-style:normal;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.85rem;color:var(--ink)}
 @media (max-width:860px){.pay .wrap{grid-template-columns:1fr}}
 
@@ -768,7 +773,12 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
       <div><span class="eyebrow" data-i18n="pay.eyebrow"></span><h2 data-i18n="pay.t"></h2></div>
       <div class="lst">
         <div class="row"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h3"/></svg><div><b data-i18n="pay.1t"></b><span data-i18n="pay.1p"></span><div class="chips"><i>Visa</i><i>InstaPay</i></div></div></div>
-        <div class="row"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><div><b data-i18n="pay.2t"></b><span data-i18n="pay.2p"></span><div class="chips"><i>Fawry</i><i>Aman</i><i>Souhoola</i><i data-i18n="pay.more"></i></div></div></div>
+        <div class="row"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><div><b data-i18n="pay.2t"></b><span data-i18n="pay.2p"></span><div class="logos">
+            <span class="lg"><img src="pay-fawry.png" alt="Fawry"></span>
+            <span class="lg" style="background:#00aec9;border-color:#00aec9"><img src="pay-aman.png" alt="Aman"></span>
+            <span class="lg"><img src="pay-souhoola.png" alt="Souhoola"></span>
+            <span class="lg"><img src="pay-valu.png" alt="valU"></span>
+          </div></div></div>
         <div class="row"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/></svg><div><b data-i18n="pay.3t"></b><span data-i18n="pay.3p"></span></div></div>
       </div>
     </div>
@@ -896,7 +906,7 @@ en:{
  "ba.before":"Before","ba.after":"After","ba.c1":"Smile restoration","ba.c2":"Full smile makeover","ba.c3":"Rebuilding a damaged smile","ba.c4":"Replacing missing teeth","ba.moreT":"More results","ba.a1":"Lip filler","ba.a2":"Forehead Botox","ba.a3":"Eye Botox","ba.a4":"Cheek filler","ba.a5":"Double chin lipo","ba.c5":"Smile makeover","ba.c6":"Restored teeth, close-up","ba.c7":"New smile","ba.note":"Patient photos are published with written consent.",
  "book.t":"Book your visit","book.p":"Leave your details and the clinic team will contact you to confirm the nearest appointment.",
  "i.addrT":"Address","i.addr":"35 Oman Street, off Mohie El Din Abou El Ezz, Dokki, Giza","i.map":"Open in Google Maps →",
- "rv.eyebrow":"Reviews","rv.t":"What our patients say","rv.score":"Google rating","rv.more":"Read all reviews on Google","pay.eyebrow":"Payment","pay.t":"Easy ways to pay","pay.1t":"Card or InstaPay","pay.1p":"Pay by Visa card or InstaPay at the clinic.","pay.2t":"Installments","pay.2p":"Split the cost with installment apps.","pay.more":"and more","pay.3t":"Orthodontics in-house installments","pay.3p":"Orthodontic treatment can be paid in installments directly with the clinic.","i.hoursT":"Opening hours","i.followT":"Follow us","i.phoneT":"Phone & WhatsApp","i.hours":"Every day except Friday<br>12:00 pm – 10:00 pm",
+ "rv.eyebrow":"Reviews","rv.t":"What our patients say","rv.score":"Google rating","rv.more":"Read all reviews on Google","pay.eyebrow":"Payment","pay.t":"Easy ways to pay","pay.1t":"Card or InstaPay","pay.1p":"Pay by Visa card or InstaPay at the clinic.","pay.2t":"Installments","pay.2p":"Split the cost with these installment apps and more.","pay.more":"and more","pay.3t":"Orthodontics in-house installments","pay.3p":"Orthodontic treatment can be paid in installments directly with the clinic.","i.hoursT":"Opening hours","i.followT":"Follow us","i.phoneT":"Phone & WhatsApp","i.hours":"Every day except Friday<br>12:00 pm – 10:00 pm",
  "legal":"© 2026 ÉLEVÉ Dental & Aesthetic Clinic. Results vary from person to person.",
  "f1":"Session","f2":"Course","f3":"Recovery",
  "sh.book":"Book this on WhatsApp","sh.note":"Typical figures. Your doctor confirms your plan at the consultation.",
@@ -927,7 +937,7 @@ ar:{
  "ba.before":"قبل","ba.after":"بعد","ba.c1":"إعادة بناء الابتسامة","ba.c2":"تغيير شامل للابتسامة","ba.c3":"إعادة بناء ابتسامة متضررة","ba.c4":"تعويض الأسنان المفقودة","ba.moreT":"نتائج أكتر","ba.a1":"فيلر الشفايف","ba.a2":"بوتوكس الجبهة","ba.a3":"بوتوكس حول العين","ba.a4":"فيلر الخدود","ba.a5":"شفط الدقن المزدوجة","ba.c5":"تغيير الابتسامة","ba.c6":"الأسنان بعد الترميم عن قرب","ba.c7":"ابتسامة جديدة","ba.note":"صور المرضى بتتنشر بموافقة مكتوبة.",
  "book.t":"احجز زيارتك","book.p":"سيب بياناتك، وفريق العيادة هيتواصل معاك يأكد أقرب معاد.",
  "i.addrT":"العنوان","i.addr":"٣٥ شارع عمان، متفرع من محيي الدين أبو العز، الدقي، الجيزة","i.map":"افتح على خرائط جوجل ←",
- "rv.eyebrow":"آراء المرضى","rv.t":"المرضى بيقولوا إيه عننا","rv.score":"تقييم جوجل","rv.more":"اقرأ كل التقييمات على جوجل","pay.eyebrow":"الدفع","pay.t":"طرق دفع سهلة","pay.1t":"فيزا أو إنستاباي","pay.1p":"ادفع بالفيزا أو إنستاباي في العيادة.","pay.2t":"التقسيط","pay.2p":"قسّط التكلفة من خلال تطبيقات التقسيط.","pay.more":"وغيرها","pay.3t":"تقسيط التقويم مع العيادة","pay.3p":"علاج التقويم ممكن يتقسّط مباشرة مع العيادة.","i.hoursT":"مواعيد العمل","i.followT":"تابعونا","i.phoneT":"التليفون وواتساب","i.hours":"كل يوم ما عدا الجمعة<br>١٢ ظهرًا – ١٠ مساءً",
+ "rv.eyebrow":"آراء المرضى","rv.t":"المرضى بيقولوا إيه عننا","rv.score":"تقييم جوجل","rv.more":"اقرأ كل التقييمات على جوجل","pay.eyebrow":"الدفع","pay.t":"طرق دفع سهلة","pay.1t":"فيزا أو إنستاباي","pay.1p":"ادفع بالفيزا أو إنستاباي في العيادة.","pay.2t":"التقسيط","pay.2p":"قسّط التكلفة من خلال تطبيقات التقسيط دي وغيرها.","pay.more":"وغيرها","pay.3t":"تقسيط التقويم مع العيادة","pay.3p":"علاج التقويم ممكن يتقسّط مباشرة مع العيادة.","i.hoursT":"مواعيد العمل","i.followT":"تابعونا","i.phoneT":"التليفون وواتساب","i.hours":"كل يوم ما عدا الجمعة<br>١٢ ظهرًا – ١٠ مساءً",
  "legal":"© ٢٠٢٦ إيليفيه لطب الأسنان والتجميل. النتائج تختلف من شخص لآخر.",
  "f1":"الجلسة","f2":"عدد الجلسات","f3":"التعافي",
  "sh.book":"احجز الخدمة دي على واتساب","sh.note":"أرقام تقريبية. الطبيب بيأكد خطتك في الاستشارة.",

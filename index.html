@@ -326,6 +326,24 @@ html[lang="ar"] .ba .lab{font-family:var(--ar-body);letter-spacing:0;font-size:.
 .ba .bar{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:2px;background:var(--paper);z-index:2;transform:translateX(-1px)}
 .ba .bar::after{content:"";position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f1e1d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l-5 6 5 6M15 6l5 6-5 6'/%3E%3C/svg%3E") center/20px no-repeat;box-shadow:0 6px 18px rgba(31,30,29,.25)}
 .ba input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;z-index:3;margin:0}
+.sw{position:relative;display:grid;grid-template-columns:1fr 1fr;width:min(360px,100%);margin:0 auto clamp(28px,4vw,44px);padding:5px;border-radius:999px;background:var(--paper);border:1px solid var(--line);box-shadow:0 8px 24px -14px rgba(31,30,29,.35)}
+.sw button{all:unset;position:relative;z-index:1;cursor:pointer;text-align:center;padding:13px 10px;border-radius:999px;font:500 1.15rem/1 var(--display);letter-spacing:.04em;color:var(--stone);transition:color .35s}
+html[lang="ar"] .sw button{font-family:var(--ar-display);font-weight:600;font-size:1.05rem}
+.sw button[aria-selected="true"]{color:var(--paper)}
+.sw button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.sw .knob{position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 5px);border-radius:999px;background:var(--ink);transition:transform .45s cubic-bezier(.6,0,.2,1)}
+.sw[data-on="aesthetic"] .knob{transform:translateX(100%)}
+html[dir="rtl"] .sw .knob{left:auto;right:5px}
+html[dir="rtl"] .sw[data-on="aesthetic"] .knob{transform:translateX(-100%)}
+.ba-panel{animation:panelIn .5s ease both}
+@keyframes panelIn{from{opacity:0;transform:translateY(12px)}}
+.ba-panel .ba-static{margin-top:20px}
+.pair{position:relative;margin:0}
+.pair img{width:100%;aspect-ratio:1000/453;object-fit:cover;border-radius:22px;display:block}
+.pair .lab{position:absolute;top:14px;z-index:2;font:600 .7rem/1 var(--body);letter-spacing:.18em;text-transform:uppercase;background:rgba(251,250,247,.92);padding:.6em .9em;border-radius:999px;color:var(--ink)}
+.pair .l{left:14px}.pair .r{right:14px}
+html[lang="ar"] .pair .lab{font-family:var(--ar-body);letter-spacing:0;font-size:.82rem}
+.ba .bar::before{content:"";position:absolute;top:50%;left:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;border:1.5px solid rgba(251,250,247,.55)}
 .ba-more{font-size:1.6rem;text-align:center;margin:clamp(40px,6vw,64px) 0 20px}
 .ba-static{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .ba-static figure{position:relative;margin:0;display:grid;gap:10px;min-width:0}
@@ -594,53 +612,137 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
         <h2 data-i18n="ba.t"></h2>
         <p data-i18n="ba.p"></p>
       </div>
-      <div class="ba-grid">
-        <div class="ba-card">
-          <div class="ba" style="--pos:50%">
-            <div class="layer before"><img src="case1-before.webp" alt="Before treatment, case 1"></div>
-            <div class="layer after"><img src="case1-after.webp" alt="After treatment, case 1"></div>
-            <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
-            <div class="bar"></div>
-            <input type="range" id="ba-1" min="0" max="100" value="50" aria-label="Before and after, case 1">
+      <div class="sw" role="tablist" aria-label="Results">
+        <button type="button" role="tab" id="sw-d" aria-controls="ba-dental" aria-selected="true" data-sw="dental"><span data-i18n="dept.dental"></span></button>
+        <button type="button" role="tab" id="sw-a" aria-controls="ba-aes" aria-selected="false" data-sw="aesthetic"><span data-i18n="dept.aesthetic"></span></button>
+        <i class="knob" aria-hidden="true"></i>
+      </div>
+      <div class="ba-panel" id="ba-dental" role="tabpanel" aria-labelledby="sw-d">
+        <div class="ba-grid">
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:4/3">
+              <div class="layer before"><img src="case1-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="case1-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.c1"></h3>
           </div>
-          <h3 data-i18n="ba.c1"></h3>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:4/3">
+              <div class="layer before"><img src="case2-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="case2-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.c2"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/463">
+              <div class="layer before"><img src="case3-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="case3-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.c3"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/463">
+              <div class="layer before"><img src="case4-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="case4-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.c4"></h3>
+          </div>
         </div>
-        <div class="ba-card">
-          <div class="ba" style="--pos:50%">
-            <div class="layer before"><img src="case2-before.webp" alt="Before treatment, case 2"></div>
-            <div class="layer after"><img src="case2-after.webp" alt="After treatment, case 2"></div>
-            <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
-            <div class="bar"></div>
-            <input type="range" id="ba-2" min="0" max="100" value="50" aria-label="Before and after, case 2">
-          </div>
-          <h3 data-i18n="ba.c2"></h3>
-        </div>
-        <div class="ba-card">
-          <div class="ba" style="--pos:50%;aspect-ratio:1000/463">
-            <div class="layer before"><img src="case3-before.webp" alt="Before treatment, case 3"></div>
-            <div class="layer after"><img src="case3-after.webp" alt="After treatment, case 3"></div>
-            <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
-            <div class="bar"></div>
-            <input type="range" id="ba-3" min="0" max="100" value="50" aria-label="Before and after, case 3">
-          </div>
-          <h3 data-i18n="ba.c3"></h3>
-        </div>
-        <div class="ba-card">
-          <div class="ba" style="--pos:50%;aspect-ratio:1000/463">
-            <div class="layer before"><img src="case4-before.webp" alt="Before treatment, case 4"></div>
-            <div class="layer after"><img src="case4-after.webp" alt="After treatment, case 4"></div>
-            <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
-            <div class="bar"></div>
-            <input type="range" id="ba-4" min="0" max="100" value="50" aria-label="Before and after, case 4">
-          </div>
-          <h3 data-i18n="ba.c4"></h3>
+        <div class="ba-static">
+          <figure><img src="case5.webp" alt="Before and after, full-face smile makeover" loading="lazy"><figcaption data-i18n="ba.c5"></figcaption></figure>
+          <figure class="lr"><img src="case6.webp" alt="Before and after, close-up of restored teeth" loading="lazy"><span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span><figcaption data-i18n="ba.c6"></figcaption></figure>
+          <figure class="tb"><img src="case7.webp" alt="Before and after, smile makeover" loading="lazy"><span class="lab t1" data-i18n="ba.before"></span><span class="lab t2" data-i18n="ba.after"></span><figcaption data-i18n="ba.c7"></figcaption></figure>
         </div>
       </div>
-      <h3 class="ba-more" data-i18n="ba.moreT"></h3>
-      <div class="ba-static">
-        <figure><img src="case5.webp" alt="Before and after, full-face smile makeover" loading="lazy"><figcaption data-i18n="ba.c5"></figcaption></figure>
-        <figure class="lr"><img src="case6.webp" alt="Before and after, close-up of restored teeth" loading="lazy"><span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span><figcaption data-i18n="ba.c6"></figcaption></figure>
-        <figure class="tb"><img src="case7.webp" alt="Before and after, smile makeover" loading="lazy"><span class="lab t1" data-i18n="ba.before"></span><span class="lab t2" data-i18n="ba.after"></span><figcaption data-i18n="ba.c7"></figcaption></figure>
+      <div class="ba-panel" id="ba-aes" role="tabpanel" aria-labelledby="sw-a" hidden>
+        <div class="ba-grid">
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/453">
+              <div class="layer before"><img src="aes1-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="aes1-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.a1"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/453">
+              <div class="layer before"><img src="aes3-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="aes3-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.a1"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/453">
+              <div class="layer before"><img src="aes2-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="aes2-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.a2"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/453">
+              <div class="layer before"><img src="aes7-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="aes7-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.a2"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/453">
+              <div class="layer before"><img src="aes5-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="aes5-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.a3"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/453">
+              <div class="layer before"><img src="aes6-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="aes6-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.a4"></h3>
+          </div>
+          <div class="ba-card">
+            <div class="ba" style="--pos:50%;aspect-ratio:1000/453">
+              <div class="layer before"><img src="aes4-before.webp" alt="Before treatment" loading="lazy"></div>
+              <div class="layer after"><img src="aes4-after.webp" alt="After treatment" loading="lazy"></div>
+              <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+              <div class="bar"></div>
+              <input type="range" min="0" max="100" value="50" aria-label="Before and after">
+            </div>
+            <h3 data-i18n="ba.a5"></h3>
+          </div>
+          <div class="ba-card">
+            <figure class="pair"><img src="aes8.webp" alt="Before and after, double chin treatment" loading="lazy"><span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span></figure>
+            <h3 data-i18n="ba.a5"></h3>
+          </div>
+        </div>
       </div>
       <p class="ba-note" data-i18n="ba.note"></p>
     </div>
@@ -790,8 +892,8 @@ en:{
  "dental.t":"Dental Clinic","dental.p":"From routine check-ups to a complete smile makeover.",
  "aes.t":"Aesthetic Clinic","aes.p":"Natural-looking treatments for your face, skin and hair.",
  "hint":"Swipe to see all services, tap one for details.",
- "ba.eyebrow":"Results","ba.t":"Before & After","ba.p":"Drag the line to compare. Every result is planned around the patient's own features.",
- "ba.before":"Before","ba.after":"After","ba.c1":"Smile restoration","ba.c2":"Full smile makeover","ba.c3":"Rebuilding a damaged smile","ba.c4":"Replacing missing teeth","ba.moreT":"More results","ba.c5":"Smile makeover","ba.c6":"Restored teeth, close-up","ba.c7":"New smile","ba.note":"Patient photos are published with written consent.",
+ "ba.eyebrow":"Results","ba.t":"Before & After","ba.p":"Switch between our clinics and drag the arrow to compare. Every result is planned around the patient's own features.",
+ "ba.before":"Before","ba.after":"After","ba.c1":"Smile restoration","ba.c2":"Full smile makeover","ba.c3":"Rebuilding a damaged smile","ba.c4":"Replacing missing teeth","ba.moreT":"More results","ba.a1":"Lip filler","ba.a2":"Forehead Botox","ba.a3":"Eye Botox","ba.a4":"Cheek filler","ba.a5":"Double chin lipo","ba.c5":"Smile makeover","ba.c6":"Restored teeth, close-up","ba.c7":"New smile","ba.note":"Patient photos are published with written consent.",
  "book.t":"Book your visit","book.p":"Leave your details and the clinic team will contact you to confirm the nearest appointment.",
  "i.addrT":"Address","i.addr":"35 Oman Street, off Mohie El Din Abou El Ezz, Dokki, Giza","i.map":"Open in Google Maps →",
  "rv.eyebrow":"Reviews","rv.t":"What our patients say","rv.score":"Google rating","rv.more":"Read all reviews on Google","pay.eyebrow":"Payment","pay.t":"Easy ways to pay","pay.1t":"Card or InstaPay","pay.1p":"Pay by Visa card or InstaPay at the clinic.","pay.2t":"Installments","pay.2p":"Split the cost with installment apps.","pay.more":"and more","pay.3t":"Orthodontics in-house installments","pay.3p":"Orthodontic treatment can be paid in installments directly with the clinic.","i.hoursT":"Opening hours","i.followT":"Follow us","i.phoneT":"Phone & WhatsApp","i.hours":"Every day except Friday<br>12:00 pm – 10:00 pm",
@@ -821,8 +923,8 @@ ar:{
  "dental.t":"عيادة الأسنان","dental.p":"من الكشف الدوري لحد تغيير الابتسامة بالكامل.",
  "aes.t":"عيادة التجميل","aes.p":"علاجات بنتيجة طبيعية لوشّك وبشرتك وشعرك.",
  "hint":"اسحب لتشوف كل الخدمات، واضغط على أي خدمة للتفاصيل.",
- "ba.eyebrow":"النتائج","ba.t":"قبل وبعد","ba.p":"اسحب الخط للمقارنة. كل نتيجة متخططة حسب ملامح المريض.",
- "ba.before":"قبل","ba.after":"بعد","ba.c1":"إعادة بناء الابتسامة","ba.c2":"تغيير شامل للابتسامة","ba.c3":"إعادة بناء ابتسامة متضررة","ba.c4":"تعويض الأسنان المفقودة","ba.moreT":"نتائج أكتر","ba.c5":"تغيير الابتسامة","ba.c6":"الأسنان بعد الترميم عن قرب","ba.c7":"ابتسامة جديدة","ba.note":"صور المرضى بتتنشر بموافقة مكتوبة.",
+ "ba.eyebrow":"النتائج","ba.t":"قبل وبعد","ba.p":"بدّل بين العيادتين واسحب السهم للمقارنة. كل نتيجة متخططة حسب ملامح المريض.",
+ "ba.before":"قبل","ba.after":"بعد","ba.c1":"إعادة بناء الابتسامة","ba.c2":"تغيير شامل للابتسامة","ba.c3":"إعادة بناء ابتسامة متضررة","ba.c4":"تعويض الأسنان المفقودة","ba.moreT":"نتائج أكتر","ba.a1":"فيلر الشفايف","ba.a2":"بوتوكس الجبهة","ba.a3":"بوتوكس حول العين","ba.a4":"فيلر الخدود","ba.a5":"شفط الدقن المزدوجة","ba.c5":"تغيير الابتسامة","ba.c6":"الأسنان بعد الترميم عن قرب","ba.c7":"ابتسامة جديدة","ba.note":"صور المرضى بتتنشر بموافقة مكتوبة.",
  "book.t":"احجز زيارتك","book.p":"سيب بياناتك، وفريق العيادة هيتواصل معاك يأكد أقرب معاد.",
  "i.addrT":"العنوان","i.addr":"٣٥ شارع عمان، متفرع من محيي الدين أبو العز، الدقي، الجيزة","i.map":"افتح على خرائط جوجل ←",
  "rv.eyebrow":"آراء المرضى","rv.t":"المرضى بيقولوا إيه عننا","rv.score":"تقييم جوجل","rv.more":"اقرأ كل التقييمات على جوجل","pay.eyebrow":"الدفع","pay.t":"طرق دفع سهلة","pay.1t":"فيزا أو إنستاباي","pay.1p":"ادفع بالفيزا أو إنستاباي في العيادة.","pay.2t":"التقسيط","pay.2p":"قسّط التكلفة من خلال تطبيقات التقسيط.","pay.more":"وغيرها","pay.3t":"تقسيط التقويم مع العيادة","pay.3p":"علاج التقويم ممكن يتقسّط مباشرة مع العيادة.","i.hoursT":"مواعيد العمل","i.followT":"تابعونا","i.phoneT":"التليفون وواتساب","i.hours":"كل يوم ما عدا الجمعة<br>١٢ ظهرًا – ١٠ مساءً",
@@ -1074,7 +1176,12 @@ $("#sh-x").addEventListener("click", closeSheet);
 $("#scrim").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && current) closeSheet(); });
 $("#lang-btn").addEventListener("click", ()=>{ lang = lang==="en"?"ar":"en"; try{localStorage.setItem("eleve-lang",lang)}catch(e){} render(); });
-$$(".ba input").forEach(r=>r.addEventListener("input", e=>e.target.closest(".ba").style.setProperty("--pos", e.target.value+"%")));
+document.addEventListener("input", e=>{ if(e.target.matches(".ba input")) e.target.closest(".ba").style.setProperty("--pos", e.target.value+"%"); });
+(function(){ const sw=document.querySelector(".sw"); if(!sw) return;
+  sw.addEventListener("click", e=>{ const b=e.target.closest("[data-sw]"); if(!b) return; const on=b.dataset.sw; sw.dataset.on=on;
+    sw.querySelectorAll("[data-sw]").forEach(x=>x.setAttribute("aria-selected", x===b));
+    document.getElementById("ba-dental").hidden = on!=="dental"; document.getElementById("ba-aes").hidden = on!=="aesthetic"; });
+  sw.dataset.on="dental"; })();
 
 try{ const s=localStorage.getItem("eleve-lang"); if(s==="ar"||s==="en") lang=s; }catch(e){}
 render();

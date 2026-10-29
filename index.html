@@ -16,12 +16,11 @@
 <meta property="og:url" content="https://eleveclinicegy.com/">
 <link rel="canonical" href="https://eleveclinicegy.com/">
 <meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Dentist","name":"ÉLEVÉ Dental & Aesthetic Clinic","url":"https://eleveclinicegy.com/","image":"https://eleveclinicegy.com/og-image.jpg","address":{"@type":"PostalAddress","streetAddress":"35 Oman Street, off Mohie El Din Abou El Ezz","addressLocality":"Dokki","addressRegion":"Giza","addressCountry":"EG"},"hasMap":"https://maps.app.goo.gl/qfj1usntq1YWVkui9","telephone":"+201037343514","sameAs":["https://www.instagram.com/elevedentaleg/","https://www.instagram.com/eleveaestheticeg/","https://www.facebook.com/profile.php?id=61591872480309","https://www.facebook.com/profile.php?id=61592040232927"]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Dentist","name":"ÉLEVÉ Dental & Aesthetic Clinic","url":"https://eleveclinicegy.com/","image":"https://eleveclinicegy.com/og-image.jpg","address":{"@type":"PostalAddress","streetAddress":"35 Oman Street, off Mohie El Din Abou El Ezz","addressLocality":"Dokki","addressRegion":"Giza","addressCountry":"EG"},"hasMap":"https://maps.google.com/?q=Eleve%20dental%20and%20aesthetic%20clinic&ftid=0x145847f15ecc92a3:0x3178656723b6a2f4","telephone":"+201037343514","sameAs":["https://www.instagram.com/elevedentaleg/","https://www.instagram.com/eleveaestheticeg/","https://www.facebook.com/profile.php?id=61591872480309","https://www.facebook.com/profile.php?id=61592040232927"]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Pinyon+Script&family=Source+Sans+3:wght@300;400;600&family=Noto+Naskh+Arabic:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@300;400;600&display=swap">
 <style>body{margin:0}[hidden]{display:none!important}</style>
-
 <style>
 /* Layout: full-bleed photo hero, then two quiet bands of Instagram-style highlight circles (Dental, then Aesthetic), before/after, one dark booking band. Single light brand theme by choice. */
 :root{
@@ -249,8 +248,8 @@ html[dir="rtl"] .nav svg{transform:scaleX(-1)}
 .dname span{display:block;font:400 clamp(2.2rem,4.6vw,4rem)/1.08 var(--display)}
 html[lang="ar"] .dname span{font-family:var(--ar-display);font-weight:600;line-height:1.4;font-size:clamp(1.9rem,4vw,3.3rem)}
 .dname span:first-child{color:rgba(251,250,247,.72);font-size:clamp(1.6rem,3vw,2.5rem)}
-.drole{font:600 .74rem/1 var(--body);letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
-html[lang="ar"] .drole{font-family:var(--ar-body);letter-spacing:0;font-size:.95rem}
+.drole{font:600 .95rem/1.45 var(--body);letter-spacing:.01em;color:var(--gold);max-width:44ch}
+html[lang="ar"] .drole{font-family:var(--ar-body);letter-spacing:0;font-size:1rem}
 .dbio{color:rgba(251,250,247,.72);max-width:38ch}
 .stage .pic{position:relative;height:100%;min-height:inherit;display:flex;align-items:flex-end;justify-content:center}
 .stage .pic::before{content:"";position:absolute;inset:8% 0 0;background:radial-gradient(closest-side,rgba(182,146,102,.22),rgba(182,146,102,0));pointer-events:none}
@@ -295,6 +294,8 @@ html[dir="rtl"] .prog i{transform-origin:right}
   .dname span{font-size:1.75rem}
   .dname span:first-child{font-size:1.25rem}
   html[lang="ar"] .dname span{font-size:1.5rem}
+  .drole{font-size:.82rem}
+  html[lang="ar"] .drole{font-size:.88rem}
   .dbio{font-size:.9rem}
   .stage .pic{min-height:360px}
   .stage .pic img{height:360px}
@@ -327,6 +328,38 @@ html[lang="ar"] .ba .lab{font-family:var(--ar-body);letter-spacing:0;font-size:.
 .ba input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;z-index:3;margin:0}
 .ba-note{text-align:center;font-size:.85rem;color:var(--stone);margin-top:18px}
 @media (max-width:700px){.ba-grid{grid-template-columns:1fr}}
+
+/* reviews */
+.reviews{background:var(--sand);padding-block:clamp(64px,9vw,110px)}
+.reviews .top{display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:clamp(28px,4vw,44px)}
+.reviews h2{font-size:clamp(2.2rem,4vw,3.2rem);margin-top:12px}
+.gscore{display:flex;align-items:center;gap:14px}
+.gscore b{font:400 3.2rem/1 var(--display);color:var(--ink)}
+.gscore .stars{color:var(--gold);letter-spacing:2px;font-size:1.1rem}
+.gscore small{display:block;color:#5c5852;font-size:.85rem}
+.rv{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.rv li{background:var(--paper);border-radius:22px;padding:26px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.rv .stars{color:var(--gold);letter-spacing:2px}
+.rv q{quotes:none;font-size:1rem;line-height:1.65;color:var(--ink)}
+.rv q[lang="ar"]{font-family:var(--ar-body);direction:rtl;text-align:start}
+.rv footer{margin-top:auto;display:flex;justify-content:space-between;gap:10px;font-size:.85rem;color:var(--stone);background:none;padding:0}
+.rv footer b{color:var(--ink);font-weight:600}
+html[dir="rtl"] .flipx{display:inline-block;transform:scaleX(-1)}
+.reviews .more{margin-top:22px;display:inline-flex;gap:.5em;color:var(--gold-ink);font-weight:600;text-decoration:none}
+@media (max-width:860px){.rv{grid-template-columns:1fr}}
+
+/* payment */
+.pay{padding-block:clamp(48px,7vw,80px)}
+.pay .wrap{display:grid;grid-template-columns:.8fr 1.2fr;gap:clamp(24px,5vw,64px);align-items:center}
+.pay h2{font-size:clamp(2rem,3.6vw,2.8rem);margin-top:12px}
+.pay .lst{display:grid;gap:12px}
+.pay .row{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}
+.pay .row svg{width:26px;height:26px;flex:none;fill:none;stroke:var(--gold-ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+.pay .row b{display:block;font-weight:600;margin-bottom:4px}
+.pay .row span{color:var(--stone);font-size:.95rem}
+.pay .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.pay .chips i{font-style:normal;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.85rem;color:var(--ink)}
+@media (max-width:860px){.pay .wrap{grid-template-columns:1fr}}
 
 /* booking form */
 .book .grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(32px,6vw,72px);align-items:start;padding-bottom:clamp(48px,7vw,80px);border-bottom:1px solid rgba(251,250,247,.12)}
@@ -468,7 +501,6 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
   <section class="hero">
     <figure class="slide rec on"><img src="hero-reception.webp" alt="ÉLEVÉ reception desk under the clinic sign"></figure>
     <div class="copy">
-      <span class="eyebrow" data-i18n="hero.eyebrow"></span>
       <h1 data-i18n="hero.title"></h1>
       <p data-i18n="hero.lede"></p>
       <div class="row">
@@ -576,6 +608,32 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
     </div>
   </section>
 
+  <section class="reviews" id="reviews">
+    <div class="wrap">
+      <div class="top">
+        <div><span class="eyebrow" data-i18n="rv.eyebrow"></span><h2 data-i18n="rv.t"></h2></div>
+        <div class="gscore"><b>4.9</b><div><span class="stars" aria-hidden="true">★★★★★</span><small data-i18n="rv.score"></small></div></div>
+      </div>
+      <ul class="rv">
+        <li><span class="stars" aria-label="5 stars">★★★★★</span><q lang="en">I had a great experience. The clinic is clean, and everyone was friendly and professional. The doctor who did my skin booster was perfect, listened to all my concerns, and made me feel comfortable throughout the treatment.</q><footer><b>Salma A.</b><span>Google</span></footer></li>
+        <li><span class="stars" aria-label="5 stars">★★★★★</span><q lang="ar">عياده جميله و شغلهم مميز جداً محستش باي ألم دكتور عبدالرحمن و دكتور معاذ مريحين جداً في التعامل</q><footer><b>Ahmed K.</b><span>Google</span></footer></li>
+        <li><span class="stars" aria-label="5 stars">★★★★★</span><q lang="ar">أتقدم بجزيل الشكر للدكتور عبد الرحمن والدكتور معاذ على اهتمامهم الكبير براحة المرضى وحرصهم الشديد على التعقيم والنظافة، واحترافيتهم في التعامل. أسلوبهم الراقي واهتمامهم بكل التفاصيل خلّى التجربة مريحة جدًا ومطمئنة.</q><footer><b>Jana A.</b><span>Google</span></footer></li>
+      </ul>
+      <a class="more" href="https://maps.google.com/?q=Eleve%20dental%20and%20aesthetic%20clinic&amp;ftid=0x145847f15ecc92a3:0x3178656723b6a2f4" target="_blank" rel="noopener"><span data-i18n="rv.more"></span><span class="flipx">→</span></a>
+    </div>
+  </section>
+
+  <section class="pay" id="payment">
+    <div class="wrap">
+      <div><span class="eyebrow" data-i18n="pay.eyebrow"></span><h2 data-i18n="pay.t"></h2></div>
+      <div class="lst">
+        <div class="row"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h3"/></svg><div><b data-i18n="pay.1t"></b><span data-i18n="pay.1p"></span><div class="chips"><i>Visa</i><i>InstaPay</i></div></div></div>
+        <div class="row"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><div><b data-i18n="pay.2t"></b><span data-i18n="pay.2p"></span><div class="chips"><i>Fawry</i><i>Aman</i><i>Souhoola</i><i data-i18n="pay.more"></i></div></div></div>
+        <div class="row"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/></svg><div><b data-i18n="pay.3t"></b><span data-i18n="pay.3p"></span></div></div>
+      </div>
+    </div>
+  </section>
+
   <section class="book" id="book">
     <span id="visit" style="position:absolute"></span>
     <div class="wrap">
@@ -612,7 +670,7 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
         <div>
           <h4 data-i18n="i.addrT"></h4>
           <p data-i18n="i.addr"></p>
-          <a href="https://maps.app.goo.gl/qfj1usntq1YWVkui9" target="_blank" rel="noopener" style="color:var(--gold);margin-top:8px" data-i18n="i.map"></a>
+          <a href="https://maps.google.com/?q=Eleve%20dental%20and%20aesthetic%20clinic&amp;ftid=0x145847f15ecc92a3:0x3178656723b6a2f4" target="_blank" rel="noopener" style="color:var(--gold);margin-top:8px" data-i18n="i.map"></a>
         </div>
         <div>
           <h4 data-i18n="i.hoursT"></h4>
@@ -698,7 +756,7 @@ en:{
  "ba.before":"Before","ba.after":"After","ba.c1":"Smile restoration","ba.c2":"Full smile makeover","ba.note":"Patient photos are published with written consent.",
  "book.t":"Book your visit","book.p":"Leave your details and the clinic team will contact you to confirm the nearest appointment.",
  "i.addrT":"Address","i.addr":"35 Oman Street, off Mohie El Din Abou El Ezz, Dokki, Giza","i.map":"Open in Google Maps →",
- "i.hoursT":"Opening hours","i.followT":"Follow us","i.phoneT":"Phone & WhatsApp","i.hours":"Saturday – Thursday<br>12:00 pm – 10:00 pm",
+ "rv.eyebrow":"Reviews","rv.t":"What our patients say","rv.score":"Google rating","rv.more":"Read all reviews on Google","pay.eyebrow":"Payment","pay.t":"Easy ways to pay","pay.1t":"Card or InstaPay","pay.1p":"Pay by Visa card or InstaPay at the clinic.","pay.2t":"Installments","pay.2p":"Split the cost with installment apps.","pay.more":"and more","pay.3t":"Orthodontics in-house installments","pay.3p":"Orthodontic treatment can be paid in installments directly with the clinic.","i.hoursT":"Opening hours","i.followT":"Follow us","i.phoneT":"Phone & WhatsApp","i.hours":"Every day except Friday<br>12:00 pm – 10:00 pm",
  "legal":"© 2026 ÉLEVÉ Dental & Aesthetic Clinic. Results vary from person to person.",
  "f1":"Session","f2":"Course","f3":"Recovery",
  "sh.book":"Book this on WhatsApp","sh.note":"Typical figures. Your doctor confirms your plan at the consultation.",
@@ -729,7 +787,7 @@ ar:{
  "ba.before":"قبل","ba.after":"بعد","ba.c1":"إعادة بناء الابتسامة","ba.c2":"تغيير شامل للابتسامة","ba.note":"صور المرضى بتتنشر بموافقة مكتوبة.",
  "book.t":"احجز زيارتك","book.p":"سيب بياناتك، وفريق العيادة هيتواصل معاك يأكد أقرب معاد.",
  "i.addrT":"العنوان","i.addr":"٣٥ شارع عمان، متفرع من محيي الدين أبو العز، الدقي، الجيزة","i.map":"افتح على خرائط جوجل ←",
- "i.hoursT":"مواعيد العمل","i.followT":"تابعونا","i.phoneT":"التليفون وواتساب","i.hours":"السبت – الخميس<br>١٢ ظهرًا – ١٠ مساءً",
+ "rv.eyebrow":"آراء المرضى","rv.t":"المرضى بيقولوا إيه عننا","rv.score":"تقييم جوجل","rv.more":"اقرأ كل التقييمات على جوجل","pay.eyebrow":"الدفع","pay.t":"طرق دفع سهلة","pay.1t":"فيزا أو إنستاباي","pay.1p":"ادفع بالفيزا أو إنستاباي في العيادة.","pay.2t":"التقسيط","pay.2p":"قسّط التكلفة من خلال تطبيقات التقسيط.","pay.more":"وغيرها","pay.3t":"تقسيط التقويم مع العيادة","pay.3p":"علاج التقويم ممكن يتقسّط مباشرة مع العيادة.","i.hoursT":"مواعيد العمل","i.followT":"تابعونا","i.phoneT":"التليفون وواتساب","i.hours":"كل يوم ما عدا الجمعة<br>١٢ ظهرًا – ١٠ مساءً",
  "legal":"© ٢٠٢٦ إيليفيه لطب الأسنان والتجميل. النتائج تختلف من شخص لآخر.",
  "f1":"الجلسة","f2":"عدد الجلسات","f3":"التعافي",
  "sh.book":"احجز الخدمة دي على واتساب","sh.note":"أرقام تقريبية. الطبيب بيأكد خطتك في الاستشارة.",
@@ -782,7 +840,7 @@ const S = {
   ["fillings","Cosmetic fillings","الحشو التجميلي","Tooth-coloured fillings matched to the shade of your natural teeth.","حشوات بلون الأسنان مطابقة لدرجة أسنانك الطبيعية.",["30–60 min","٣٠–٦٠ دقيقة"],["1 visit","زيارة واحدة"],["None","لا يوجد"]],
   ["implants","Dental implants","زراعة الأسنان","A titanium root that replaces a missing tooth and carries a natural-looking crown.","جذر من التيتانيوم يعوّض السن المفقود ويتثبت عليه تاج طبيعي الشكل.",["60–90 min","٦٠–٩٠ دقيقة"],["Crown after 3–6 months","التاج بعد ٣–٦ شهور"],["2–3 days","٢–٣ أيام"]],
   ["rootcanal","Root canal","علاج العصب","Removes infection inside the tooth to save it and stop the pain.","إزالة الالتهاب من داخل السن للحفاظ عليه وإيقاف الألم.",["60–90 min","٦٠–٩٠ دقيقة"],["1–2 visits","١–٢ زيارة"],["1–2 days","يوم أو اتنين"]],
-  ["ortho","Orthodontics","تقويم الأسنان","Straightens teeth and corrects the bite, for children, teens and adults.","تعديل الأسنان وتصحيح العضة، للأطفال والمراهقين والكبار.",["20–30 min check-ups","متابعة ٢٠–٣٠ دقيقة"],["6–24 months","٦–٢٤ شهر"],["Mild tenderness after adjustments","إحساس بسيط بعد الشد"]],
+  ["ortho","Orthodontics","تقويم الأسنان","Straightens teeth and corrects the bite, for children, teens and adults. Installments available directly with the clinic.","تعديل الأسنان وتصحيح العضة، للأطفال والمراهقين والكبار. ومتاح تقسيط مباشر مع العيادة.",["20–30 min check-ups","متابعة ٢٠–٣٠ دقيقة"],["6–24 months","٦–٢٤ شهر"],["Mild tenderness after adjustments","إحساس بسيط بعد الشد"]],
   ["kids","Pediatric dentistry","أسنان الأطفال","Gentle first visits, prevention and fillings made easy for children.","زيارات أولى هادية، ووقاية وحشوات بطريقة مريحة للأطفال.",["30 min","٣٠ دقيقة"],["As needed","حسب الحاجة"],["None","لا يوجد"]],
   ["general","General dentistry","طب الأسنان العام","Check-ups, cleaning and polishing to keep your teeth healthy.","كشف دوري وتنظيف وتلميع للحفاظ على صحة أسنانك.",["30–45 min","٣٠–٤٥ دقيقة"],["Every 6 months","كل ٦ شهور"],["None","لا يوجد"]],
   ["gums","Gum treatment","علاج اللثة","Deep cleaning and care for bleeding, swollen or receding gums.","تنظيف عميق وعلاج للثة اللي بتنزف أو ملتهبة أو منحسرة.",["45–60 min","٤٥–٦٠ دقيقة"],["1–4 visits","١–٤ زيارات"],["1–2 days","يوم أو اتنين"]],
@@ -804,12 +862,24 @@ const S = {
 
 /* Doctors: add role and bio (EN + AR) for each doctor when ready; empty fields fall back to a general line */
 const DOCTORS = [
- {img:"abdelrahman", script:"Abdelrahman", en:"Abdelrahman Samir", ar:"عبد الرحمن سمير", role:{en:"",ar:""}, bio:{en:"",ar:""}},
- {img:"hisham",      script:"Hisham",      en:"Hisham",            ar:"هشام",            role:{en:"",ar:""}, bio:{en:"",ar:""}},
- {img:"moaz",        script:"Moaz",        en:"Moaz",              ar:"معاذ",            role:{en:"",ar:""}, bio:{en:"",ar:""}},
- {img:"basma",       script:"Basma",       en:"Basma",             ar:"بسمة",            role:{en:"",ar:""}, bio:{en:"",ar:""}},
- {img:"jody",        script:"Jody",        en:"Jody",              ar:"جودي",            role:{en:"",ar:""}, bio:{en:"",ar:""}},
- {img:"safya",       script:"Safya",       en:"Safya",             ar:"صفية",            role:{en:"",ar:""}, bio:{en:"",ar:""}}
+ {img:"abdelrahman", script:"Abdelrhman",
+  en:{l1:"Dr. Abdelrhman", l2:"Samir", role:"Oral & Maxillofacial Surgery Specialist · Fellow of the American Academy of Implant Dentistry", bio:"Focuses on oral and maxillofacial surgery and dental implants, including the rehabilitation of complex cases and replacement of missing teeth, alongside aesthetic smile enhancement with veneers."},
+  ar:{l1:"د. عبد الرحمن", l2:"سمير", role:"أخصائي جراحة الفم والوجه والفكين · زميل الأكاديمية الأمريكية لزراعة الأسنان", bio:"يركّز على جراحة الفم والوجه والفكين وزراعة الأسنان، بما في ذلك تأهيل الحالات المعقدة وتعويض الأسنان المفقودة، إلى جانب تجميل الابتسامة بالفينير."}},
+ {img:"hisham", script:"Hesham",
+  en:{l1:"Dr. Hesham", l2:"Mostafa", role:"Master’s Degree in Prosthodontics · Fellow of the Royal College in England", bio:"Focuses on aesthetic restorative dentistry, veneer treatments and smile design, combining dental function with refined aesthetic results."},
+  ar:{l1:"د. هشام", l2:"مصطفى", role:"ماجستير التركيبات · زميل الكلية الملكية بإنجلترا", bio:"يركّز على طب الأسنان التجميلي والترميمي وعلاجات الفينير وتصميم الابتسامة، بالجمع بين وظيفة الأسنان ونتيجة جمالية راقية."}},
+ {img:"moaz", script:"Moaz",
+  en:{l1:"Dr.", l2:"Moaz", role:"", bio:""},
+  ar:{l1:"د.", l2:"معاذ", role:"", bio:""}},
+ {img:"basma", script:"Basma",
+  en:{l1:"Dr. Basma", l2:"Mostafa", role:"Master’s Degree in Prosthodontics, Kasr Al Ainy · Pediatric Dentistry Specialist", bio:"Focuses on prosthodontics and aesthetic dental restorations, alongside specialised dental care for children tailored to each stage of their development."},
+  ar:{l1:"د. بسمة", l2:"مصطفى", role:"ماجستير التركيبات، قصر العيني · أخصائية طب أسنان الأطفال", bio:"تركّز على التركيبات والترميمات التجميلية للأسنان، إلى جانب رعاية متخصصة لأسنان الأطفال تناسب احتياجاتهم في كل مرحلة من مراحل النمو."}},
+ {img:"joud", script:"Joud",
+  en:{l1:"Dr. Joud", l2:"El Naeb", role:"Facial Aesthetic Specialist", bio:"Focused on non-surgical facial aesthetic treatments that enhance natural features and facial harmony, with attention to detail and balanced results."},
+  ar:{l1:"د. چود", l2:"النايب", role:"أخصائية تجميل الوجه", bio:"متخصصة في الإجراءات التجميلية غير الجراحية التي تهدف إلى إبراز ملامح الوجه وتحقيق التناسق الطبيعي، مع الاهتمام بالتفاصيل للحصول على نتائج أنيقة ومتناغمة."}},
+ {img:"safya", script:"Safia",
+  en:{l1:"Dr. Safia", l2:"Mohamed", role:"Plastic Surgery Specialist", bio:"Dedicated to aesthetic solutions that combine medical precision with aesthetic harmony, prioritising natural-looking results tailored to each patient."},
+  ar:{l1:"د. صفية", l2:"محمد", role:"أخصائية جراحات التجميل", bio:"تهتم بتقديم الحلول التجميلية التي تجمع بين الدقة الطبية والتناسق الجمالي، مع التركيز على نتائج طبيعية تتناسب مع ملامح كل حالة."}}
 ];
 const DOC_SECONDS = 7;
 
@@ -831,7 +901,7 @@ function render(){
   }
   $$(".wa-link").forEach(a=>a.href=wa(t("msgGen")));
   renderOffer(); fillForm();
-  $("#thumbs").innerHTML = DOCTORS.map((d,i)=>`<li><button type="button" data-doc="${i}" aria-label="${t("dr")} ${d[lang]}"><span class="face"><i style="background-image:url(drc-${d.img}.webp)"></i></span>${d[lang].split(" ")[0]}</button></li>`).join("");
+  $("#thumbs").innerHTML = DOCTORS.map((d,i)=>`<li><button type="button" data-doc="${i}" aria-label="${d[lang].l1} ${d[lang].l2}"><span class="face"><i style="background-image:url(drc-${d.img}.webp)"></i></span>${d[lang].l1.replace(/^(Dr\.|د\.)\s*/,"") || d[lang].l2}</button></li>`).join("");
   showDoc(docI, false);
   if (current) fill(current);
 }
@@ -911,14 +981,14 @@ const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: r
 DOCTORS.forEach(d=>{ const im=new Image(); im.src=`drc-${d.img}.webp`; });
 function showDoc(i, animate=true){
   docI = (i + DOCTORS.length) % DOCTORS.length;
-  const d = DOCTORS[docI], words = d[lang].split(" "), last = words.pop();
+  const d = DOCTORS[docI], L = d[lang];
   const st = $("#stage");
   const [l1,l2] = $("#d-name").children;
-  l1.textContent = [t("dr"), ...words].join(" "); l2.textContent = last;
-  $("#d-role").textContent = d.role[lang] || t("doc.role");
-  $("#d-bio").textContent = d.bio[lang] || t("doc.bio");
+  l1.textContent = L.l1; l2.textContent = L.l2;
+  $("#d-role").textContent = L.role || t("doc.role");
+  $("#d-bio").textContent = L.bio || t("doc.bio");
   $("#d-script").textContent = d.script;
-  $("#d-img").src = `drc-${d.img}.webp`; $("#d-img").alt = `${t("dr")} ${d[lang]}`;
+  $("#d-img").src = `drc-${d.img}.webp`; $("#d-img").alt = `${L.l1} ${L.l2}`;
   $("#d-i").textContent = String(docI+1).padStart(2,"0"); $("#d-n").textContent = String(DOCTORS.length).padStart(2,"0");
   $$("#thumbs button").forEach((b,k)=>b.setAttribute("aria-current", k===docI));
   if (animate && !reduceMotion){ st.classList.remove("in"); void st.offsetWidth; st.classList.add("in"); }

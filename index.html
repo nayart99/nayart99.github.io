@@ -326,6 +326,18 @@ html[lang="ar"] .ba .lab{font-family:var(--ar-body);letter-spacing:0;font-size:.
 .ba .bar{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:2px;background:var(--paper);z-index:2;transform:translateX(-1px)}
 .ba .bar::after{content:"";position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f1e1d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l-5 6 5 6M15 6l5 6-5 6'/%3E%3C/svg%3E") center/20px no-repeat;box-shadow:0 6px 18px rgba(31,30,29,.25)}
 .ba input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;z-index:3;margin:0}
+.ba-more{font-size:1.6rem;text-align:center;margin:clamp(40px,6vw,64px) 0 20px}
+.ba-static{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ba-static figure{position:relative;margin:0;display:grid;gap:10px;min-width:0}
+.ba-static img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:20px;background:#0b0e12}
+.ba-static figcaption{text-align:center;font:400 1.2rem/1.3 var(--display)}
+html[lang="ar"] .ba-static figcaption{font-family:var(--ar-display);font-size:1.05rem}
+.ba-static .lab{position:absolute;z-index:2;font:600 .7rem/1 var(--body);letter-spacing:.18em;text-transform:uppercase;background:rgba(251,250,247,.92);padding:.6em .9em;border-radius:999px;color:var(--ink)}
+html[lang="ar"] .ba-static .lab{font-family:var(--ar-body);letter-spacing:0;font-size:.82rem}
+.ba-static .lr .l{top:14px;left:14px}.ba-static .lr .r{top:14px;right:14px}
+.ba-static .tb .t1{top:14px;left:14px}.ba-static .tb .t2{top:calc(50% - 30px);left:14px}
+@media (max-width:760px){.ba-static{grid-template-columns:1fr 1fr}.ba-static figure:last-child{grid-column:1/-1;max-width:100%}.ba-static figure:last-child img{aspect-ratio:4/5}}
+@media (max-width:480px){.ba-static{grid-template-columns:1fr}}
 .ba-note{text-align:center;font-size:.85rem;color:var(--stone);margin-top:18px}
 @media (max-width:700px){.ba-grid{grid-template-columns:1fr}}
 
@@ -603,7 +615,33 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
           </div>
           <h3 data-i18n="ba.c2"></h3>
         </div>
+        <div class="ba-card">
+          <div class="ba" style="--pos:50%;aspect-ratio:1000/463">
+            <div class="layer before"><img src="case3-before.webp" alt="Before treatment, case 3"></div>
+            <div class="layer after"><img src="case3-after.webp" alt="After treatment, case 3"></div>
+            <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+            <div class="bar"></div>
+            <input type="range" id="ba-3" min="0" max="100" value="50" aria-label="Before and after, case 3">
+          </div>
+          <h3 data-i18n="ba.c3"></h3>
         </div>
+        <div class="ba-card">
+          <div class="ba" style="--pos:50%;aspect-ratio:1000/463">
+            <div class="layer before"><img src="case4-before.webp" alt="Before treatment, case 4"></div>
+            <div class="layer after"><img src="case4-after.webp" alt="After treatment, case 4"></div>
+            <span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span>
+            <div class="bar"></div>
+            <input type="range" id="ba-4" min="0" max="100" value="50" aria-label="Before and after, case 4">
+          </div>
+          <h3 data-i18n="ba.c4"></h3>
+        </div>
+      </div>
+      <h3 class="ba-more" data-i18n="ba.moreT"></h3>
+      <div class="ba-static">
+        <figure><img src="case5.webp" alt="Before and after, full-face smile makeover" loading="lazy"><figcaption data-i18n="ba.c5"></figcaption></figure>
+        <figure class="lr"><img src="case6.webp" alt="Before and after, close-up of restored teeth" loading="lazy"><span class="lab l" data-i18n="ba.before"></span><span class="lab r" data-i18n="ba.after"></span><figcaption data-i18n="ba.c6"></figcaption></figure>
+        <figure class="tb"><img src="case7.webp" alt="Before and after, smile makeover" loading="lazy"><span class="lab t1" data-i18n="ba.before"></span><span class="lab t2" data-i18n="ba.after"></span><figcaption data-i18n="ba.c7"></figcaption></figure>
+      </div>
       <p class="ba-note" data-i18n="ba.note"></p>
     </div>
   </section>
@@ -753,7 +791,7 @@ en:{
  "aes.t":"Aesthetic Clinic","aes.p":"Natural-looking treatments for your face, skin and hair.",
  "hint":"Swipe to see all services, tap one for details.",
  "ba.eyebrow":"Results","ba.t":"Before & After","ba.p":"Drag the line to compare. Every result is planned around the patient's own features.",
- "ba.before":"Before","ba.after":"After","ba.c1":"Smile restoration","ba.c2":"Full smile makeover","ba.note":"Patient photos are published with written consent.",
+ "ba.before":"Before","ba.after":"After","ba.c1":"Smile restoration","ba.c2":"Full smile makeover","ba.c3":"Rebuilding a damaged smile","ba.c4":"Replacing missing teeth","ba.moreT":"More results","ba.c5":"Smile makeover","ba.c6":"Restored teeth, close-up","ba.c7":"New smile","ba.note":"Patient photos are published with written consent.",
  "book.t":"Book your visit","book.p":"Leave your details and the clinic team will contact you to confirm the nearest appointment.",
  "i.addrT":"Address","i.addr":"35 Oman Street, off Mohie El Din Abou El Ezz, Dokki, Giza","i.map":"Open in Google Maps →",
  "rv.eyebrow":"Reviews","rv.t":"What our patients say","rv.score":"Google rating","rv.more":"Read all reviews on Google","pay.eyebrow":"Payment","pay.t":"Easy ways to pay","pay.1t":"Card or InstaPay","pay.1p":"Pay by Visa card or InstaPay at the clinic.","pay.2t":"Installments","pay.2p":"Split the cost with installment apps.","pay.more":"and more","pay.3t":"Orthodontics in-house installments","pay.3p":"Orthodontic treatment can be paid in installments directly with the clinic.","i.hoursT":"Opening hours","i.followT":"Follow us","i.phoneT":"Phone & WhatsApp","i.hours":"Every day except Friday<br>12:00 pm – 10:00 pm",
@@ -784,7 +822,7 @@ ar:{
  "aes.t":"عيادة التجميل","aes.p":"علاجات بنتيجة طبيعية لوشّك وبشرتك وشعرك.",
  "hint":"اسحب لتشوف كل الخدمات، واضغط على أي خدمة للتفاصيل.",
  "ba.eyebrow":"النتائج","ba.t":"قبل وبعد","ba.p":"اسحب الخط للمقارنة. كل نتيجة متخططة حسب ملامح المريض.",
- "ba.before":"قبل","ba.after":"بعد","ba.c1":"إعادة بناء الابتسامة","ba.c2":"تغيير شامل للابتسامة","ba.note":"صور المرضى بتتنشر بموافقة مكتوبة.",
+ "ba.before":"قبل","ba.after":"بعد","ba.c1":"إعادة بناء الابتسامة","ba.c2":"تغيير شامل للابتسامة","ba.c3":"إعادة بناء ابتسامة متضررة","ba.c4":"تعويض الأسنان المفقودة","ba.moreT":"نتائج أكتر","ba.c5":"تغيير الابتسامة","ba.c6":"الأسنان بعد الترميم عن قرب","ba.c7":"ابتسامة جديدة","ba.note":"صور المرضى بتتنشر بموافقة مكتوبة.",
  "book.t":"احجز زيارتك","book.p":"سيب بياناتك، وفريق العيادة هيتواصل معاك يأكد أقرب معاد.",
  "i.addrT":"العنوان","i.addr":"٣٥ شارع عمان، متفرع من محيي الدين أبو العز، الدقي، الجيزة","i.map":"افتح على خرائط جوجل ←",
  "rv.eyebrow":"آراء المرضى","rv.t":"المرضى بيقولوا إيه عننا","rv.score":"تقييم جوجل","rv.more":"اقرأ كل التقييمات على جوجل","pay.eyebrow":"الدفع","pay.t":"طرق دفع سهلة","pay.1t":"فيزا أو إنستاباي","pay.1p":"ادفع بالفيزا أو إنستاباي في العيادة.","pay.2t":"التقسيط","pay.2p":"قسّط التكلفة من خلال تطبيقات التقسيط.","pay.more":"وغيرها","pay.3t":"تقسيط التقويم مع العيادة","pay.3p":"علاج التقويم ممكن يتقسّط مباشرة مع العيادة.","i.hoursT":"مواعيد العمل","i.followT":"تابعونا","i.phoneT":"التليفون وواتساب","i.hours":"كل يوم ما عدا الجمعة<br>١٢ ظهرًا – ١٠ مساءً",
@@ -869,8 +907,8 @@ const DOCTORS = [
   en:{l1:"Dr. Hesham", l2:"Mostafa", role:"Master’s Degree in Prosthodontics · Fellow of the Royal College in England", bio:"Focuses on aesthetic restorative dentistry, veneer treatments and smile design, combining dental function with refined aesthetic results."},
   ar:{l1:"د. هشام", l2:"مصطفى", role:"ماجستير التركيبات · زميل الكلية الملكية بإنجلترا", bio:"يركّز على طب الأسنان التجميلي والترميمي وعلاجات الفينير وتصميم الابتسامة، بالجمع بين وظيفة الأسنان ونتيجة جمالية راقية."}},
  {img:"moaz", script:"Moaz",
-  en:{l1:"Dr.", l2:"Moaz", role:"", bio:""},
-  ar:{l1:"د.", l2:"معاذ", role:"", bio:""}},
+  en:{l1:"Dr.", l2:"Moaz", role:"Dentist", bio:""},
+  ar:{l1:"د.", l2:"معاذ", role:"طبيب أسنان", bio:""}},
  {img:"basma", script:"Basma",
   en:{l1:"Dr. Basma", l2:"Mostafa", role:"Master’s Degree in Prosthodontics, Kasr Al Ainy · Pediatric Dentistry Specialist", bio:"Focuses on prosthodontics and aesthetic dental restorations, alongside specialised dental care for children tailored to each stage of their development."},
   ar:{l1:"د. بسمة", l2:"مصطفى", role:"ماجستير التركيبات، قصر العيني · أخصائية طب أسنان الأطفال", bio:"تركّز على التركيبات والترميمات التجميلية للأسنان، إلى جانب رعاية متخصصة لأسنان الأطفال تناسب احتياجاتهم في كل مرحلة من مراحل النمو."}},

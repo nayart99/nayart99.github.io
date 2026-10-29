@@ -16,7 +16,7 @@
 <meta property="og:url" content="https://eleveclinicegy.com/">
 <link rel="canonical" href="https://eleveclinicegy.com/">
 <meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Dentist","name":"ÉLEVÉ Dental & Aesthetic Clinic","url":"https://eleveclinicegy.com/","image":"https://eleveclinicegy.com/og-image.jpg","address":{"@type":"PostalAddress","streetAddress":"35 Oman Street, off Mohie El Din Abou El Ezz","addressLocality":"Dokki","addressRegion":"Giza","addressCountry":"EG"},"sameAs":["https://www.instagram.com/elevedentaleg","https://www.instagram.com/eleveaestheticeg"]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Dentist","name":"ÉLEVÉ Dental & Aesthetic Clinic","url":"https://eleveclinicegy.com/","image":"https://eleveclinicegy.com/og-image.jpg","address":{"@type":"PostalAddress","streetAddress":"35 Oman Street, off Mohie El Din Abou El Ezz","addressLocality":"Dokki","addressRegion":"Giza","addressCountry":"EG"},"hasMap":"https://maps.app.goo.gl/qfj1usntq1YWVkui9","telephone":"+201037343514","sameAs":["https://www.instagram.com/elevedentaleg/","https://www.instagram.com/eleveaestheticeg/","https://www.facebook.com/profile.php?id=61591872480309","https://www.facebook.com/profile.php?id=61592040232927"]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Pinyon+Script&family=Source+Sans+3:wght@300;400;600&family=Noto+Naskh+Arabic:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@300;400;600&display=swap">
@@ -374,6 +374,12 @@ html[lang="ar"] .done h4{font-family:var(--ar-display);font-weight:600}
 html[lang="ar"] .info h4{font-family:var(--ar-body);letter-spacing:0;font-size:.88rem}
 .info a{display:block;text-decoration:none;padding-block:2px}
 .info a:hover{color:var(--gold)}
+.soc-l{margin:10px 0 6px;font-size:.85rem;color:rgba(251,250,247,.5)}
+.soc{display:flex;gap:8px;flex-wrap:wrap}
+.info .soc a{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid rgba(251,250,247,.18);border-radius:999px;font-size:.9rem;transition:border-color .2s,color .2s}
+.info .soc a:hover{border-color:var(--gold);color:var(--gold)}
+.soc svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.soc svg .f{fill:currentColor;stroke:none}
 .legal{font-size:.82rem;color:rgba(251,250,247,.5);padding-bottom:70px}
 @media (min-width:761px){.legal{padding-bottom:0}}
 @media (max-width:760px){.info{grid-template-columns:1fr}}
@@ -606,7 +612,7 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
         <div>
           <h4 data-i18n="i.addrT"></h4>
           <p data-i18n="i.addr"></p>
-          <a href="https://www.google.com/maps/search/?api=1&amp;query=35+Oman+St+Dokki+Giza" target="_blank" rel="noopener" style="color:var(--gold);margin-top:8px" data-i18n="i.map"></a>
+          <a href="https://maps.app.goo.gl/qfj1usntq1YWVkui9" target="_blank" rel="noopener" style="color:var(--gold);margin-top:8px" data-i18n="i.map"></a>
         </div>
         <div>
           <h4 data-i18n="i.hoursT"></h4>
@@ -615,9 +621,17 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
           <a class="wa-link" href="#" target="_blank" rel="noopener" dir="ltr" style="unicode-bidi:isolate">+20 103 734 3514</a>
         </div>
         <div>
-          <h4>Instagram</h4>
-          <a href="https://www.instagram.com/elevedentaleg" target="_blank" rel="noopener">@elevedentaleg</a>
-          <a href="https://www.instagram.com/eleveaestheticeg" target="_blank" rel="noopener">@eleveaestheticeg</a>
+          <h4 data-i18n="i.followT"></h4>
+          <p class="soc-l" data-i18n="dept.dental"></p>
+          <div class="soc">
+            <a href="https://www.instagram.com/elevedentaleg/" target="_blank" rel="noopener" aria-label="Instagram, dental"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" class="f"/></svg>Instagram</a>
+            <a href="https://www.facebook.com/profile.php?id=61591872480309" target="_blank" rel="noopener" aria-label="Facebook, dental"><svg viewBox="0 0 24 24"><path d="M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8z"/></svg>Facebook</a>
+          </div>
+          <p class="soc-l" data-i18n="dept.aesthetic"></p>
+          <div class="soc">
+            <a href="https://www.instagram.com/eleveaestheticeg/" target="_blank" rel="noopener" aria-label="Instagram, aesthetic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" class="f"/></svg>Instagram</a>
+            <a href="https://www.facebook.com/profile.php?id=61592040232927" target="_blank" rel="noopener" aria-label="Facebook, aesthetic"><svg viewBox="0 0 24 24"><path d="M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8z"/></svg>Facebook</a>
+          </div>
         </div>
       </div>
       <p class="legal" data-i18n="legal"></p>
@@ -684,7 +698,7 @@ en:{
  "ba.before":"Before","ba.after":"After","ba.c1":"Smile restoration","ba.c2":"Full smile makeover","ba.note":"Patient photos are published with written consent.",
  "book.t":"Book your visit","book.p":"Leave your details and the clinic team will contact you to confirm the nearest appointment.",
  "i.addrT":"Address","i.addr":"35 Oman Street, off Mohie El Din Abou El Ezz, Dokki, Giza","i.map":"Open in Google Maps →",
- "i.hoursT":"Opening hours","i.phoneT":"Phone & WhatsApp","i.hours":"Saturday – Thursday<br>12:00 pm – 10:00 pm",
+ "i.hoursT":"Opening hours","i.followT":"Follow us","i.phoneT":"Phone & WhatsApp","i.hours":"Saturday – Thursday<br>12:00 pm – 10:00 pm",
  "legal":"© 2026 ÉLEVÉ Dental & Aesthetic Clinic. Results vary from person to person.",
  "f1":"Session","f2":"Course","f3":"Recovery",
  "sh.book":"Book this on WhatsApp","sh.note":"Typical figures. Your doctor confirms your plan at the consultation.",
@@ -715,7 +729,7 @@ ar:{
  "ba.before":"قبل","ba.after":"بعد","ba.c1":"إعادة بناء الابتسامة","ba.c2":"تغيير شامل للابتسامة","ba.note":"صور المرضى بتتنشر بموافقة مكتوبة.",
  "book.t":"احجز زيارتك","book.p":"سيب بياناتك، وفريق العيادة هيتواصل معاك يأكد أقرب معاد.",
  "i.addrT":"العنوان","i.addr":"٣٥ شارع عمان، متفرع من محيي الدين أبو العز، الدقي، الجيزة","i.map":"افتح على خرائط جوجل ←",
- "i.hoursT":"مواعيد العمل","i.phoneT":"التليفون وواتساب","i.hours":"السبت – الخميس<br>١٢ ظهرًا – ١٠ مساءً",
+ "i.hoursT":"مواعيد العمل","i.followT":"تابعونا","i.phoneT":"التليفون وواتساب","i.hours":"السبت – الخميس<br>١٢ ظهرًا – ١٠ مساءً",
  "legal":"© ٢٠٢٦ إيليفيه لطب الأسنان والتجميل. النتائج تختلف من شخص لآخر.",
  "f1":"الجلسة","f2":"عدد الجلسات","f3":"التعافي",
  "sh.book":"احجز الخدمة دي على واتساب","sh.note":"أرقام تقريبية. الطبيب بيأكد خطتك في الاستشارة.",

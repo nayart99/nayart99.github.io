@@ -346,5 +346,8 @@
   "pbn_err_banned": "This photo can't be used. Please choose another photo.",
   "pbn_err_slow": "It's taking longer than usual. Please try again in a few minutes.",
   "pbn_left": "{n} previews left today",
-  "pbn_wait_toast": "Please wait, your canvas is being created"
+  "pbn_wait_toast": "Please wait, your canvas is being created",
+  "sold_out": "Sold out",
+  "sold_out_toast": "This painting is sold out right now",
+  "sold_out_note": "Sold out for now. Message us on WhatsApp to know when it's back, or choose another painting."
 }

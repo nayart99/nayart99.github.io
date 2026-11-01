@@ -57,9 +57,9 @@ const others = getProducts().filter((x) => x.slug !== p.slug).slice(0, 2);
       <div class="opt-group"><span>{t('size')}: <b>{cm(settings.canvas_size, lang)}</b></span><div class="opts"><button class="opt" aria-pressed="true">{cm(settings.canvas_size, lang)}<small>{t('full_kit')}</small></button></div></div>
       <div class="buy-row">
         <div class="qty"><button id="pDec" aria-label={t('dec')}>−</button><span id="pQty">1</span><button id="pInc" aria-label={t('inc')}>+</button></div>
-        <button class="btn btn-primary" id="pAdd">{t('add_to_cart')} · {money(p.price, lang)}</button>
+        {p.sold_out ? <button class="btn btn-primary" id="pAdd" disabled>{t('sold_out')}</button> : <button class="btn btn-primary" id="pAdd">{t('add_to_cart')} · {money(p.price, lang)}</button>}
       </div>
-      <button class="btn btn-block" id="pBuyNow">{t('buy_now')}</button>
+      {p.sold_out ? <p class="sold-note">{t('sold_out_note')}</p> : <button class="btn btn-block" id="pBuyNow">{t('buy_now')}</button>}
       <div class="eta"><b id="pEta">{t('eta_order')} …</b><span>{t('eta_areas')}</span></div>
       <ul class="assure"><li>{t('assure_1')}</li><li>{t('assure_2')}</li><li>{t('assure_3')}</li><li>{t('assure_4')}</li></ul>
       <div class="pays">{settings.payments.cod && <span>{t('pay_cod')}</span>}{settings.payments.instapay && <span>InstaPay</span>}{settings.payments.vodafone_cash && <span>{t('pay_vodafone')}</span>}</div>
@@ -109,5 +109,5 @@ const others = getProducts().filter((x) => x.slug !== p.slug).slice(0, 2);
 
 <div class="sticky-buy" id="stickyBuy" aria-hidden="true">
   <div class="t"><img src={im.finished} alt="" /><div style="min-width:0"><div class="nm">{name}</div><div class="pp price">{money(p.price, lang)}</div></div></div>
-  <button class="btn btn-primary" id="sbAdd">{t('add_to_cart')}</button>
+  <button class="btn btn-primary" id="sbAdd" disabled={p.sold_out}>{p.sold_out ? t('sold_out') : t('add_to_cart')}</button>
 </div>

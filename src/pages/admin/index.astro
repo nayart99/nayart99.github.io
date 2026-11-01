@@ -1,8 +1,11 @@
 ---
 // Owner dashboard: orders, statuses, customer photos. Data comes from the Google Apps Script backend.
 // Open with ?demo=1 to see it with sample orders.
-import { settings } from '../../lib/site.js';
-const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whatsapp_intl, brand: settings.brand, payNumber: settings.instapay || settings.vodafone_cash || '' };
+import { settings, getProducts, pick, STRINGS } from '../../lib/site.js';
+const allProducts = Object.values(import.meta.glob('../../content/products/*.json', { eager: true })).map((m) => m.default || m);
+const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: settings.whatsapp_intl, brand: settings.brand, payNumber: settings.instapay || settings.vodafone_cash || '',
+  catalog: getProducts().map((p) => ({ slug: p.slug, name: pick(p.name, 'ar'), price: p.price, option: String(settings.canvas_size || '40×50 cm').replace('cm', 'سم') })),
+  customSizes: settings.custom_sizes || [], govs: (STRINGS.ar && STRINGS.ar.gov) || [] };
 ---
 <!doctype html>
 <html lang="ar" dir="rtl">
@@ -112,6 +115,53 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     .regen{margin-top:12px;font-size:.88rem}.regen summary{cursor:pointer;color:var(--soft)}.regen .acts{margin-top:8px}
     .in.sm{width:auto;padding:8px 10px;min-height:0}
     .dapprove{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+    .pg-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+    .pg-head h2{margin:0;font-size:1.3rem}.pg-head .sub{margin:4px 0 0;color:var(--soft);font-size:.88rem}
+    .pg-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .pg-status{font-size:.85rem;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;border:1px solid var(--line)}
+    .pg-status.ok{color:#1E5B36;background:#EAF6EE;border-color:#B9DEC6}.pg-status.busy{color:#6B5310;background:#FFF4D6;border-color:#EBD9A6}.pg-status.bad{color:#8E1B1B;background:#FDECEC;border-color:#F3B5B5}
+    .pg-status:empty{display:none}
+    .pg-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+    .pg-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+    .pg-img{position:relative;aspect-ratio:4/3;background:var(--sand)}.pg-img img{width:100%;height:100%;object-fit:cover}
+    .pg-card.is-sold .pg-img img,.pg-card.is-hidden .pg-img img{filter:grayscale(.7) opacity(.75)}
+    .pg-flag{position:absolute;top:10px;inset-inline-start:10px;background:var(--ink);color:#fff;font-size:.78rem;padding:3px 10px;border-radius:999px}
+    .pg-info{padding:12px 14px 4px;display:flex;flex-direction:column;gap:2px}.pg-en{font-size:.8rem;color:var(--soft);direction:ltr;text-align:right}
+    .pg-price{font-weight:600}.pg-price s{color:var(--soft);font-weight:400;font-size:.85rem}
+    .pg-acts{padding:8px 14px 14px;display:flex;flex-direction:column;gap:8px;margin-top:auto}.pg-acts .row{display:flex;gap:8px}.pg-acts .row .btn{flex:1}
+    .sw{display:flex;align-items:center;gap:10px;font-size:.88rem;cursor:pointer;user-select:none}
+    .sw input{position:absolute;opacity:0;width:1px;height:1px}
+    .sw i{width:38px;height:22px;border-radius:999px;background:#d8cfc4;position:relative;flex:none;transition:background .2s}
+    .sw i::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .2s}
+    .sw input:checked+i{background:var(--wine)}.sw input:checked+i::after{transform:translateX(-16px)}
+    [dir=ltr] .sw input:checked+i::after{transform:translateX(16px)}
+    .sw input:focus-visible+i{outline:2px solid var(--wine);outline-offset:2px}
+    .pg-modal{position:fixed;inset:0;background:rgba(40,20,22,.45);z-index:60;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
+    .pg-dialog{background:var(--cream);border-radius:16px;width:min(760px,100%);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+    .pg-dhead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}.pg-dhead h2{margin:0;font-size:1.1rem}
+    .pg-body{padding:16px 18px 20px}
+    .pg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pg-grid label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--soft)}.pg-grid .full{grid-column:1/-1}.pg-grid .in{color:var(--ink);padding:9px 12px}
+    .pg-grid .sw{flex-direction:row;color:var(--ink)}
+    .pg-h3{margin:16px 0 8px;font-size:.9rem}
+    .pg-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+    .pg-slot{display:flex;flex-direction:column;gap:6px;align-items:stretch;font-size:.78rem;text-align:center}
+    .pg-thumb{aspect-ratio:1;border:1px dashed var(--line);border-radius:10px;background:#fff;display:grid;place-items:center;overflow:hidden;color:var(--soft)}.pg-thumb img{width:100%;height:100%;object-fit:cover}
+    .pg-err{color:#a32626;font-size:.88rem;margin:10px 0 0}
+    @media (max-width:560px){.pg-grid{grid-template-columns:1fr}}
+    .h3row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .btn.sm{padding:5px 10px;font-size:.8rem;border-radius:8px}
+    .ed-items{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+    .ed-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+    .ed-name{grid-column:1/-1;display:grid;grid-template-columns:2fr 1fr;gap:6px}
+    .ed-row .in{padding:7px 10px}
+    .ed-q{display:flex;align-items:center;gap:4px}.ed-q .in{width:58px;text-align:center}
+    .ed-p{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--soft)}.ed-p .in{width:96px}
+    .ed-line{font-weight:600}
+    .ed-del{color:#a32626;border-color:#e8c2c2;justify-self:end}
+    .ed-tot{margin-top:10px}.ed-tot>label{display:flex;align-items:center;gap:8px;font-size:.88rem;margin-bottom:6px}.ed-tot>label .in{width:120px;padding:7px 10px}
+    .ed-diff{margin:8px 0 0;font-size:.86rem;background:#FFF4E0;border:1px solid #F1D39A;border-radius:8px;padding:8px 10px}
+    .ed-cust{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ed-cust label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--soft)}.ed-cust .full{grid-column:1/-1}.ed-cust .in{padding:8px 10px;color:var(--ink)}
+    @media (max-width:520px){.ed-row{grid-template-columns:1fr}.ed-name{grid-template-columns:1fr}.ed-cust{grid-template-columns:1fr}}
     .tag.flag{color:#fff;background:#C62828;border-color:#C62828;font-weight:700}
     .sec.flag{border-color:#C62828;box-shadow:0 0 0 3px rgba(198,40,40,.12)}
     .flagbox{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:8px;margin-bottom:10px;font-size:.88rem}
@@ -264,6 +314,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       <div class="views" role="tablist">
         <button data-view="orders" aria-pressed="true">الطلبات</button>
         <button data-view="analytics" aria-pressed="false">التحليلات</button>
+        <button data-view="products" aria-pressed="false">منتجات الموقع</button>
       </div>
 
       <section id="vOrders">
@@ -332,6 +383,14 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           <div class="card"><h2>الأكثر مبيعًا (كل الوقت)</h2><table><thead><tr><th>اللوحة</th><th>القطع</th><th>المبيعات</th></tr></thead><tbody id="tBody"></tbody></table></div>
         </div>
       </section>
+
+      <section id="vProducts" hidden>
+        <div class="pg-head">
+          <div><h2>منتجات الموقع</h2><p class="sub">سولد أوت، إخفاء، تعديل الأسعار والصور، وإضافة لوحات جديدة. التعديل بيظهر على الموقع خلال دقايق (عادةً 2–5 دقايق).</p></div>
+          <div class="pg-tools"><span class="pg-status" id="pgStatus"></span><button class="btn p" id="pgNew">+ لوحة جديدة</button></div>
+        </div>
+        <div class="pg-list" id="pgList"></div>
+      </section>
     </div></main>
   </div>
 
@@ -340,6 +399,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     <div class="p-head"><h2 id="pTitle"></h2><button class="icon-btn" id="pClose" aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="p-body" id="pBody"></div>
   </aside>
+  <div class="pg-modal" id="pgModal" hidden><div class="pg-dialog" role="dialog" aria-modal="true" aria-labelledby="pgTitle"><div class="pg-dhead"><h2 id="pgTitle"></h2><button class="icon-btn" id="pgClose" aria-label="إغلاق">✕</button></div><div class="pg-body" id="pgBody"></div></div></div>
   <div class="toast" id="toast" role="status"></div>
   <div class="tip" id="tip"></div>
   <div id="printArea"></div>
@@ -555,7 +615,8 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     document.querySelectorAll('.views [data-view]').forEach((b) => b.addEventListener('click', () => {
       view = b.dataset.view;
       document.querySelectorAll('.views [data-view]').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-      $('vOrders').hidden = view !== 'orders'; $('vAnalytics').hidden = view !== 'analytics';
+      $('vOrders').hidden = view !== 'orders'; $('vAnalytics').hidden = view !== 'analytics'; $('vProducts').hidden = view !== 'products';
+      if (view === 'products' && window.NAY_PRODUCTS) window.NAY_PRODUCTS.open();
       if (view === 'analytics') renderAnalytics();
     }));
     $('aRange').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (!b) return; aRange = b.dataset.r; $('aRange').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); renderAnalytics(); });
@@ -758,7 +819,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
           <dl class="kv"><dt>الاسم</dt><dd>${esc(o.name)}</dd><dt>الموبايل</dt><dd class="num" style="text-align:right">${esc(o.phone)}</dd>${o.phone_extra ? `<dt>هاتف إضافي</dt><dd class="num">${esc(o.phone_extra)}</dd>` : ''}<dt>المحافظة</dt><dd>${esc(o.city)}</dd><dt>العنوان</dt><dd>${esc(o.address)}</dd>${mapURL ? `<dt>موقع التوصيل</dt><dd><a href="${mapURL}" target="_blank" rel="noopener">فتح الموقع على الخريطة</a></dd>` : ''}${o.notes ? `<dt>ملاحظات</dt><dd>${esc(o.notes)}</dd>` : ''}${o.source ? `<dt>المصدر</dt><dd>${esc(o.source)}${o.campaign ? ' · ' + esc(o.campaign) : ''}</dd>` : ''}</dl>
           <div class="acts"><a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(waMsg)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>واتساب</a><a class="btn" href="tel:${esc(o.phone)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>اتصال</a><button class="btn" id="pCopy">نسخ بيانات الشحن</button>${unpaid(o) ? `<a class="btn wa" href="https://wa.me/${intlPhone(o.phone)}?text=${encodeURIComponent(payMsg)}" target="_blank" rel="noopener">طلب الدفع على واتساب</a>` : ''}</div>
         </div>
-        <div class="sec"><h3>الطلب</h3>${lines}
+        <div class="sec" id="orderSec"><h3 class="h3row">الطلب<button class="btn sm" id="pEdit">✏️ تعديل الطلب</button></h3>${lines}
           <div class="line"><span>التوصيل</span><span class="num">${money(o.delivery)}</span></div>
           <div class="line t"><span>الإجمالي</span><span class="num">${money(o.total)}</span></div>
           <div class="line"><span>الدفع</span><span>${esc(o.payment)}</span></div>
@@ -788,6 +849,7 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       wireDesign(o);
       if ($('pRecheck')) $('pRecheck').onclick = async () => { const b = $('pRecheck'); b.disabled = true; b.textContent = 'جارٍ الفحص…'; try { const j = await api('recheck', { id: o.id }); o.proof_check = j.proof_check; render(); openPanel(o.id); } catch { b.disabled = false; b.textContent = 'فحص الصورة آليًا'; toast('تعذّر الفحص'); } };
       if ($('proofBox')) api('photo', { orderId: o.id, fileId: o.transfer_proof }).then((j) => { const b = $('proofBox'); if (b && openId === o.id) { b.innerHTML = `<img src="${j.data}" alt="صورة التحويل"><button class="btn" id="proofFull">عرض بالحجم الكامل</button>`; $('proofFull').onclick = () => showImage(j.data, o.id + '-transfer.jpg'); } }).catch(() => { const b = $('proofBox'); if (b) b.innerHTML = '<span class="none">تعذّر تحميل الصورة</span>'; });
+      $('pEdit').onclick = () => editOrderUI(o);
       $('pArchive').onclick = async () => { if (await archive([o.id])) closePanel(); };
       $('pNoteSave').onclick = async () => { const n = $('pNote').value; try { await api('update', { id: o.id, note: n }); o.internal = n; $('pNoteOk').hidden = false; setTimeout(() => { const e = $('pNoteOk'); if (e) e.hidden = true; }, 2000); } catch { toast('تعذّر الحفظ'); } };
       $('pCopy').onclick = () => { const t = `${o.name}\n${o.phone}${o.phone_extra ? '\nهاتف إضافي: ' + o.phone_extra : ''}${mapURL ? '\n' + mapURL : ''}\n${o.city} – ${o.address}\nالإجمالي: ${o.total} ج.م (${o.payment})\nطلب ${o.id}`; navigator.clipboard?.writeText(t).then(() => toast('تم النسخ'), () => toast('تعذّر النسخ')); };
@@ -797,6 +859,70 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
         b.disabled = false; b.textContent = 'عرض بالحجم الكامل';
       });
     }
+    /* ---------- edit an order (items, quantities, prices, delivery, customer) ---------- */
+    function editOrderUI(o) {
+      const rows = o.items.map((i, k) => ({ name: i.name, option: i.option || '', qty: Number(i.qty) || 1, price: Number(i.price) || Math.round(Number(i.line || 0) / (Number(i.qty) || 1)), custom: !!i.custom, note: i.note || '', from: k }));
+      const cust = { name: o.name || '', phone: o.phone || '', phone_extra: o.phone_extra || '', city: o.city || '', address: o.address || '', notes: o.notes || '' };
+      let delivery = Number(o.delivery || 0);
+      const sec = $('orderSec');
+      const addOpts = `<option value="">+ إضافة لوحة…</option>` + CFG.catalog.map((p, k) => `<option value="p${k}">${esc(p.name)} · ${money(p.price)}</option>`).join('') + CFG.customSizes.map((s, k) => `<option value="c${k}">لوحة من صورة العميل ${esc(s.label)} · ${money(s.price)}</option>`).join('');
+      const draw = () => {
+        const sub = rows.reduce((n, r) => n + r.qty * r.price, 0);
+        sec.innerHTML = `<h3 class="h3row">تعديل الطلب <small style="color:var(--soft)">${esc(o.id)}</small></h3>
+          <div class="ed-items">${rows.map((r, k) => `<div class="ed-row" data-k="${k}">
+            <div class="ed-name"><input class="in" data-f="name" value="${esc(r.name)}" aria-label="اسم المنتج"><input class="in" data-f="option" value="${esc(r.option)}" placeholder="المقاس / الاختيار" aria-label="الاختيار"></div>
+            <div class="ed-q"><button class="btn sm" data-q="-1" aria-label="أقل">−</button><input class="in num" data-f="qty" type="number" min="1" max="99" value="${r.qty}" aria-label="الكمية"><button class="btn sm" data-q="1" aria-label="أكتر">+</button></div>
+            <label class="ed-p">السعر<input class="in num" data-f="price" type="number" min="0" value="${r.price}"></label>
+            <span class="ed-line num">${money(r.qty * r.price)}</span>
+            <button class="btn sm ed-del" data-del="${k}" title="حذف من الطلب" aria-label="حذف من الطلب">✕</button>
+          </div>`).join('')}</div>
+          <select class="in" id="edAdd">${addOpts}</select>
+          <div class="ed-tot"><label>التوصيل<input class="in num" id="edDel" type="number" min="0" value="${delivery}"></label>
+            <div class="line"><span>المنتجات</span><span class="num">${money(sub)}</span></div>
+            <div class="line t"><span>الإجمالي الجديد</span><span class="num">${money(sub + delivery)}</span></div>
+            ${sub + delivery !== Number(o.total) ? `<p class="ed-diff">قبل التعديل: <span class="num">${money(o.total)}</span> · الفرق: <b class="num">${money(sub + delivery - Number(o.total))}</b>${o.payment_status === 'Paid in full' ? ' — الطلب مدفوع، راجع الفرق مع العميل.' : ''}</p>` : ''}</div>
+          <h3 style="margin-top:14px">بيانات العميل</h3>
+          <div class="ed-cust">
+            <label>الاسم<input class="in" data-c="name" value="${esc(cust.name)}"></label>
+            <label>الموبايل<input class="in num" data-c="phone" inputmode="tel" value="${esc(cust.phone)}"></label>
+            <label>هاتف إضافي<input class="in num" data-c="phone_extra" inputmode="tel" value="${esc(cust.phone_extra)}"></label>
+            <label>المحافظة<input class="in" data-c="city" list="edGovs" value="${esc(cust.city)}"><datalist id="edGovs">${CFG.govs.map((g) => `<option value="${esc(g)}">`).join('')}</datalist></label>
+            <label class="full">العنوان<input class="in" data-c="address" value="${esc(cust.address)}"></label>
+            <label class="full">ملاحظات العميل<input class="in" data-c="notes" value="${esc(cust.notes)}"></label>
+          </div>
+          <div class="acts" style="margin-top:12px"><button class="btn p" id="edSave">حفظ التعديلات</button><button class="btn" id="edCancel">إلغاء</button></div>
+          <p class="dnote" style="margin-top:8px">التعديلات بتتسجل في الملاحظات الداخلية (مين اتغيّر وإمتى)، والإجمالي والتحليلات بيتحدثوا لوحدهم.</p>`;
+        sec.querySelectorAll('.ed-row').forEach((el) => {
+          const r = rows[+el.dataset.k];
+          el.querySelectorAll('[data-f]').forEach((inp) => inp.addEventListener('change', () => { const f = inp.dataset.f; r[f] = f === 'qty' ? Math.max(1, Math.min(99, Math.round(+inp.value || 1))) : f === 'price' ? Math.max(0, Math.round(+inp.value || 0)) : inp.value; draw(); }));
+          el.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => { r.qty = Math.max(1, Math.min(99, r.qty + +b.dataset.q)); draw(); }));
+        });
+        sec.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { if (rows.length === 1) { toast('الطلب لازم يكون فيه منتج واحد على الأقل. لو عايز تلغيه غيّر الحالة لـ «ملغي».'); return; } rows.splice(+b.dataset.del, 1); draw(); }));
+        sec.querySelectorAll('[data-c]').forEach((inp) => inp.addEventListener('input', () => { cust[inp.dataset.c] = inp.value; }));
+        $('edDel').addEventListener('change', (e) => { delivery = Math.max(0, Math.round(+e.target.value || 0)); draw(); });
+        $('edAdd').addEventListener('change', (e) => {
+          const v = e.target.value; if (!v) return;
+          if (v[0] === 'p') { const p = CFG.catalog[+v.slice(1)]; rows.push({ name: p.name, option: p.option, qty: 1, price: p.price, custom: false, note: '' }); }
+          else { const s = CFG.customSizes[+v.slice(1)]; rows.push({ name: 'لوحة من صورتك', option: s.label, qty: 1, price: s.price, custom: true, note: '' }); }
+          draw();
+        });
+        $('edCancel').onclick = () => openPanel(o.id);
+        $('edSave').onclick = async () => {
+          const b = $('edSave'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
+          try {
+            const j = await api('edit_order', { id: o.id, items: rows.map((r) => ({ name: r.name, option: r.option, qty: r.qty, price: r.price, custom: r.custom, note: r.note, from: r.from })), delivery, customer: cust });
+            Object.assign(o, { items: j.items, subtotal: j.subtotal, delivery: j.delivery, total: j.total, units: j.units, name: cust.name, phone: cust.phone.replace(/[^\d+]/g, ''), phone_extra: cust.phone_extra.replace(/[^\d+]/g, ''), city: cust.city, address: cust.address, notes: cust.notes, updated: new Date().toISOString() });
+            if (j.changes && j.changes.length) o.internal = ((o.internal || '') + '\n✏️ ' + j.changes.join(' · ')).trim();
+            render(); openPanel(o.id);
+            toast(j.changes && j.changes.length ? 'تم حفظ التعديلات' : 'مفيش تغيير');
+            if (j.paid && j.total !== j.oldTotal) alert(`الطلب مدفوع بالفعل.\nالإجمالي اتغيّر من ${money(j.oldTotal)} إلى ${money(j.total)} — الفرق ${money(j.total - j.oldTotal)}.\nراجع الفرق مع العميل.`);
+          } catch (e) { b.disabled = false; b.textContent = 'حفظ التعديلات'; toast(e.message === 'bad_phone' ? 'رقم الموبايل مش صحيح' : 'تعذّر حفظ التعديلات'); }
+        };
+      };
+      draw();
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function closePanel() { openId = null; clearTimeout(designTimer); $('panel').classList.remove('on'); $('scrim').classList.remove('on'); $('panel').setAttribute('aria-hidden', 'true'); }
     $('pClose').addEventListener('click', closePanel); $('scrim').addEventListener('click', closePanel);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const lb = document.querySelector('.lightbox'); if (lb) lb.remove(); else closePanel(); } });
@@ -806,6 +932,8 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       d.addEventListener('click', (e) => { if (e.target === d || e.target.classList.contains('x')) d.remove(); });
       document.body.appendChild(d);
     }
+
+    window.NAY = { api: (a, x) => api(a, x), toast, esc, money, demo: DEMO };
 
     /* ---------- demo data ---------- */
     function demoApi(action, x) {
@@ -842,6 +970,10 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
       if (action === 'archive') { demoApi.data = demoApi.data.filter((d) => !x.ids.includes(d.id)); return Promise.resolve({ ok: true, archived: x.ids.length }); }
       if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }
       if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; return Promise.resolve({ ok: true }); }
+      if (action === 'catalog_list') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); return Promise.resolve({ ok: true, products: JSON.parse(JSON.stringify(demoApi.cat)), status: { status: 'completed', conclusion: 'success', sha: 'demo' } }); }
+      if (action === 'catalog_save') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); x.products.forEach((p) => { const k = demoApi.cat.findIndex((q) => q.slug === p.slug); if (k >= 0) demoApi.cat[k] = p; else demoApi.cat.push(p); }); demoApi.saved = Date.now(); return new Promise((r) => setTimeout(() => r({ ok: true, commit: 'demo' + Date.now(), products: x.products }), 700)); }
+      if (action === 'catalog_status') return Promise.resolve({ ok: true, run: Date.now() - (demoApi.saved || 0) < 12000 ? { status: 'in_progress', sha: 'demo' } : { status: 'completed', conclusion: 'success', sha: 'demo' } });
+      if (action === 'edit_order') { const o = demoApi.data.find((d) => d.id === x.id); const old = o.total; const items = x.items.map((i) => ({ ...i, line: i.qty * i.price })); const sub = items.reduce((n, i) => n + i.line, 0); o.items = items; o.delivery = x.delivery; o.total = sub + x.delivery; Object.assign(o, x.customer); return Promise.resolve({ ok: true, items, subtotal: sub, delivery: x.delivery, total: o.total, units: items.reduce((n, i) => n + i.qty, 0), changes: old !== o.total ? ['الإجمالي ' + old + ' ← ' + o.total] : [], paid: o.payment_status === 'Paid in full', oldTotal: old }); }
       if (action === 'design_start') { const o = demoApi.data.find((d) => d.id === x.id); o.design = [{ photo: 'demo', n: 1, size: '16x20', colors: +x.colors || 24, complexity: x.complexity || 'none', status: 'in_queue', key: 'demo2' }]; o._polls = 0; return Promise.resolve({ ok: true, design: o.design }); }
       if (action === 'design_status') { const o = demoApi.data.find((d) => d.id === x.id); o._polls = (o._polls || 0) + 1; if (o._polls >= 2) o.design = o.design.map((j) => ({ ...j, status: 'ready', files: { print_pdf: 'dpdf', print_svg: 'dsvg', numbered: 'dnum', painted: 'dfin', colors_pdf: 'dcol' }, palette: (demoApi.data.find((d) => d.id === 'NA-261019-7710').design || [{}])[0].palette })); else o.design = o.design.map((j) => ({ ...j, status: 'processing' })); return Promise.resolve({ ok: true, design: JSON.parse(JSON.stringify(o.design)) }); }
       if (action === 'photo' && /^d(fin|num)$/.test(x.fileId)) return Promise.resolve({ ok: true, data: x.fileId === 'dfin' ? '/media/products/couple/fin.webp' : '/media/products/couple/num.webp', name: 'preview.webp' });
@@ -856,6 +988,167 @@ const cfg = { endpoint: settings.orders_endpoint || '', whatsapp: settings.whats
     if (DEMO) tryLogin('demo', false);
     else if (saved) tryLogin(saved, true);
     else $('login').hidden = false;
+  })();
+  </script>
+
+  <script is:inline>
+  // Products tab: sold out / hide / edit / new paintings. Saved to the website code on GitHub through Apps Script.
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const CFG = JSON.parse($('cfg').textContent);
+    const N = () => window.NAY;
+    const KEYS = [['finished', 'fin', 'اللوحة بعد التلوين *'], ['numbered', 'num', 'اللوحة المرقّمة *'], ['reference', 'ref', 'الصورة الأصلية'], ['halfway', 'prog', 'في نص التلوين'], ['wall', 'wall', 'على الحيطة']];
+    const LEVELS = [['', ''], ['مناسبة للمبتدئين', 'Beginner-friendly'], ['مستوى متوسط', 'Intermediate'], ['للمحترفين', 'Advanced']];
+    const BADGES = [['', ''], ['جديد', 'New'], ['الأكثر مبيعًا', 'Best seller'], ['عرض خاص', 'Special offer'], ['إصدار محدود', 'Limited edition']];
+    let products = null, lastCommit = '', pollT = null;
+    const pending = {}; // new image path → data URL, until the site is rebuilt
+    const ar = (v) => (v && typeof v === 'object' ? v.ar || v.en || '' : v || '');
+    const src = (path) => pending[path] || path;
+    const esc = (s) => N().esc(s), money = (n) => N().money(n);
+
+    async function open(force) {
+      if (products && !force) return draw();
+      $('pgList').innerHTML = '<p class="dnote">جارٍ تحميل المنتجات…</p>';
+      try {
+        const j = await N().api('catalog_list');
+        products = (j.products || []).sort((a, b) => (a.order || 99) - (b.order || 99));
+        draw(); showRun(j.status);
+      } catch (e) {
+        $('pgList').innerHTML = e.message === 'github_not_configured'
+          ? `<div class="flagbox warn"><b>لازم خطوة واحدة قبل ما تقدر تعدّل المنتجات</b><span>إضافة مفتاح GitHub (GITHUB_TOKEN) في إعدادات Apps Script. الخطوات في رسالة Claude أو في docs/DASHBOARD-SETUP-AR.md.</span></div>`
+          : `<div class="flagbox bad"><b>تعذّر تحميل المنتجات</b><span>${esc(e.message)}</span></div>`;
+      }
+    }
+    function draw() {
+      $('pgList').innerHTML = products.map((p) => {
+        const hidden = p.active === false, sold = !!p.sold_out;
+        return `<div class="pg-card${sold ? ' is-sold' : ''}${hidden ? ' is-hidden' : ''}">
+          <div class="pg-img"><img src="${esc(src(p.images.finished))}" alt="" loading="lazy">${sold ? '<span class="pg-flag">سولد أوت</span>' : hidden ? '<span class="pg-flag">مخفية</span>' : ''}</div>
+          <div class="pg-info"><b>${esc(ar(p.name))}</b><span class="pg-en">${esc(p.name && p.name.en || '')}</span>
+            <span class="pg-price"><span class="num">${money(p.price)}</span>${p.compare_price > p.price ? ` <s class="num">${money(p.compare_price)}</s>` : ''}</span></div>
+          <div class="pg-acts">
+            <label class="sw"><input type="checkbox" data-sold="${esc(p.slug)}" ${sold ? 'checked' : ''}><i></i>سولد أوت</label>
+            <label class="sw"><input type="checkbox" data-vis="${esc(p.slug)}" ${hidden ? '' : 'checked'}><i></i>ظاهرة في الموقع</label>
+            <div class="row"><button class="btn sm" data-edit="${esc(p.slug)}">تعديل</button><a class="btn sm" href="/ar/products/${esc(p.slug)}/" target="_blank" rel="noopener">عرض</a></div>
+          </div></div>`;
+      }).join('') || '<p class="dnote">مفيش منتجات.</p>';
+      $('pgList').querySelectorAll('[data-sold]').forEach((c) => c.onchange = () => quick(c.dataset.sold, { sold_out: c.checked }, c.checked ? 'سولد أوت' : 'متاحة تاني'));
+      $('pgList').querySelectorAll('[data-vis]').forEach((c) => c.onchange = () => quick(c.dataset.vis, { active: c.checked }, c.checked ? 'ظاهرة في الموقع' : 'مخفية من الموقع'));
+      $('pgList').querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => form(products.find((p) => p.slug === b.dataset.edit)));
+    }
+    async function save(list, images, msg) {
+      const j = await N().api('catalog_save', { products: list, images, message: msg });
+      (j.products || []).forEach((p) => { const k = products.findIndex((q) => q.slug === p.slug); if (k >= 0) products[k] = p; else products.push(p); });
+      products.sort((a, b) => (a.order || 99) - (b.order || 99));
+      lastCommit = j.commit || ''; draw(); showRun({ status: 'queued', sha: lastCommit }); watch();
+      return j;
+    }
+    async function quick(slug, change, label) {
+      const p = products.find((x) => x.slug === slug); if (!p) return;
+      const next = { ...p, ...change };
+      try { await save([next], [], `${ar(p.name)}: ${label}`); N().toast(`${ar(p.name)}: ${label} — هيظهر على الموقع خلال دقيقتين`); }
+      catch (e) { N().toast('تعذّر الحفظ: ' + e.message); draw(); }
+    }
+    function showRun(run) {
+      const el = $('pgStatus'); if (!run) { el.textContent = ''; return; }
+      const mine = !lastCommit || !run.sha || run.sha === lastCommit || run.sha === 'demo';
+      if (run.status !== 'completed' || !mine) { el.className = 'pg-status busy'; el.innerHTML = '<span class="spin"></span>بيتنشر على الموقع… حوالي دقيقتين'; return false; }
+      if (run.conclusion === 'success') { el.className = 'pg-status ok'; el.textContent = '✓ الموقع محدّث'; return true; }
+      el.className = 'pg-status bad'; el.textContent = '⚠️ النشر فشل — كلّم Claude'; return true;
+    }
+    function watch() {
+      clearTimeout(pollT);
+      const tick = async () => { try { const j = await N().api('catalog_status'); if (showRun(j.run)) { if (lastCommit) N().toast('✓ التعديلات ظهرت على الموقع'); lastCommit = ''; return; } } catch (e) {} pollT = setTimeout(tick, 10000); };
+      pollT = setTimeout(tick, 8000);
+    }
+
+    // ---------- image helpers ----------
+    const readImg = (file) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = r.result; }; r.onerror = no; r.readAsDataURL(file); });
+    function encode(im, max = 1800) {
+      const s = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      let data = c.toDataURL('image/webp', 0.86), ext = 'webp';
+      if (!data.startsWith('data:image/webp')) { data = c.toDataURL('image/jpeg', 0.88); ext = 'jpg'; }
+      return { data, ext, w: c.width, h: c.height };
+    }
+    function palette(im, k = 24) {
+      const c = document.createElement('canvas'), S = 90; c.width = S; c.height = Math.round(S * im.height / im.width);
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0, c.width, c.height); const d = g.getImageData(0, 0, c.width, c.height).data, px = [];
+      for (let i = 0; i < d.length; i += 4) px.push([d[i], d[i + 1], d[i + 2]]);
+      let cen = Array.from({ length: k }, (_, j) => px[Math.floor((j + 0.5) * px.length / k)].slice());
+      for (let it = 0; it < 10; it++) {
+        const acc = cen.map(() => [0, 0, 0, 0]);
+        px.forEach((p) => { let b = 0, bd = 1e9; cen.forEach((q, j) => { const dd = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2; if (dd < bd) { bd = dd; b = j; } }); const a = acc[b]; a[0] += p[0]; a[1] += p[1]; a[2] += p[2]; a[3]++; });
+        cen = cen.map((q, j) => acc[j][3] ? [acc[j][0] / acc[j][3], acc[j][1] / acc[j][3], acc[j][2] / acc[j][3]] : q);
+      }
+      return cen.sort((a, b) => (a[0] * .3 + a[1] * .59 + a[2] * .11) - (b[0] * .3 + b[1] * .59 + b[2] * .11)).map((q) => '#' + q.map((v) => Math.round(v).toString(16).padStart(2, '0')).join(''));
+    }
+    const slugify = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9\s-]/g, '').trim().replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
+
+    // ---------- edit / new form ----------
+    function form(p) {
+      const isNew = !p;
+      const d = p ? JSON.parse(JSON.stringify(p)) : { name: {}, blurb: {}, about: {}, level: {}, badge: {}, images: {}, price: '', compare_price: '', orientation: 'portrait', order: (products.length ? Math.max(...products.map((x) => x.order || 0)) + 1 : 1), active: true, sold_out: false, palette: [] };
+      const imgs = {}; // key → {data, ext, im}
+      $('pgTitle').textContent = isNew ? 'لوحة جديدة' : 'تعديل: ' + ar(d.name);
+      const opt = (list, cur) => list.map(([a, e]) => `<option value="${esc(a)}|${esc(e)}" ${a === (cur && cur.ar || '') ? 'selected' : ''}>${a || 'بدون'}</option>`).join('');
+      $('pgBody').innerHTML = `
+        <div class="pg-grid">
+          <label>اسم اللوحة بالعربي *<input class="in" id="fNameAr" value="${esc(d.name.ar || '')}" placeholder="مثلًا: حقول الغروب"></label>
+          <label>الاسم بالإنجليزي<input class="in" id="fNameEn" dir="ltr" value="${esc(d.name.en || '')}" placeholder="Golden Hour Fields"></label>
+          <label>السعر (ج.م) *<input class="in num" id="fPrice" type="number" min="1" value="${esc(d.price)}"></label>
+          <label>السعر قبل الخصم<input class="in num" id="fCompare" type="number" min="0" value="${esc(d.compare_price || '')}" placeholder="اختياري"></label>
+          <label class="full">وصف قصير بالعربي<textarea class="in" id="fBlurbAr" rows="2">${esc(d.blurb.ar || '')}</textarea></label>
+          <label class="full">Short description (English)<textarea class="in" id="fBlurbEn" dir="ltr" rows="2">${esc(d.blurb.en || '')}</textarea></label>
+          <label class="full">تفاصيل اللوحة بالعربي<textarea class="in" id="fAboutAr" rows="3">${esc(d.about.ar || '')}</textarea></label>
+          <label class="full">Details (English)<textarea class="in" id="fAboutEn" dir="ltr" rows="3">${esc(d.about.en || '')}</textarea></label>
+          <label>المستوى<select class="in" id="fLevel">${opt(LEVELS, d.level)}</select></label>
+          <label>الشارة على الصورة<select class="in" id="fBadge">${opt(BADGES, d.badge)}</select></label>
+          <label>اتجاه اللوحة<select class="in" id="fOr"><option value="portrait" ${d.orientation !== 'landscape' ? 'selected' : ''}>طولي</option><option value="landscape" ${d.orientation === 'landscape' ? 'selected' : ''}>عرضي</option></select></label>
+          <label>الترتيب في الموقع<input class="in num" id="fOrder" type="number" min="1" value="${esc(d.order || 1)}"></label>
+          <label class="sw full"><input type="checkbox" id="fSold" ${d.sold_out ? 'checked' : ''}><i></i>سولد أوت</label>
+          <label class="sw full"><input type="checkbox" id="fActive" ${d.active !== false ? 'checked' : ''}><i></i>ظاهرة في الموقع</label>
+        </div>
+        <h3 class="pg-h3">الصور</h3>
+        <div class="pg-imgs">${KEYS.map(([k, , label]) => `<div class="pg-slot" data-k="${k}"><div class="pg-thumb" id="th_${k}">${d.images[k] ? `<img src="${esc(src(d.images[k]))}" alt="">` : '<span>مفيش صورة</span>'}</div><b>${label}</b><label class="btn sm">${d.images[k] ? 'تغيير' : 'رفع صورة'}<input type="file" accept="image/*" hidden data-file="${k}"></label></div>`).join('')}</div>
+        <p class="dnote">الصور بتتصغّر وتتحوّل لـ WebP تلقائيًا. «المرقّمة» و«بعد التلوين» لازم يبقوا نفس الكادر بالظبط علشان مقارنة قبل/بعد تشتغل صح.</p>
+        <p class="pg-err" id="fErr" hidden></p>
+        <div class="acts"><button class="btn p" id="fSave">${isNew ? 'إضافة اللوحة للموقع' : 'حفظ التعديلات'}</button><button class="btn" id="fCancel">إلغاء</button></div>`;
+      $('pgBody').querySelectorAll('[data-file]').forEach((inp) => inp.onchange = async () => {
+        const f = inp.files[0]; if (!f) return; const k = inp.dataset.file;
+        try { const im = await readImg(f); imgs[k] = { ...encode(im), im }; $('th_' + k).innerHTML = `<img src="${imgs[k].data}" alt="">`; inp.parentElement.firstChild.textContent = 'تغيير'; }
+        catch (e) { N().toast('الصورة مش مقروءة'); }
+      });
+      $('fCancel').onclick = close;
+      $('fSave').onclick = async () => {
+        const err = (m) => { $('fErr').textContent = m; $('fErr').hidden = false; };
+        const v = (id) => $(id).value.trim();
+        if (!v('fNameAr')) return err('اكتب اسم اللوحة بالعربي.');
+        if (!(+v('fPrice') > 0)) return err('اكتب السعر.');
+        if (!(d.images.finished || imgs.finished) || !(d.images.numbered || imgs.numbered)) return err('لازم صورة «بعد التلوين» وصورة «المرقّمة».');
+        let slug = d.slug;
+        if (isNew) { slug = slugify(v('fNameEn')) || 'painting-' + Date.now().toString(36); if (slug.length < 3) slug = 'painting-' + slug; while (products.some((x) => x.slug === slug)) slug += '-2'; }
+        const [lAr, lEn] = $('fLevel').value.split('|'), [bAr, bEn] = $('fBadge').value.split('|');
+        const out = { ...d, slug, name: { ar: v('fNameAr'), en: v('fNameEn') || v('fNameAr') }, blurb: { ar: v('fBlurbAr'), en: v('fBlurbEn') || v('fBlurbAr') }, about: { ar: v('fAboutAr'), en: v('fAboutEn') || v('fAboutAr') },
+          level: { ar: lAr, en: lEn }, badge: { ar: bAr, en: bEn }, orientation: $('fOr').value, order: +v('fOrder') || 1,
+          price: Math.round(+v('fPrice')), compare_price: Math.round(+v('fCompare') || 0), sold_out: $('fSold').checked, active: $('fActive').checked, images: { ...d.images } };
+        const folder = d.images.finished ? d.images.finished.replace(/\/[^/]+$/, '') : '/media/products/' + slug;
+        const stamp = Date.now().toString(36), upload = [];
+        KEYS.forEach(([k, short]) => { if (!imgs[k]) return; const path = `${folder}/${short}-${stamp}.${imgs[k].ext}`; out.images[k] = path; pending[path] = imgs[k].data; upload.push({ path: 'public' + path, data: imgs[k].data }); });
+        if (imgs.finished || imgs.numbered) delete out.images.timelapse_map; // the site rebuilds the painting animation from the new images
+        if (imgs.finished || isNew) { try { out.palette = palette(imgs.finished ? imgs.finished.im : await readImgURL(src(out.images.finished))); } catch (e) {} }
+        const b = $('fSave'); b.disabled = true; b.textContent = 'جارٍ الحفظ…'; $('fErr').hidden = true;
+        try { await save([out], upload, (isNew ? 'New painting: ' : 'Edit painting: ') + (out.name.en || slug)); close(); N().toast(isNew ? 'اللوحة اتضافت — هتظهر على الموقع خلال دقيقتين' : 'اتحفظ — هيظهر على الموقع خلال دقيقتين'); }
+        catch (e) { b.disabled = false; b.textContent = isNew ? 'إضافة اللوحة للموقع' : 'حفظ التعديلات'; err('تعذّر الحفظ: ' + ({ github_not_configured: 'مفتاح GitHub مش متضاف', bad_slug: 'اكتب الاسم الإنجليزي بحروف إنجليزي', images_required: 'الصور ناقصة' }[e.message] || e.message)); }
+      };
+      $('pgModal').hidden = false; document.body.style.overflow = 'hidden';
+    }
+    const readImgURL = (u) => new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = u; });
+    function close() { $('pgModal').hidden = true; document.body.style.overflow = ''; }
+    $('pgClose').onclick = close;
+    $('pgModal').addEventListener('click', (e) => { if (e.target === $('pgModal')) close(); });
+    $('pgNew').onclick = () => { if (!products) return N().toast('استنى تحميل المنتجات'); form(null); };
+    window.NAY_PRODUCTS = { open: () => open(false) };
   })();
   </script>
 </body>

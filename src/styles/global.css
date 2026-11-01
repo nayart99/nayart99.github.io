@@ -563,3 +563,8 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .upload.working canvas{filter:saturate(.7) brightness(1.04)}
 @keyframes pbnScan{from{background-position:0 120%}to{background-position:0 -120%}}
 @media (prefers-reduced-motion:reduce){.upload.working::after{animation:none}}
+/* sold out */
+.card.sold .frame img{filter:grayscale(.55) opacity(.85)}
+.badge.sold{background:var(--ink);color:#fff}
+.sold-note{font-size:.9rem;color:var(--ink-soft);margin:6px 0 0}
+#pAdd:disabled,#sbAdd:disabled{opacity:.6;cursor:not-allowed}

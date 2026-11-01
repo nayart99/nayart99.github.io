@@ -20,7 +20,7 @@ const store = {
   lang,
   base: href(lang, '/'),
   t: STRINGS[lang],
-  products: products.map((p) => ({ slug: p.slug, name: pick(p.name, lang), img: p.images.finished, price: p.price })),
+  products: products.map((p) => ({ slug: p.slug, name: pick(p.name, lang), img: p.images.finished, price: p.price, sold_out: !!p.sold_out })),
   settings: {
     delivery_fee: settings.delivery_fee,
     custom_sizes: settings.custom_sizes,

@@ -34,6 +34,8 @@
 //   MIMI_STYLE          detail (default: keeps faces), standard (Mimi defaults, smoother) or painting (adds a painterly filter)
 //   MIMI_MIN_AREA       smallest paint area, % of the canvas short side (default 0.5)
 //   MIMI_FILTER         painting filter for MIMI_STYLE=painting (default painting-general)
+//   GITHUB_TOKEN        lets the dashboard change products on the website (sold out, hide, prices, new paintings).
+//                       Fine-grained GitHub token for nayart99/nayart99.github.io only: Contents read/write + Actions read.
 //   PAY_ALIASES         optional, comma separated: how our account appears on InstaPay receipts (IPA address, account name)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
@@ -798,6 +800,10 @@ function admin(d) {
   }
   if (d.action === 'design_start') return designStart(sh, d.id, { colors: d.colors, complexity: d.complexity, photo: d.photo });
   if (d.action === 'design_status') return designStatus(sh, d.id);
+  if (d.action === 'edit_order') return editOrder(ss, sh, d);
+  if (d.action === 'catalog_list') return catalogList();
+  if (d.action === 'catalog_save') return catalogSave(d);
+  if (d.action === 'catalog_status') return catalogStatus();
   if (d.action === 'update') {
     const r = findRow(sh, d.id);
     if (!r) return { ok: false, error: 'not found' };
@@ -863,6 +869,165 @@ function listOrders(sh) {
       photos: ids.map(function (id, i) { return { id: id, thumb: thumbs[i] || '', url: 'https://drive.google.com/file/d/' + id + '/view' }; }),
     };
   }).reverse();
+}
+
+/* ---------------- editing an order from the dashboard ---------------- */
+
+/** Changes items / quantities / prices / delivery / customer details, recalculates the totals and keeps a log. */
+function editOrder(ss, sh, d) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const r = findRow(sh, d.id);
+    if (!r) return { ok: false, error: 'not found' };
+    const v = sh.getRange(r, 1, 1, ORDERS_HEADERS.length).getValues()[0];
+    let old = []; try { old = JSON.parse(v[C['Items JSON']] || '[]'); } catch (e) {}
+    const items = (d.items || []).slice(0, 30).map(function (i) {
+      const qty = Math.max(1, Math.min(99, Math.round(Number(i.qty) || 1)));
+      const price = Math.max(0, Math.round(Number(i.price) || 0));
+      const it = { name: String(i.name || '').trim().slice(0, 120), option: String(i.option || '').trim().slice(0, 120), qty: qty, price: price, line: qty * price, custom: !!i.custom, note: String(i.note || '').slice(0, 500) };
+      const src = typeof i.from === 'number' ? old[i.from] : null; // keep the framing / Mimi key of an existing line
+      if (src) { if (src.crop) it.crop = src.crop; if (src.mimi_key) it.mimi_key = src.mimi_key; }
+      return it;
+    }).filter(function (i) { return i.name; });
+    if (!items.length) return { ok: false, error: 'no_items' };
+    const subtotal = items.reduce(function (n, i) { return n + i.line; }, 0);
+    const delivery = Math.max(0, Math.round(Number(d.delivery != null ? d.delivery : v[C['Delivery (EGP)']]) || 0));
+    const total = subtotal + delivery, units = items.reduce(function (n, i) { return n + i.qty; }, 0);
+    const oldTotal = Number(v[C['Total (EGP)']] || 0);
+
+    const log = [];
+    const key = function (i) { return i.name + ' (' + i.option + ')'; };
+    old.forEach(function (o) { const n = items.filter(function (i) { return key(i) === key(o); })[0]; if (!n) log.push('حذف ' + key(o)); else if (n.qty !== Number(o.qty)) log.push(key(o) + ': الكمية ' + o.qty + ' ← ' + n.qty); else if (n.price !== Number(o.price)) log.push(key(o) + ': السعر ' + o.price + ' ← ' + n.price); });
+    items.forEach(function (n) { if (!old.some(function (o) { return key(o) === key(n); })) log.push('إضافة ' + key(n) + ' × ' + n.qty); });
+    if (delivery !== Number(v[C['Delivery (EGP)']] || 0)) log.push('التوصيل ' + v[C['Delivery (EGP)']] + ' ← ' + delivery);
+
+    if (d.customer && d.customer.phone && !/^(\+?20)?0?1[0125]\d{8}$/.test(String(d.customer.phone).replace(/[^\d+]/g, ''))) return { ok: false, error: 'bad_phone' };
+    const set = function (h, val) { sh.getRange(r, C[h] + 1).setValue(val); };
+    set('Items', items.map(function (i) { return i.name + ' (' + i.option + ') × ' + i.qty; }).join('\n'));
+    set('Units', units); set('Subtotal (EGP)', subtotal); set('Delivery (EGP)', delivery); set('Total (EGP)', total);
+    set('Items JSON', JSON.stringify(items));
+    const c = d.customer;
+    if (c && typeof c === 'object') {
+      const phone = String(c.phone || '').replace(/[^\d+]/g, '');
+      const fields = { 'Name': c.name, 'Governorate': c.city, 'Address': c.address, 'Customer notes': c.notes };
+      Object.keys(fields).forEach(function (h) { if (fields[h] != null && String(fields[h]).trim() !== String(v[C[h]])) { log.push(h === 'Name' ? 'الاسم' : h === 'Governorate' ? 'المحافظة' : h === 'Address' ? 'العنوان' : 'ملاحظات العميل'); set(h, String(fields[h]).trim().slice(0, 500)); } });
+      if (phone && phone !== String(v[C['Phone']]).replace(/^'/, '')) { set('Phone', "'" + phone); log.push('الموبايل'); }
+      if (c.phone_extra != null) { const pe = String(c.phone_extra).replace(/[^\d+]/g, ''); if (pe !== String(v[C['Additional phone']]).replace(/^'/, '')) { set('Additional phone', pe ? "'" + pe : ''); log.push('الهاتف الإضافي'); } }
+    }
+    if (total !== oldTotal) log.push('الإجمالي ' + oldTotal + ' ← ' + total);
+    if (log.length) {
+      const stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'dd/MM HH:mm');
+      set('Internal notes', (String(v[C['Internal notes']] || '') + '\n✏️ ' + stamp + ': ' + log.join(' · ')).trim().slice(0, 4000));
+    }
+    set('Last update', new Date());
+
+    // keep the "Order items" sheet (used for best sellers) in line with the order
+    const itemsSh = sheet(ss, 'Order items', ITEMS_HEADERS);
+    if (itemsSh.getLastRow() > 1) {
+      const ids = itemsSh.getRange(2, 2, itemsSh.getLastRow() - 1, 1).getValues();
+      for (let k = ids.length - 1; k >= 0; k--) if (String(ids[k][0]) === String(d.id)) itemsSh.deleteRow(k + 2);
+    }
+    const when = v[C['Date']] instanceof Date ? v[C['Date']] : new Date();
+    const month = Utilities.formatDate(when, 'Africa/Cairo', 'yyyy-MM');
+    items.forEach(function (i) { itemsSh.appendRow([when, d.id, month, i.name, i.option, i.qty, i.price, i.line, i.note || '']); });
+
+    return { ok: true, items: items, subtotal: subtotal, delivery: delivery, total: total, units: units, changes: log, paid: v[C['Payment status']] === 'Paid in full', oldTotal: oldTotal };
+  } finally { lock.releaseLock(); }
+}
+
+/* ---------------- website products (sold out, hide, edit, new paintings) ---------------- */
+// The products live in the website code on GitHub (src/content/products/*.json + images in public/media/products/).
+// The dashboard sends the change here, this makes one commit with a GitHub token, and the site rebuilds itself (~2 min).
+// Needs the Script property GITHUB_TOKEN (fine-grained token: this repo only, Contents read/write, Actions read).
+
+const GH_REPO = 'nayart99/nayart99.github.io', GH_BRANCH = 'main';
+const PRODUCT_DIR = 'src/content/products/', MEDIA_DIR = 'public/media/products/';
+function ghReady() { return !!cfg('GITHUB_TOKEN'); }
+function gh(path, opt) {
+  opt = opt || {};
+  const o = { method: opt.method || 'get', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + cfg('GITHUB_TOKEN'), Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } };
+  if (opt.payload) { o.payload = JSON.stringify(opt.payload); o.contentType = 'application/json'; }
+  const r = UrlFetchApp.fetch('https://api.github.com' + path, o);
+  let body = {}; try { body = JSON.parse(r.getContentText()); } catch (e) {}
+  return { code: r.getResponseCode(), body: body };
+}
+const decodeB64 = function (s) { return Utilities.newBlob(Utilities.base64Decode(String(s || '').replace(/\s/g, ''))).getDataAsString('UTF-8'); };
+
+function catalogList() {
+  if (!ghReady()) return { ok: false, error: 'github_not_configured' };
+  const dir = gh('/repos/' + GH_REPO + '/contents/' + PRODUCT_DIR.replace(/\/$/, '') + '?ref=' + GH_BRANCH);
+  if (dir.code !== 200) return { ok: false, error: 'github_' + dir.code };
+  const files = (dir.body || []).filter(function (f) { return /\.json$/.test(f.name); });
+  const reqs = files.map(function (f) { return { url: 'https://api.github.com/repos/' + GH_REPO + '/contents/' + f.path + '?ref=' + GH_BRANCH, muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + cfg('GITHUB_TOKEN'), Accept: 'application/vnd.github+json' } }; });
+  const products = UrlFetchApp.fetchAll(reqs).map(function (r) { try { return JSON.parse(decodeB64(JSON.parse(r.getContentText()).content)); } catch (e) { return null; } }).filter(Boolean);
+  return { ok: true, products: products, status: catalogStatus().run || null };
+}
+
+const bi = function (v) { v = v || {}; return { en: String(v.en || v.ar || '').trim().slice(0, 1500), ar: String(v.ar || v.en || '').trim().slice(0, 1500) }; };
+function cleanProduct(p) {
+  const slug = String(p.slug || '').toLowerCase();
+  if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(slug)) throw new Error('bad_slug');
+  const img = p.images || {}, images = {};
+  ['finished', 'numbered', 'reference', 'halfway', 'wall', 'timelapse_map'].forEach(function (k) {
+    const v = String(img[k] || '');
+    if (v && /^\/media\/[\w\/.-]+\.(webp|jpg|jpeg|png)$/.test(v)) images[k] = v;
+  });
+  if (!images.finished || !images.numbered) throw new Error('images_required');
+  const out = {
+    slug: slug, order: Math.round(Number(p.order) || 50), orientation: p.orientation === 'landscape' ? 'landscape' : 'portrait',
+    badge: bi(p.badge), level: bi(p.level), name: bi(p.name), blurb: bi(p.blurb), about: bi(p.about), images: images,
+    palette: (p.palette || []).filter(function (c) { return /^#[0-9a-f]{6}$/i.test(c); }).slice(0, 40),
+    price: Math.max(0, Math.round(Number(p.price) || 0)), compare_price: Math.max(0, Math.round(Number(p.compare_price) || 0)),
+    active: p.active !== false, sold_out: p.sold_out === true,
+  };
+  if (!out.name.ar && !out.name.en) throw new Error('name_required');
+  if (!out.price) throw new Error('price_required');
+  if (!out.badge.ar && !out.badge.en) delete out.badge;
+  return out;
+}
+
+/** d.products: full product objects to write; d.images: [{ path: 'public/media/products/<slug>/fin.webp', data: 'data:image/webp;base64,…' }] */
+function catalogSave(d) {
+  if (!ghReady()) return { ok: false, error: 'github_not_configured' };
+  let products;
+  try { products = (d.products || []).slice(0, 20).map(cleanProduct); } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  const images = (d.images || []).slice(0, 12);
+  for (let i = 0; i < images.length; i++) {
+    const im = images[i];
+    if (!/^public\/media\/products\/[a-z0-9-]+\/[a-z0-9-]+\.(webp|jpg|png)$/.test(String(im.path || ''))) return { ok: false, error: 'bad_image_path' };
+    if (!/^data:image\/(webp|jpeg|png);base64,/.test(String(im.data || '')) || im.data.length > 7000000) return { ok: false, error: 'bad_image' };
+  }
+  if (!products.length && !images.length) return { ok: false, error: 'nothing_to_save' };
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const ref = gh('/repos/' + GH_REPO + '/git/ref/heads/' + GH_BRANCH);
+    if (ref.code !== 200) return { ok: false, error: 'github_' + ref.code };
+    const head = ref.body.object.sha, base = gh('/repos/' + GH_REPO + '/git/commits/' + head).body.tree.sha;
+    const tree = [];
+    images.forEach(function (im) {
+      const b = gh('/repos/' + GH_REPO + '/git/blobs', { method: 'post', payload: { content: im.data.split(',')[1], encoding: 'base64' } });
+      if (b.code !== 201) throw new Error('github_blob_' + b.code);
+      tree.push({ path: im.path, mode: '100644', type: 'blob', sha: b.body.sha });
+    });
+    products.forEach(function (p) { tree.push({ path: PRODUCT_DIR + p.slug + '.json', mode: '100644', type: 'blob', content: JSON.stringify(p, null, 2) + '\n' }); });
+    const t = gh('/repos/' + GH_REPO + '/git/trees', { method: 'post', payload: { base_tree: base, tree: tree } });
+    if (t.code !== 201) return { ok: false, error: 'github_tree_' + t.code };
+    const msg = String(d.message || 'Products updated from the dashboard').slice(0, 200);
+    const c = gh('/repos/' + GH_REPO + '/git/commits', { method: 'post', payload: { message: msg + '\n\n(from the NAY ART dashboard)', tree: t.body.sha, parents: [head] } });
+    if (c.code !== 201) return { ok: false, error: 'github_commit_' + c.code };
+    const u = gh('/repos/' + GH_REPO + '/git/refs/heads/' + GH_BRANCH, { method: 'patch', payload: { sha: c.body.sha } });
+    if (u.code !== 200) return { ok: false, error: 'github_ref_' + u.code };
+    return { ok: true, commit: c.body.sha, products: products };
+  } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  finally { lock.releaseLock(); }
+}
+
+/** Latest website build: queued / in_progress / completed + success|failure. */
+function catalogStatus() {
+  if (!ghReady()) return { ok: false, error: 'github_not_configured' };
+  const r = gh('/repos/' + GH_REPO + '/actions/runs?per_page=1&branch=' + GH_BRANCH);
+  const run = (r.body.workflow_runs || [])[0];
+  return { ok: true, run: run ? { status: run.status, conclusion: run.conclusion, sha: run.head_sha, at: run.created_at, title: run.display_title } : null };
 }
 
 /* ---------------- sheets ---------------- */

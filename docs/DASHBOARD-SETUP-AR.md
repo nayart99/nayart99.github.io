@@ -65,3 +65,14 @@
 - `MIMI_PREVIEW_PER_DEVICE`: عدد المعاينات لكل عميل كل 6 ساعات (الافتراضي 4).
 - `MIMI_PREVIEW_DAILY`: الحد الأقصى لكل الموقع في اليوم (الافتراضي 60).
 كل معاينة بتتسجل في شيت «Previews». ولو العميل طلب بنفس المعاينة، نفس النتيجة بتبقى ملف الطباعة بعد تأكيد الدفع من غير تحويل جديد.
+
+## ٦. تعديل منتجات الموقع من اللوحة (سولد أوت، إخفاء، أسعار، لوحات جديدة)
+تبويب «منتجات الموقع» في اللوحة بيعدّل ملفات الموقع على GitHub والموقع بيتحدّث لوحده خلال دقايق. محتاج مرة واحدة مفتاح GitHub:
+1. ادخل github.com بحساب **nayart99** ← Settings ← Developer settings ← Personal access tokens ← **Fine-grained tokens** ← Generate new token.
+2. الاسم: NAY ART dashboard. المدة: سنة. Repository access: **Only select repositories** ← `nayart99/nayart99.github.io`.
+3. Permissions ← Repository permissions: **Contents: Read and write**، و **Actions: Read-only** (Metadata بتتحط لوحدها).
+4. Generate token وانسخه (بيظهر مرة واحدة بس).
+5. Apps Script ← Project Settings ← Script properties ← أضف `GITHUB_TOKEN` والصق المفتاح ← حفظ.
+
+## ٧. تعديل طلب
+من تفاصيل أي طلب ← «✏️ تعديل الطلب»: تغيير الكمية أو السعر، حذف منتج، إضافة لوحة، تعديل التوصيل وبيانات العميل. الإجمالي والتحليلات بيتحدثوا، وكل تعديل بيتسجل في الملاحظات الداخلية.

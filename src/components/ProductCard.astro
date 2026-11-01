@@ -2,12 +2,12 @@
 import { useT, pick, href } from '../lib/site.js';
 const { p, lang = 'en' } = Astro.props;
 const t = useT(lang);
-const badge = pick(p.badge, lang);
+const badge = p.sold_out ? t('sold_out') : pick(p.badge, lang);
 const soft = (p.badge?.en || '').toLowerCase() === 'new';
 ---
-<a class="card" href={href(lang, `/products/${p.slug}`)}>
+<a class={`card${p.sold_out ? ' sold' : ''}`} href={href(lang, `/products/${p.slug}`)}>
   <div class="media">
-    {badge && <span class={`badge${soft ? ' soft' : ''}`}>{badge}</span>}
+    {badge && <span class={`badge${soft && !p.sold_out ? ' soft' : ''}${p.sold_out ? ' sold' : ''}`}>{badge}</span>}
     <div class={`frame ${p.landscape ? 'land' : 'port'}`}>
       <img src={p.images.finished} alt={pick(p.name, lang)} loading="lazy" />
       <img class="alt" src={p.images.numbered} alt="" loading="lazy" />

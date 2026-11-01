@@ -134,7 +134,7 @@ const source = () => { try { return JSON.parse(sessionStorage.getItem('nay-src')
 function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2200); }
 
 /* ---------- cart ---------- */
-let cart = store.get('nay-cart', []).filter((c) => c.kind === 'custom' ? S.custom_sizes[c.size] : PRODUCTS.some((p) => p.slug === c.slug));
+let cart = store.get('nay-cart', []).filter((c) => c.kind === 'custom' ? S.custom_sizes[c.size] : PRODUCTS.some((p) => p.slug === c.slug && !p.sold_out)); // sold-out paintings leave the cart
 const photos = {}; // custom photos kept in memory as a fallback
 // Custom photos are large, so they live in IndexedDB (survives page changes), not localStorage.
 const photoDB = (() => {
@@ -160,6 +160,7 @@ function totals() { const sub = cart.reduce((s, c) => s + lineInfo(c).price * c.
 function gaItems() { return cart.map((c) => { const l = lineInfo(c); return { item_id: c.kind === 'custom' ? 'custom-' + S.custom_sizes[c.size].label : c.slug, item_name: l.name, item_variant: l.option, price: l.price, quantity: c.q }; }); }
 
 function addKit(slug, q = 1) {
+  if ((productBySlug(slug) || {}).sold_out) { toast(tr('sold_out_toast')); return; }
   const ex = cart.find((c) => c.key === slug);
   if (ex) ex.q += q; else cart.push({ key: slug, kind: 'kit', slug, q });
   save(); counts(); bump();
@@ -398,12 +399,13 @@ if (pdp) {
   new IntersectionObserver((es) => es.forEach((e) => { if (gIdx !== 0) return; if (e.isIntersecting) { if (!gRev.on) gRev.start(src); } else gRev.stop(); }), { threshold: 0.2 }).observe(box);
   document.addEventListener('visibilitychange', () => { if (document.hidden) gRev.stop(); else if (gIdx === 0) gRev.start(src); });
   setG(0);
-  const upd = () => { $('pQty').textContent = pQty; $('pAdd').textContent = `${tr('add_to_cart')} · ${money(price * pQty)}`; };
+  const soldOut = $('pAdd').disabled;
+  const upd = () => { $('pQty').textContent = pQty; if (!soldOut) $('pAdd').textContent = `${tr('add_to_cart')} · ${money(price * pQty)}`; };
   $('pDec').addEventListener('click', () => { pQty = Math.max(1, pQty - 1); upd(); });
   $('pInc').addEventListener('click', () => { pQty = Math.min(10, pQty + 1); upd(); });
   $('pAdd').addEventListener('click', () => addKit(slug, pQty));
   $('sbAdd').addEventListener('click', () => addKit(slug, 1));
-  $('pBuyNow').addEventListener('click', () => { addKit(slug, pQty); openDrawer('checkout'); });
+  $('pBuyNow')?.addEventListener('click', () => { addKit(slug, pQty); openDrawer('checkout'); });
   // delivery estimate (Friday is the weekend)
   const now = new Date(); const add = (n) => { const x = new Date(now); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay() !== 5) k++; } return x; };
   const fmtD = (x) => x.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short' });

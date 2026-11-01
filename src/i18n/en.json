@@ -349,5 +349,8 @@
   "pbn_wait_toast": "Please wait, your canvas is being created",
   "sold_out": "Sold out",
   "sold_out_toast": "This painting is sold out right now",
-  "sold_out_note": "Sold out for now. Message us on WhatsApp to know when it's back, or choose another painting."
+  "sold_out_note": "Sold out for now. Message us on WhatsApp to know when it's back, or choose another painting.",
+  "free_delivery": "Free",
+  "free_delivery_hint": "Add {n} more for free delivery",
+  "orders_paused": "We're not taking new orders right now. Message us on WhatsApp and we'll get back to you."
 }

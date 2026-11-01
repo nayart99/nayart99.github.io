@@ -3,7 +3,7 @@
 // Open with ?demo=1 to see it with sample orders.
 import { settings, getProducts, pick, STRINGS } from '../../lib/site.js';
 const allProducts = Object.values(import.meta.glob('../../content/products/*.json', { eager: true })).map((m) => m.default || m);
-const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: settings.whatsapp_intl, brand: settings.brand, payNumber: settings.instapay || settings.vodafone_cash || '',
+const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRINGS.ar.announce_offer, announce_cod: STRINGS.ar.announce_cod, announce_offer_en: STRINGS.en.announce_offer, announce_cod_en: STRINGS.en.announce_cod }, endpoint: settings.orders_endpoint || '', whatsapp: settings.whatsapp_intl, brand: settings.brand, payNumber: settings.instapay || settings.vodafone_cash || '',
   catalog: getProducts().map((p) => ({ slug: p.slug, name: pick(p.name, 'ar'), price: p.price, option: String(settings.canvas_size || '40×50 cm').replace('cm', 'سم') })),
   customSizes: settings.custom_sizes || [], govs: (STRINGS.ar && STRINGS.ar.gov) || [] };
 ---
@@ -115,6 +115,16 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
     .regen{margin-top:12px;font-size:.88rem}.regen summary{cursor:pointer;color:var(--soft)}.regen .acts{margin-top:8px}
     .in.sm{width:auto;padding:8px 10px;min-height:0}
     .dapprove{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+    .pg-sum{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 14px}.pg-sum span{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.85rem}.pg-sum .ok{border-color:#B9DEC6}.pg-sum .so{border-color:#E9B9C1}.pg-sum .hd{border-color:#d8cfc4}
+    button.pg-price{all:unset;cursor:pointer;font-weight:600;display:inline-flex;gap:6px;align-items:baseline}button.pg-price i{font-style:normal;color:var(--soft);font-size:.8rem}button.pg-price:hover i{color:var(--wine)}
+    .pg-qp{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-top:4px}.pg-qp label{display:flex;flex-direction:column;font-size:.75rem;color:var(--soft);gap:2px}.pg-qp .in{width:96px;padding:6px 8px;color:var(--ink)}
+    .st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+    .st-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}.st-card h3{margin:0;font-size:1rem}
+    .st-card.warn{border-color:#C62828;box-shadow:0 0 0 3px rgba(198,40,40,.1)}
+    .st-card .dnote{margin:0}
+    .st-size{display:flex;align-items:center;gap:5px;margin-bottom:8px}.st-size .in{width:56px;padding:7px 6px;text-align:center}.st-size [data-p]{width:82px}.st-size .ed-del{margin-inline-start:auto}.st-size span{font-size:.85rem;color:var(--soft)}
+    .st-save{position:sticky;bottom:0;background:linear-gradient(transparent,var(--cream) 30%);padding:18px 0 14px;display:flex;align-items:center;gap:12px;margin-top:8px}
+    @media (max-width:420px){.st-grid{grid-template-columns:1fr}}
     .pg-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
     .pg-head h2{margin:0;font-size:1.3rem}.pg-head .sub{margin:4px 0 0;color:var(--soft);font-size:.88rem}
     .pg-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -315,6 +325,7 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
         <button data-view="orders" aria-pressed="true">الطلبات</button>
         <button data-view="analytics" aria-pressed="false">التحليلات</button>
         <button data-view="products" aria-pressed="false">منتجات الموقع</button>
+        <button data-view="site" aria-pressed="false">إعدادات الموقع</button>
       </div>
 
       <section id="vOrders">
@@ -387,9 +398,18 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
       <section id="vProducts" hidden>
         <div class="pg-head">
           <div><h2>منتجات الموقع</h2><p class="sub">سولد أوت، إخفاء، تعديل الأسعار والصور، وإضافة لوحات جديدة. التعديل بيظهر على الموقع خلال دقايق (عادةً 2–5 دقايق).</p></div>
-          <div class="pg-tools"><span class="pg-status" id="pgStatus"></span><button class="btn p" id="pgNew">+ لوحة جديدة</button></div>
+          <div class="pg-tools"><span class="pg-status" id="pgStatus"></span><button class="btn" id="pgBulk">تغيير أسعار كل اللوحات</button><button class="btn p" id="pgNew">+ لوحة جديدة</button></div>
         </div>
+        <div class="pg-sum" id="pgSum"></div>
         <div class="pg-list" id="pgList"></div>
+      </section>
+
+      <section id="vSite" hidden>
+        <div class="pg-head">
+          <div><h2>إعدادات الموقع</h2><p class="sub">استقبال الطلبات، الشريط العلوي، التوصيل، أسعار اللوحات المخصصة، طرق الدفع، وأرقام التواصل. التغيير بيظهر على الموقع خلال دقايق.</p></div>
+          <div class="pg-tools"><span class="pg-status" id="stStatus"></span></div>
+        </div>
+        <div id="stBody"></div>
       </section>
     </div></main>
   </div>
@@ -615,8 +635,9 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
     document.querySelectorAll('.views [data-view]').forEach((b) => b.addEventListener('click', () => {
       view = b.dataset.view;
       document.querySelectorAll('.views [data-view]').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-      $('vOrders').hidden = view !== 'orders'; $('vAnalytics').hidden = view !== 'analytics'; $('vProducts').hidden = view !== 'products';
+      $('vOrders').hidden = view !== 'orders'; $('vAnalytics').hidden = view !== 'analytics'; $('vProducts').hidden = view !== 'products'; $('vSite').hidden = view !== 'site';
       if (view === 'products' && window.NAY_PRODUCTS) window.NAY_PRODUCTS.open();
+      if (view === 'site' && window.NAY_PRODUCTS) window.NAY_PRODUCTS.openSite();
       if (view === 'analytics') renderAnalytics();
     }));
     $('aRange').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (!b) return; aRange = b.dataset.r; $('aRange').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); renderAnalytics(); });
@@ -972,6 +993,8 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
       if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; return Promise.resolve({ ok: true }); }
       if (action === 'catalog_list') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); return Promise.resolve({ ok: true, products: JSON.parse(JSON.stringify(demoApi.cat)), status: { status: 'completed', conclusion: 'success', sha: 'demo' } }); }
       if (action === 'catalog_save') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); x.products.forEach((p) => { const k = demoApi.cat.findIndex((q) => q.slug === p.slug); if (k >= 0) demoApi.cat[k] = p; else demoApi.cat.push(p); }); demoApi.saved = Date.now(); return new Promise((r) => setTimeout(() => r({ ok: true, commit: 'demo' + Date.now(), products: x.products }), 700)); }
+      if (action === 'site_get') { demoApi.site = demoApi.site || JSON.parse(JSON.stringify(CFG.site)); return Promise.resolve({ ok: true, settings: JSON.parse(JSON.stringify(demoApi.site)), status: { status: 'completed', conclusion: 'success', sha: 'demo' } }); }
+      if (action === 'site_save') { demoApi.saved = Date.now(); return new Promise((r) => setTimeout(() => r({ ok: true, commit: 'demo', settings: x.settings }), 600)); }
       if (action === 'catalog_status') return Promise.resolve({ ok: true, run: Date.now() - (demoApi.saved || 0) < 12000 ? { status: 'in_progress', sha: 'demo' } : { status: 'completed', conclusion: 'success', sha: 'demo' } });
       if (action === 'edit_order') { const o = demoApi.data.find((d) => d.id === x.id); const old = o.total; const items = x.items.map((i) => ({ ...i, line: i.qty * i.price })); const sub = items.reduce((n, i) => n + i.line, 0); o.items = items; o.delivery = x.delivery; o.total = sub + x.delivery; Object.assign(o, x.customer); return Promise.resolve({ ok: true, items, subtotal: sub, delivery: x.delivery, total: o.total, units: items.reduce((n, i) => n + i.qty, 0), changes: old !== o.total ? ['الإجمالي ' + old + ' ← ' + o.total] : [], paid: o.payment_status === 'Paid in full', oldTotal: old }); }
       if (action === 'design_start') { const o = demoApi.data.find((d) => d.id === x.id); o.design = [{ photo: 'demo', n: 1, size: '16x20', colors: +x.colors || 24, complexity: x.complexity || 'none', status: 'in_queue', key: 'demo2' }]; o._polls = 0; return Promise.resolve({ ok: true, design: o.design }); }
@@ -1020,12 +1043,14 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
       }
     }
     function draw() {
+      const n = products.length, sold = products.filter((p) => p.sold_out && p.active !== false).length, hid = products.filter((p) => p.active === false).length;
+      $('pgSum').innerHTML = `<span><b class="num">${n}</b> لوحة</span><span class="ok"><b class="num">${n - sold - hid}</b> متاحة للبيع</span><span class="so"><b class="num">${sold}</b> سولد أوت</span><span class="hd"><b class="num">${hid}</b> مخفية</span>`;
       $('pgList').innerHTML = products.map((p) => {
         const hidden = p.active === false, sold = !!p.sold_out;
         return `<div class="pg-card${sold ? ' is-sold' : ''}${hidden ? ' is-hidden' : ''}">
           <div class="pg-img"><img src="${esc(src(p.images.finished))}" alt="" loading="lazy">${sold ? '<span class="pg-flag">سولد أوت</span>' : hidden ? '<span class="pg-flag">مخفية</span>' : ''}</div>
           <div class="pg-info"><b>${esc(ar(p.name))}</b><span class="pg-en">${esc(p.name && p.name.en || '')}</span>
-            <span class="pg-price"><span class="num">${money(p.price)}</span>${p.compare_price > p.price ? ` <s class="num">${money(p.compare_price)}</s>` : ''}</span></div>
+            <button class="pg-price" data-price="${esc(p.slug)}" title="تغيير السعر"><span class="num">${money(p.price)}</span>${p.compare_price > p.price ? ` <s class="num">${money(p.compare_price)}</s>` : ''} <i>✎</i></button></div>
           <div class="pg-acts">
             <label class="sw"><input type="checkbox" data-sold="${esc(p.slug)}" ${sold ? 'checked' : ''}><i></i>سولد أوت</label>
             <label class="sw"><input type="checkbox" data-vis="${esc(p.slug)}" ${hidden ? '' : 'checked'}><i></i>ظاهرة في الموقع</label>
@@ -1035,6 +1060,16 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
       $('pgList').querySelectorAll('[data-sold]').forEach((c) => c.onchange = () => quick(c.dataset.sold, { sold_out: c.checked }, c.checked ? 'سولد أوت' : 'متاحة تاني'));
       $('pgList').querySelectorAll('[data-vis]').forEach((c) => c.onchange = () => quick(c.dataset.vis, { active: c.checked }, c.checked ? 'ظاهرة في الموقع' : 'مخفية من الموقع'));
       $('pgList').querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => form(products.find((p) => p.slug === b.dataset.edit)));
+      $('pgList').querySelectorAll('[data-price]').forEach((b) => b.onclick = () => {
+        const p = products.find((x) => x.slug === b.dataset.price);
+        const box = document.createElement('div'); box.className = 'pg-qp';
+        box.innerHTML = `<label>السعر<input class="in num" type="number" min="1" value="${p.price}"></label><label>قبل الخصم<input class="in num" type="number" min="0" value="${p.compare_price || 0}"></label><button class="btn p sm">حفظ</button><button class="btn sm">إلغاء</button>`;
+        b.replaceWith(box);
+        const [pi, ci] = box.querySelectorAll('input'), [ok, no] = box.querySelectorAll('button');
+        pi.focus(); pi.select();
+        no.onclick = () => draw();
+        ok.onclick = () => { const price = Math.round(+pi.value), cmp = Math.round(+ci.value || 0); if (!(price > 0)) return N().toast('اكتب السعر'); quick(p.slug, { price, compare_price: cmp }, `السعر ${price}`); };
+      });
     }
     async function save(list, images, msg) {
       const j = await N().api('catalog_save', { products: list, images, message: msg });
@@ -1148,7 +1183,110 @@ const cfg = { allProducts, endpoint: settings.orders_endpoint || '', whatsapp: s
     $('pgClose').onclick = close;
     $('pgModal').addEventListener('click', (e) => { if (e.target === $('pgModal')) close(); });
     $('pgNew').onclick = () => { if (!products) return N().toast('استنى تحميل المنتجات'); form(null); };
-    window.NAY_PRODUCTS = { open: () => open(false) };
+    $('pgBulk').onclick = () => {
+      if (!products) return N().toast('استنى تحميل المنتجات');
+      $('pgTitle').textContent = 'تغيير أسعار كل اللوحات الجاهزة';
+      $('pgBody').innerHTML = `<p class="dnote">السعر الجديد هيتطبق على كل اللوحات (${products.length}). اللوحات المخفية كمان بتتغيّر علشان لو رجعت.</p>
+        <div class="pg-grid"><label>السعر الجديد (ج.م) *<input class="in num" id="bPrice" type="number" min="1" value="${products[0] ? products[0].price : ''}"></label><label>السعر قبل الخصم (اختياري)<input class="in num" id="bCmp" type="number" min="0" value="${products[0] ? products[0].compare_price || '' : ''}"></label></div>
+        <div class="acts" style="margin-top:14px"><button class="btn p" id="bSave">تطبيق على كل اللوحات</button><button class="btn" id="bCancel">إلغاء</button></div>`;
+      $('bCancel').onclick = close;
+      $('bSave').onclick = async () => {
+        const price = Math.round(+$('bPrice').value), cmp = Math.round(+$('bCmp').value || 0);
+        if (!(price > 0)) return N().toast('اكتب السعر');
+        const b = $('bSave'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
+        try { await save(products.map((p) => ({ ...p, price, compare_price: cmp })), [], `All paintings: price ${price}`); close(); N().toast('اتغيّرت الأسعار — هتظهر على الموقع خلال دقايق'); }
+        catch (e) { b.disabled = false; b.textContent = 'تطبيق على كل اللوحات'; N().toast('تعذّر الحفظ: ' + e.message); }
+      };
+      $('pgModal').hidden = false; document.body.style.overflow = 'hidden';
+    };
+
+    // ---------- website settings ----------
+    let site = null, siteCommit = '';
+    async function openSite(force) {
+      if (site && !force) return drawSite();
+      $('stBody').innerHTML = '<p class="dnote">جارٍ التحميل…</p>';
+      try { const j = await N().api('site_get'); site = j.settings; drawSite(); runStatus($('stStatus'), j.status); }
+      catch (e) { $('stBody').innerHTML = e.message === 'github_not_configured' ? `<div class="flagbox warn"><b>لازم خطوة واحدة قبل ما تقدر تعدّل إعدادات الموقع</b><span>إضافة مفتاح GitHub (GITHUB_TOKEN) في إعدادات Apps Script.</span></div>` : `<div class="flagbox bad"><b>تعذّر التحميل</b><span>${esc(e.message)}</span></div>`; }
+    }
+    function runStatus(el, run, commit) {
+      if (!run) { el.textContent = ''; return true; }
+      const mine = !commit || !run.sha || run.sha === commit || run.sha === 'demo';
+      if (run.status !== 'completed' || !mine) { el.className = 'pg-status busy'; el.innerHTML = '<span class="spin"></span>بيتنشر على الموقع… دقايق'; return false; }
+      if (run.conclusion === 'success') { el.className = 'pg-status ok'; el.textContent = '✓ الموقع محدّث'; return true; }
+      el.className = 'pg-status bad'; el.textContent = '⚠️ النشر فشل — كلّم Claude'; return true;
+    }
+    const sw = (id, on, label) => `<label class="sw"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><i></i>${label}</label>`;
+    const fld = (id, label, val, extra = '') => `<label>${label}<input class="in" id="${id}" value="${esc(val == null ? '' : val)}" ${extra}></label>`;
+    function drawSite() {
+      const s = site, P = s.payments || {}, A = s.analytics || {}, So = s.social || {}, D = CFG.i18nDefaults;
+      const local = (v) => String(v || '').replace(/^2(?=01)/, '');
+      $('stBody').innerHTML = `
+        <div class="st-grid">
+          <div class="st-card ${s.orders_paused ? 'warn' : ''}"><h3>استقبال الطلبات</h3>
+            ${sw('sOpen', !s.orders_paused, 'الموقع بيستقبل طلبات')}
+            <p class="dnote">لو قفلته، العملاء يقدروا يتفرجوا بس مش هيقدروا يكملوا الطلب، وهتظهرلهم الرسالة دي فوق الموقع:</p>
+            <div class="pg-grid">${fld('sPauseAr', 'رسالة الإيقاف (عربي)', (s.pause_message || {}).ar, 'placeholder="لا نستقبل طلبات جديدة حاليًا…"')}${fld('sPauseEn', 'Pause message (English)', (s.pause_message || {}).en, 'dir="ltr"')}</div>
+          </div>
+          <div class="st-card"><h3>الشريط اللي فوق في الموقع</h3>
+            ${sw('sOffer', s.launch_offer, 'إظهار سطر العرض')}
+            <div class="pg-grid">${fld('sAnn1Ar', 'سطر العرض (عربي)', (s.announce_text || {}).ar, `placeholder="${esc(D.announce_offer)}"`)}${fld('sAnn1En', 'Offer line (English)', (s.announce_text || {}).en, `dir="ltr" placeholder="${esc(D.announce_offer_en)}"`)}
+            ${fld('sAnn2Ar', 'السطر التاني (عربي)', (s.announce_text2 || {}).ar, `placeholder="${esc(D.announce_cod)}"`)}${fld('sAnn2En', 'Second line (English)', (s.announce_text2 || {}).en, `dir="ltr" placeholder="${esc(D.announce_cod_en)}"`)}</div>
+            <p class="dnote">سيبه فاضي علشان يفضل النص الحالي.</p>
+          </div>
+          <div class="st-card"><h3>التوصيل</h3>
+            <div class="pg-grid">${fld('sFee', 'مصاريف التوصيل (ج.م)', s.delivery_fee, 'type="number" min="0" class="in num"')}${fld('sFree', 'توصيل مجاني لو الطلب فوق (ج.م)', s.free_delivery_over || 0, 'type="number" min="0" class="in num"')}</div>
+            <p class="dnote">0 = مفيش توصيل مجاني. لو حطيت مثلًا 1500، أي طلب بـ 1500 أو أكتر توصيله مجاني، والسلة بتقول للعميل باقي كام.</p>
+          </div>
+          <div class="st-card"><h3>لوحة من صورة العميل — المقاسات والأسعار</h3>
+            <div id="sSizes">${(s.custom_sizes || []).map((z, k) => sizeRow(z, k)).join('')}</div>
+            <button class="btn sm" id="sAddSize">+ مقاس جديد</button>
+          </div>
+          <div class="st-card"><h3>طرق الدفع</h3>
+            ${sw('sCod', P.cod, 'الدفع عند الاستلام (للوحات الجاهزة بس)')}${sw('sInsta', P.instapay, 'InstaPay')}${sw('sVoda', P.vodafone_cash, 'فودافون كاش')}
+            <div class="pg-grid" style="margin-top:8px">${fld('sInstaN', 'رقم InstaPay', s.instapay, 'inputmode="tel" class="in num"')}${fld('sVodaN', 'رقم فودافون كاش', s.vodafone_cash, 'inputmode="tel" class="in num"')}</div>
+          </div>
+          <div class="st-card"><h3>التواصل</h3>
+            <div class="pg-grid">${fld('sPhone', 'رقم الدعم (اتصال)', s.phone_display, 'inputmode="tel" class="in num"')}${fld('sWa', 'رقم الواتساب', local(s.whatsapp_intl), 'inputmode="tel" class="in num"')}
+            ${fld('sEmail', 'الإيميل', s.email, 'dir="ltr" inputmode="email"')}${fld('sIg', 'Instagram', So.instagram, 'dir="ltr"')}${fld('sFb', 'Facebook', So.facebook, 'dir="ltr"')}${fld('sTt', 'TikTok', So.tiktok, 'dir="ltr"')}</div>
+          </div>
+          <div class="st-card"><h3>التتبع والإعلانات (متقدم)</h3>
+            <div class="pg-grid">${fld('sPixel', 'Meta Pixel ID', A.meta_pixel_id, 'dir="ltr" class="in num"')}${fld('sGa', 'Google Analytics (GA4) ID', A.ga4_id, 'dir="ltr" placeholder="G-XXXXXXX"')}</div>
+          </div>
+        </div>
+        <p class="pg-err" id="sErr" hidden></p>
+        <div class="st-save"><button class="btn p" id="sSave">حفظ ونشر على الموقع</button><span class="dnote">بيظهر على الموقع خلال دقايق.</span></div>`;
+      const bindSizes = () => $('sSizes').querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { if ($('sSizes').children.length <= 1) return N().toast('لازم مقاس واحد على الأقل'); b.closest('.st-size').remove(); });
+      bindSizes();
+      $('sAddSize').onclick = () => { $('sSizes').insertAdjacentHTML('beforeend', sizeRow({ label: '', price: '' }, Date.now())); bindSizes(); };
+      $('sSave').onclick = saveSite;
+    }
+    const sizeRow = (z, k) => { const m = String(z.label || '').match(/(\d+)\s*[×x]\s*(\d+)/) || []; return `<div class="st-size"><input class="in num" data-w value="${m[1] || ''}" placeholder="العرض" aria-label="العرض سم"><span>×</span><input class="in num" data-h value="${m[2] || ''}" placeholder="الطول" aria-label="الطول سم"><span>سم</span><input class="in num" data-p type="number" min="1" value="${esc(z.price)}" placeholder="السعر" aria-label="السعر"><span>ج.م</span><button class="btn sm ed-del" data-rm="${k}" aria-label="حذف المقاس">✕</button></div>`; };
+    async function saveSite() {
+      const v = (id) => $(id).value.trim(), err = (m) => { $('sErr').textContent = m; $('sErr').hidden = false; };
+      const sizes = [...$('sSizes').querySelectorAll('.st-size')].map((r) => ({ w: r.querySelector('[data-w]').value.trim(), h: r.querySelector('[data-h]').value.trim(), p: r.querySelector('[data-p]').value.trim() }));
+      if (sizes.some((z) => !(+z.w >= 10 && +z.h >= 10 && +z.p > 0))) return err('اكتب العرض والطول والسعر لكل مقاس.');
+      if (!$('sCod').checked && !$('sInsta').checked && !$('sVoda').checked) return err('لازم طريقة دفع واحدة على الأقل.');
+      const out = {
+        orders_paused: !$('sOpen').checked, pause_message: { ar: v('sPauseAr'), en: v('sPauseEn') },
+        launch_offer: $('sOffer').checked, announce_text: { ar: v('sAnn1Ar'), en: v('sAnn1En') }, announce_text2: { ar: v('sAnn2Ar'), en: v('sAnn2En') },
+        delivery_fee: +v('sFee') || 0, free_delivery_over: +v('sFree') || 0,
+        custom_sizes: sizes.map((z) => ({ label: `${+z.w}×${+z.h} cm`, price: Math.round(+z.p) })),
+        payments: { cod: $('sCod').checked, instapay: $('sInsta').checked, vodafone_cash: $('sVoda').checked },
+        instapay: v('sInstaN'), vodafone_cash: v('sVodaN'), support_phone: v('sPhone'), whatsapp: v('sWa'), email: v('sEmail'),
+        social: { instagram: v('sIg'), facebook: v('sFb'), tiktok: v('sTt') }, analytics: { meta_pixel_id: v('sPixel'), ga4_id: v('sGa') },
+      };
+      if (out.orders_paused && !confirm('متأكد إنك عايز توقف استقبال الطلبات على الموقع؟')) return;
+      const b = $('sSave'); b.disabled = true; b.textContent = 'جارٍ الحفظ…'; $('sErr').hidden = true;
+      try {
+        const j = await N().api('site_save', { settings: out });
+        site = j.settings || site; siteCommit = j.commit || ''; drawSite(); runStatus($('stStatus'), { status: 'queued' }, siteCommit);
+        N().toast('اتحفظ — هيظهر على الموقع خلال دقايق');
+        const tick = async () => { try { const s = await N().api('catalog_status'); if (runStatus($('stStatus'), s.run, siteCommit)) return; } catch (e) {} setTimeout(tick, 10000); };
+        setTimeout(tick, 8000);
+      } catch (e) { b.disabled = false; b.textContent = 'حفظ ونشر على الموقع'; err('تعذّر الحفظ: ' + ({ bad_phone: 'في رقم موبايل مش صحيح (لازم 11 رقم يبدأ بـ 01)', bad_url: 'لينك السوشيال لازم يبدأ بـ https://', bad_email: 'الإيميل مش صحيح', bad_size: 'مقاس مش صحيح', no_payment: 'لازم طريقة دفع واحدة على الأقل', github_not_configured: 'مفتاح GitHub مش متضاف' }[e.message] || e.message)); }
+    }
+
+    window.NAY_PRODUCTS = { open: () => open(false), openSite: () => openSite(false) };
   })();
   </script>
 </body>

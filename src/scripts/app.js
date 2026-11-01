@@ -156,7 +156,8 @@ function lineInfo(c) {
 const save = () => store.set('nay-cart', cart);
 function counts() { $('cartCount').textContent = cart.reduce((s, c) => s + c.q, 0); }
 function bump() { const b = $('cartBtn'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
-function totals() { const sub = cart.reduce((s, c) => s + lineInfo(c).price * c.q, 0); const ship = cart.length ? Number(S.delivery_fee) : 0; return { sub, ship, total: sub + ship }; }
+function totals() { const sub = cart.reduce((s, c) => s + lineInfo(c).price * c.q, 0); const free = S.free_delivery_over > 0 && sub >= S.free_delivery_over; const ship = cart.length && !free ? Number(S.delivery_fee) : 0; return { sub, ship, total: sub + ship }; }
+const shipText = (t) => (cart.length && t.ship === 0 ? tr('free_delivery') : money(t.ship));
 function gaItems() { return cart.map((c) => { const l = lineInfo(c); return { item_id: c.kind === 'custom' ? 'custom-' + S.custom_sizes[c.size].label : c.slug, item_name: l.name, item_variant: l.option, price: l.price, quantity: c.q }; }); }
 
 function addKit(slug, q = 1) {
@@ -185,9 +186,10 @@ function renderDrawer() {
       <div class="qty"><button data-dec="${c.key}" aria-label="${tr('dec')}">−</button><span>${c.q}</span><button data-inc="${c.key}" aria-label="${tr('inc')}">+</button></div><button class="rm" data-rm="${c.key}">${tr('remove')}</button></div>
       <div class="p price">${money(l.price * c.q)}</div></div>`; }).join('');
     foot.innerHTML = `<div class="row"><span>${tr('subtotal')}</span><span class="price">${money(t.sub)}</span></div>
-      <div class="row"><span>${tr('delivery')}</span><span class="price">${money(t.ship)}</span></div>
+      <div class="row"><span>${tr('delivery')}</span><span class="price">${shipText(t)}</span></div>
+      ${S.free_delivery_over > 0 && t.ship > 0 ? `<p class="free-hint">${tr('free_delivery_hint', { n: money(S.free_delivery_over - t.sub) })}</p>` : ''}
       <div class="row total"><span>${tr('total')}</span><span class="price">${money(t.total)}</span></div>
-      <button class="btn btn-primary" id="toCheckout">${tr('checkout')}</button>`;
+      ${S.orders_paused ? `<p class="paused-note">${S.pause_message || tr('orders_paused')}</p><button class="btn btn-primary" disabled>${tr('checkout')}</button>` : `<button class="btn btn-primary" id="toCheckout">${tr('checkout')}</button>`}`;
     return;
   }
   // checkout
@@ -219,7 +221,7 @@ function renderDrawer() {
     </div>
     <div class="field"><label for="f-note">${tr('f_note')}</label><input id="f-note" value="${esc(saved.notes)}"></div>
   </form>`;
-  foot.innerHTML = `<div class="row"><span>${tr('delivery')}</span><span class="price">${money(t.ship)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(t.total)}</span></div><button class="btn btn-primary" id="placeOrder" ${!pays.length ? 'disabled' : ''}>${tr('place_order')}</button>`;
+  foot.innerHTML = `<div class="row"><span>${tr('delivery')}</span><span class="price">${shipText(t)}</span></div><div class="row total"><span>${tr('total')}</span><span class="price">${money(t.total)}</span></div><button class="btn btn-primary" id="placeOrder" ${!pays.length ? 'disabled' : ''}>${tr('place_order')}</button>`;
   $('coForm').addEventListener('submit', e => { e.preventDefault(); placeOrder($('placeOrder')); });
   const syncPay = () => {
     const v = document.querySelector('input[name=pay]:checked')?.value, on = isTransfer(v) && !!S.orders_endpoint;
@@ -248,6 +250,7 @@ const waLink = (text) => `https://wa.me/${S.whatsapp_intl}?text=${encodeURICompo
 
 async function placeOrder(btn) {
   if (placingOrder || !cart.length || !$('coForm')) return;
+  if (S.orders_paused) { toast(S.pause_message || tr('orders_paused')); return; }
   const rules = [['f-name', (v) => v.trim().length >= 3, 'err_name'], ['f-phone', validPhone, 'err_phone'], ['f-phone-extra', v => !v.trim() || validPhone(v), 'err_phone'], ['f-addr', (v) => v.trim().length >= 8, 'err_addr']];
   let ok = true;
   rules.forEach(([id, test, msg]) => { const el = $(id), err = el.parentElement.querySelector('.err'); if (!test(el.value)) { ok = false; err.textContent = tr(msg); err.hidden = false; } else err.hidden = true; });

@@ -25,7 +25,7 @@ const ex = settings.custom_example;
       <span class="eyebrow">{t('hero_eyebrow')}</span>
       <h1>{t('hero_title_1')}<br /><em>{t('hero_title_2')}</em></h1>
       <p class="lead">{t('hero_lead')}</p>
-      {settings.launch_offer && <div class="offer"><span class="save">{t('announce_offer')}</span></div>}
+      {settings.launch_offer && <div class="offer"><span class="save">{(settings.announce_text && settings.announce_text[lang]) || t('announce_offer')}</span></div>}
       <div class="ctas">
         <a class="btn btn-primary" href="#shop">{t('hero_cta_shop')}</a>
         <a class="btn hv-ghost" href={href(lang, '/custom')}>{t('hero_cta_custom')}</a>

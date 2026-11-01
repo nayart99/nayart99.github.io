@@ -804,6 +804,8 @@ function admin(d) {
   if (d.action === 'catalog_list') return catalogList();
   if (d.action === 'catalog_save') return catalogSave(d);
   if (d.action === 'catalog_status') return catalogStatus();
+  if (d.action === 'site_get') return siteGet();
+  if (d.action === 'site_save') return siteSave(d.settings || {});
   if (d.action === 'update') {
     const r = findRow(sh, d.id);
     if (!r) return { ok: false, error: 'not found' };
@@ -1020,6 +1022,70 @@ function catalogSave(d) {
     return { ok: true, commit: c.body.sha, products: products };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
   finally { lock.releaseLock(); }
+}
+
+/* ---- website settings (src/data/settings.json) ---- */
+const SETTINGS_PATH = 'src/data/settings.json';
+function readRepoFile(path) {
+  const r = gh('/repos/' + GH_REPO + '/contents/' + path + '?ref=' + GH_BRANCH);
+  if (r.code !== 200) throw new Error('github_' + r.code);
+  return JSON.parse(decodeB64(r.body.content));
+}
+function siteGet() {
+  if (!ghReady()) return { ok: false, error: 'github_not_configured' };
+  try { return { ok: true, settings: readRepoFile(SETTINGS_PATH), status: catalogStatus().run || null }; }
+  catch (e) { return { ok: false, error: String(e.message || e) }; }
+}
+/** Only the fields the dashboard may change; everything else in settings.json is kept as it is. */
+function siteSave(n) {
+  if (!ghReady()) return { ok: false, error: 'github_not_configured' };
+  let cur;
+  try { cur = readRepoFile(SETTINGS_PATH); } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  const txt = function (v, max) { return String(v == null ? '' : v).trim().slice(0, max || 160); };
+  const bi2 = function (v) { v = v || {}; return { en: txt(v.en), ar: txt(v.ar) }; };
+  const money = function (v) { const x = Math.round(Number(v)); if (!(x >= 0 && x < 1000000)) throw new Error('bad_number'); return x; };
+  const phone = function (v) { const p = String(v || '').replace(/\D/g, ''); if (p && !/^01[0125]\d{8}$/.test(p)) throw new Error('bad_phone'); return p; };
+  const url = function (v) { v = txt(v, 300); if (v && !/^https:\/\/[^\s<>"]+$/.test(v)) throw new Error('bad_url'); return v; };
+  try {
+    if ('orders_paused' in n) cur.orders_paused = !!n.orders_paused;
+    if ('pause_message' in n) cur.pause_message = bi2(n.pause_message);
+    if ('launch_offer' in n) cur.launch_offer = !!n.launch_offer;
+    if ('announce_text' in n) cur.announce_text = bi2(n.announce_text);
+    if ('announce_text2' in n) cur.announce_text2 = bi2(n.announce_text2);
+    if ('delivery_fee' in n) cur.delivery_fee = money(n.delivery_fee);
+    if ('free_delivery_over' in n) cur.free_delivery_over = money(n.free_delivery_over);
+    if ('custom_sizes' in n) {
+      const sizes = (n.custom_sizes || []).slice(0, 8).map(function (z) {
+        const m = String(z.label || '').match(/(\d{2,3})\s*[×xX*]\s*(\d{2,3})/);
+        if (!m) throw new Error('bad_size');
+        return { label: m[1] + '×' + m[2] + ' cm', price: money(z.price) };
+      });
+      if (!sizes.length) throw new Error('bad_size');
+      cur.custom_sizes = sizes;
+    }
+    if (n.payments) { cur.payments = cur.payments || {}; ['cod', 'instapay', 'vodafone_cash'].forEach(function (k) { if (k in n.payments) cur.payments[k] = !!n.payments[k]; }); }
+    if ('instapay' in n) cur.instapay = phone(n.instapay);
+    if ('vodafone_cash' in n) cur.vodafone_cash = phone(n.vodafone_cash);
+    if ('support_phone' in n) { const p = phone(n.support_phone); if (p) { cur.phone_display = p; cur.phone_intl = '2' + p; } }
+    if ('whatsapp' in n) { const p = phone(n.whatsapp); if (p) cur.whatsapp_intl = '2' + p; }
+    if ('email' in n) { const e = txt(n.email, 120); if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('bad_email'); cur.email = e; }
+    if (n.social) { cur.social = cur.social || {}; ['instagram', 'facebook', 'tiktok'].forEach(function (k) { if (k in n.social) cur.social[k] = url(n.social[k]); }); }
+    if (n.analytics) { cur.analytics = cur.analytics || {}; if ('meta_pixel_id' in n.analytics) cur.analytics.meta_pixel_id = txt(n.analytics.meta_pixel_id, 30).replace(/\D/g, ''); if ('ga4_id' in n.analytics) cur.analytics.ga4_id = txt(n.analytics.ga4_id, 30).replace(/[^\w-]/g, ''); }
+  } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  if (!cur.payments.cod && !cur.payments.instapay && !cur.payments.vodafone_cash && !cur.payments.kashier) return { ok: false, error: 'no_payment' };
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const ref = gh('/repos/' + GH_REPO + '/git/ref/heads/' + GH_BRANCH);
+    if (ref.code !== 200) return { ok: false, error: 'github_' + ref.code };
+    const head = ref.body.object.sha, base = gh('/repos/' + GH_REPO + '/git/commits/' + head).body.tree.sha;
+    const t = gh('/repos/' + GH_REPO + '/git/trees', { method: 'post', payload: { base_tree: base, tree: [{ path: SETTINGS_PATH, mode: '100644', type: 'blob', content: JSON.stringify(cur, null, 2) + '\n' }] } });
+    if (t.code !== 201) return { ok: false, error: 'github_tree_' + t.code };
+    const c = gh('/repos/' + GH_REPO + '/git/commits', { method: 'post', payload: { message: 'Website settings updated from the dashboard', tree: t.body.sha, parents: [head] } });
+    if (c.code !== 201) return { ok: false, error: 'github_commit_' + c.code };
+    const u = gh('/repos/' + GH_REPO + '/git/refs/heads/' + GH_BRANCH, { method: 'patch', payload: { sha: c.body.sha } });
+    if (u.code !== 200) return { ok: false, error: 'github_ref_' + u.code };
+    return { ok: true, commit: c.body.sha, settings: cur };
+  } finally { lock.releaseLock(); }
 }
 
 /** Latest website build: queued / in_progress / completed + success|failure. */

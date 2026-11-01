@@ -23,6 +23,9 @@ const store = {
   products: products.map((p) => ({ slug: p.slug, name: pick(p.name, lang), img: p.images.finished, price: p.price, sold_out: !!p.sold_out })),
   settings: {
     delivery_fee: settings.delivery_fee,
+    free_delivery_over: Number(settings.free_delivery_over || 0),
+    orders_paused: !!settings.orders_paused,
+    pause_message: (settings.pause_message && settings.pause_message[lang]) || '',
     custom_sizes: settings.custom_sizes,
     orders_endpoint: settings.orders_endpoint,
     preview_mode: settings.preview_mode || 'local',
@@ -85,8 +88,10 @@ const fontsUrl = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:it
 <body class={bodyClass}>
   <a class="skip" href="#main">Skip to content</a>
   <div class="announce"><div class="wrap">
-    {settings.launch_offer && <span><b>{t('announce_offer')}</b></span>}
-    <span>{t('announce_cod')}</span>
+    {settings.orders_paused
+      ? <span><b>{(settings.pause_message && settings.pause_message[lang]) || t('orders_paused')}</b></span>
+      : <>{settings.launch_offer && <span><b>{(settings.announce_text && settings.announce_text[lang]) || t('announce_offer')}</b></span>}
+        <span>{(settings.announce_text2 && settings.announce_text2[lang]) || t('announce_cod')}</span></>}
   </div></div>
 
   <header class="top">

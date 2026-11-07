@@ -151,29 +151,41 @@ html.intro-on{overflow:hidden}
 @keyframes rise{from{opacity:0;transform:translateY(22px)}}
 @media (prefers-reduced-motion:reduce){.splash{display:none}}
 
-/* offer band */
-.offer{background:var(--paper);border-bottom:1px solid var(--line)}
-.offer .wrap{display:grid;grid-template-columns:auto 1fr auto;gap:28px;align-items:center;padding-block:28px}
-.tag{display:inline-flex;align-items:center;gap:.5em;background:var(--ink);color:var(--gold);border-radius:999px;padding:.55em 1em;font:600 .7rem/1 var(--body);letter-spacing:.2em;text-transform:uppercase;white-space:nowrap}
+/* Black Friday offers */
+.offer{--bf:#140b0d;--bf-2:#3a0f14;background:radial-gradient(120% 90% at 85% 0%,#4a1218 0%,rgba(74,18,24,0) 55%),var(--bf);color:var(--paper);padding-block:clamp(56px,8vw,96px)}
+.offer .head{display:flex;justify-content:space-between;align-items:end;gap:24px;flex-wrap:wrap;margin-bottom:clamp(28px,4vw,44px)}
+.offer .head h2{font:400 clamp(2.4rem,5vw,3.8rem)/1 var(--display);letter-spacing:.02em;margin-top:14px}
+.offer .head h2 em{color:var(--gold);font-style:italic}
+html[lang="ar"] .offer .head h2{font-family:var(--ar-display);font-weight:600;line-height:1.3}
+html[lang="ar"] .offer .head h2 em{font-style:normal}
+.offer .head p{color:rgba(251,250,247,.7);margin-top:10px;max-width:44ch}
+.tag{display:inline-flex;align-items:center;gap:.5em;background:var(--gold);color:var(--ink);border-radius:999px;padding:.55em 1em;font:600 .7rem/1 var(--body);letter-spacing:.2em;text-transform:uppercase;white-space:nowrap}
 html[lang="ar"] .tag{font-family:var(--ar-body);letter-spacing:0;font-size:.85rem}
-.tag i{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:pulse 1.6s infinite}
+.tag i{width:7px;height:7px;border-radius:50%;background:var(--ink);animation:pulse 1.6s infinite}
 @keyframes pulse{50%{opacity:.25}}
-.offer h3{font-size:clamp(1.5rem,2.6vw,2rem)}
-.offer .txt{display:grid;gap:4px;min-width:0}
-.offer .txt p{color:var(--stone);font-size:.98rem}
-.price{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:4px}
-.price b{font:500 1.5rem/1 var(--display);color:var(--gold-ink)}
-html[lang="ar"] .price b{font-family:var(--ar-display)}
-.price s{color:var(--stone);font-size:.95rem}
-.offer .side{display:grid;gap:10px;justify-items:end}
 .count{display:flex;gap:6px;font-variant-numeric:tabular-nums;direction:ltr}
-.count span{display:grid;justify-items:center;min-width:52px;padding:6px 4px;border:1px solid var(--line);border-radius:12px;background:var(--ivory)}
-.count b{font:500 1.35rem/1 var(--display)}
-.count small{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--stone)}
+.count span{display:grid;justify-items:center;min-width:58px;padding:8px 4px;border:1px solid rgba(251,250,247,.16);border-radius:12px;background:rgba(251,250,247,.05)}
+.count b{font:500 1.5rem/1 var(--display);color:var(--paper)}
+.count small{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(251,250,247,.6)}
 html[lang="ar"] .count small{letter-spacing:0;font-size:.72rem}
-.offer .btn{background:var(--ink);border-color:var(--ink);color:var(--paper)}
-.offer .btn:hover{background:var(--gold);border-color:var(--gold);color:var(--ink)}
-@media (max-width:860px){.offer .wrap{grid-template-columns:1fr;gap:14px}.offer .side{justify-items:start}.offer .btn{width:100%}}
+.bf-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2.4vw,28px)}
+.bf{display:flex;flex-direction:column;background:rgba(251,250,247,.04);border:1px solid rgba(251,250,247,.1);border-radius:24px;overflow:hidden;min-width:0}
+.bf figure{margin:0}
+.bf figure img{width:100%;height:auto;display:block;aspect-ratio:4/5;object-fit:cover}
+.bf .body{flex:1;display:flex;flex-direction:column;gap:12px;padding:clamp(18px,2.4vw,28px);min-width:0}
+.bf .dept{font:600 .7rem/1 var(--body);letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+html[lang="ar"] .bf .dept{font-family:var(--ar-body);letter-spacing:0;font-size:.85rem}
+.bf h3{font-size:clamp(1.45rem,2.2vw,1.9rem);color:var(--paper)}
+.bf ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.bf li{display:flex;gap:10px;align-items:center;color:rgba(251,250,247,.8);font-size:.95rem}
+.bf li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);flex:none}
+.bf .price{margin-top:auto;padding-top:14px;border-top:1px solid rgba(251,250,247,.12);display:flex;align-items:baseline;gap:8px}
+.bf .price b{font:500 2.4rem/1 var(--display);color:var(--gold)}
+html[lang="ar"] .bf .price b{font-family:var(--ar-display)}
+.bf .price span{color:rgba(251,250,247,.6);font-size:.9rem}
+.bf .btn{width:100%}
+.bf .btn:hover{background:var(--paper);border-color:var(--paper);color:var(--ink)}
+@media (max-width:700px){.bf-grid{grid-template-columns:1fr}}
 
 /* floating whatsapp + offer pop */
 .fab{position:fixed;z-index:75;inset-inline-end:max(18px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;flex-direction:row-reverse}
@@ -189,8 +201,10 @@ html[lang="ar"] .pop h4{font-family:var(--ar-display);font-weight:600;line-heigh
 .pop p{font-size:.9rem;color:rgba(251,250,247,.75)}
 .pop .price b{color:var(--gold)}
 .pop .price s{color:rgba(251,250,247,.55)}
-.pop .tag{background:var(--gold);color:var(--ink);justify-self:start}
-.pop .tag i{background:var(--ink)}
+.pop .tag{justify-self:start}
+.pop .price b{font:500 1.5rem/1 var(--display);color:var(--gold)}
+html[lang="ar"] .pop .price b{font-family:var(--ar-display)}
+.pop .btn.line{color:var(--paper);border-color:rgba(251,250,247,.4);background:transparent}
 .pop .x{position:absolute;top:10px;inset-inline-end:10px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(251,250,247,.25);background:transparent;color:var(--paper);cursor:pointer}
 .pop .btn{width:100%;min-height:46px}
 @media (max-width:640px){.pop{width:auto;inset-inline-end:max(18px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px))}.bubble{display:none}}
@@ -546,17 +560,37 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
     </div>
   </section>
 
-  <section class="offer" id="offer" aria-label="Offer">
+  <section class="offer" id="offer" aria-labelledby="bf-t">
     <div class="wrap">
-      <span class="tag"><i></i><span data-i18n="offer.tag"></span></span>
-      <div class="txt">
-        <h3 class="o-title"></h3>
-        <p class="o-text"></p>
-        <div class="price"><b class="o-price"></b><s class="o-was"></s></div>
-      </div>
-      <div class="side">
+      <div class="head">
+        <div>
+          <span class="tag"><i></i><span data-i18n="offer.tag"></span></span>
+          <h2 id="bf-t" data-i18n="bf.t"></h2>
+          <p data-i18n="bf.p"></p>
+        </div>
         <div class="count" id="count" aria-label="Time left"></div>
-        <a class="btn o-link" href="#" target="_blank" rel="noopener"><svg class="wa"><use href="#wa"/></svg><span data-i18n="offer.cta"></span></a>
+      </div>
+      <div class="bf-grid">
+        <article class="bf" data-offer="dental">
+          <figure><img src="bf-dental.webp" alt="" loading="lazy"></figure>
+          <div class="body">
+            <span class="dept o-dept"></span>
+            <h3 class="o-title"></h3>
+            <ul class="o-items"></ul>
+            <div class="price"><b class="o-price"></b><span data-i18n="bf.only"></span></div>
+            <a class="btn o-link" href="#" target="_blank" rel="noopener"><svg class="wa"><use href="#wa"/></svg><span data-i18n="offer.cta"></span></a>
+          </div>
+        </article>
+        <article class="bf" data-offer="aesthetic">
+          <figure><img src="bf-aesthetic.webp" alt="" loading="lazy"></figure>
+          <div class="body">
+            <span class="dept o-dept"></span>
+            <h3 class="o-title"></h3>
+            <ul class="o-items"></ul>
+            <div class="price"><b class="o-price"></b><span data-i18n="bf.only"></span></div>
+            <a class="btn o-link" href="#" target="_blank" rel="noopener"><svg class="wa"><use href="#wa"/></svg><span data-i18n="offer.cta"></span></a>
+          </div>
+        </article>
       </div>
     </div>
   </section>
@@ -850,9 +884,11 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
 <div class="pop" id="pop" role="dialog" aria-labelledby="pop-t" aria-hidden="true">
   <button class="x" type="button" id="pop-x" aria-label="Close">✕</button>
   <span class="tag"><i></i><span data-i18n="offer.tag"></span></span>
-  <h4 id="pop-t" class="o-title"></h4>
-  <p class="o-text"></p>
-  <div class="price"><b class="o-price"></b><s class="o-was"></s></div>
+  <h4 id="pop-t" data-i18n="bf.popT"></h4>
+  <p data-i18n="bf.popP"></p>
+  <div class="price"><b data-i18n="bf.price"></b><s></s></div>
+  <a class="btn" id="pop-see" href="#offer" data-i18n="bf.see"></a>
+</div>
   <a class="btn o-link" href="#" target="_blank" rel="noopener"><svg class="wa"><use href="#wa"/></svg><span data-i18n="offer.cta"></span></a>
 </div>
 
@@ -878,13 +914,17 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
 /* ===== Replace before launch ===== */
 const WHATSAPP_NUMBER = "201037343514";
 
-/* The current offer: edit this block to change the offer everywhere on the site */
+/* Current offers: edit this block to change the offers everywhere on the site */
 const OFFER = {
   active: true,
-  ends: "2026-11-15T23:59:00+02:00",      // countdown end; the offer hides itself after this
+  ends: "2026-11-30T23:59:00+02:00",      // countdown end; the offers hide themselves after this
   popupDelaySeconds: 15,                  // the offer message slides in after this, or as soon as the visitor scrolls past the top section
-  en:{ title:"Teeth whitening + Hydrafacial", text:"A brighter smile and glowing skin in one visit.", price:"2,000 EGP", was:"5,000 EGP" },
-  ar:{ title:"تبييض أسنان + هيدرافيشيال", text:"ابتسامة أفتح وبشرة منورة في زيارة واحدة.", price:"٢٬٠٠٠ جنيه", was:"٥٬٠٠٠ جنيه" }
+  items: {
+    dental:   { en:{ title:"Teeth cleaning + Whitening", items:["Professional teeth cleaning","In-clinic teeth whitening"], price:"1,500 EGP" },
+                ar:{ title:"تنظيف + تبييض الأسنان", items:["تنظيف احترافي للأسنان","تبييض الأسنان في العيادة"], price:"١٬٥٠٠ جنيه" } },
+    aesthetic:{ en:{ title:"Facial Cleansing + Dermapen + Exfoliation", items:["Deep facial cleansing","Dermapen session","Skin exfoliation"], price:"1,500 EGP" },
+                ar:{ title:"تنظيف بشرة + ديرمابن + تقشير", items:["تنظيف عميق للبشرة","جلسة ديرمابن","تقشير للبشرة"], price:"١٬٥٠٠ جنيه" } }
+  }
 };
 
 const T = {
@@ -907,7 +947,7 @@ en:{
  "sh.book":"Book this on WhatsApp","sh.note":"Typical figures. Your doctor confirms your plan at the consultation.",
  "dept.dental":"Dental","dept.aesthetic":"Aesthetic","brands":"Brands:",
  "msg":"Hello ÉLEVÉ, I'd like to book","msgGen":"Hello ÉLEVÉ, I'd like to book an appointment.",
- "offer.tag":"Limited offer","offer.cta":"Get the offer","offer.msg":"Hello ÉLEVÉ, I'd like the offer","offer.ended":"Offer ended",
+ "offer.tag":"Black Friday","offer.cta":"Book this offer","offer.msg":"Hello ÉLEVÉ, I'd like to book the Black Friday offer","offer.ended":"Offer ended","bf.t":"Black Friday <em>offers</em>","bf.p":"One offer from each clinic, for a limited time only.","bf.only":"only","bf.popT":"Black Friday at ÉLEVÉ","bf.popP":"Teeth cleaning + whitening, or a full facial package.","bf.price":"1,500 EGP each","bf.see":"See the offers",
  "d":"Days","h":"Hrs","m":"Min","s":"Sec",
  "fab.t":"Questions? Chat with us","fab.s":"We reply on WhatsApp",
  "book.alt":"Prefer to chat?","book.altLink":"Message us on WhatsApp",
@@ -938,7 +978,7 @@ ar:{
  "sh.book":"احجز الخدمة دي على واتساب","sh.note":"أرقام تقريبية. الطبيب بيأكد خطتك في الاستشارة.",
  "dept.dental":"الأسنان","dept.aesthetic":"التجميل","brands":"الخامات:",
  "msg":"مرحبًا إيليفيه، أحب أحجز","msgGen":"مرحبًا إيليفيه، أحب أحجز معاد.",
- "offer.tag":"عرض لفترة محدودة","offer.cta":"احصل على العرض","offer.msg":"مرحبًا إيليفيه، أحب أحجز العرض","offer.ended":"انتهى العرض",
+ "offer.tag":"بلاك فرايداي","offer.cta":"احجز العرض","offer.msg":"مرحبًا إيليفيه، أحب أحجز عرض البلاك فرايداي","bf.t":"عروض <em>البلاك فرايداي</em>","bf.p":"عرض من كل عيادة، لفترة محدودة بس.","bf.only":"فقط","bf.popT":"بلاك فرايداي في إيليفيه","bf.popP":"تنظيف وتبييض للأسنان، أو باكدج كاملة للبشرة.","bf.price":"١٬٥٠٠ جنيه للعرض","bf.see":"شوف العروض","offer.ended":"انتهى العرض",
  "d":"يوم","h":"ساعة","m":"دقيقة","s":"ثانية",
  "fab.t":"عندك سؤال؟ كلمنا","fab.s":"بنرد على واتساب",
  "book.alt":"تحب تتكلم معانا مباشرة؟","book.altLink":"ابعت لنا على واتساب",
@@ -1063,12 +1103,15 @@ function fill(id){
 /* offer */
 const offerLive = () => OFFER.active && new Date(OFFER.ends) > new Date();
 function renderOffer(){
-  const o = OFFER[lang];
-  $$(".o-title").forEach(e=>e.textContent=o.title);
-  $$(".o-text").forEach(e=>e.textContent=o.text);
-  $$(".o-price").forEach(e=>e.textContent=o.price);
-  $$(".o-was").forEach(e=>{e.textContent=o.was; e.hidden=!o.was;});
-  $$(".o-link").forEach(a=>a.href=wa(`${t("offer.msg")}: ${o.title}`));
+  $$(".bf[data-offer]").forEach(card=>{
+    const k=card.dataset.offer, o=OFFER.items[k][lang];
+    card.querySelector(".o-dept").textContent=t("dept."+k);
+    card.querySelector(".o-title").textContent=o.title;
+    card.querySelector(".o-items").innerHTML=o.items.map(x=>`<li>${x}</li>`).join("");
+    card.querySelector(".o-price").textContent=o.price;
+    card.querySelector(".o-link").href=wa(`${t("offer.msg")}: ${o.title} (${o.price})`);
+    card.querySelector("img").alt=`Black Friday: ${OFFER.items[k].en.title}, ${OFFER.items[k].en.price}`;
+  });
   $("#offer").hidden = !offerLive();
   tick();
 }
@@ -1084,7 +1127,7 @@ setInterval(tick,1000);
 function showPop(){ $("#pop").classList.add("on"); $("#pop").setAttribute("aria-hidden","false"); }
 function hidePop(){ $("#pop").classList.remove("on"); $("#pop").setAttribute("aria-hidden","true"); try{sessionStorage.setItem("eleve-pop","1")}catch(e){} }
 $("#pop-x").addEventListener("click", hidePop);
-$("#pop .o-link").addEventListener("click", hidePop);
+$("#pop-see").addEventListener("click", hidePop);
 (function(){ let seen=false; try{seen=sessionStorage.getItem("eleve-pop")==="1"}catch(e){}
   if (!offerLive() || seen) return;
   let shown=false; const once=()=>{ if(shown) return; shown=true; removeEventListener("scroll",onS); showPop(); };
@@ -1094,7 +1137,7 @@ $("#pop .o-link").addEventListener("click", hidePop);
 /* form */
 function fillForm(){
   const sel=$("#f-svc"), keep=sel.value;
-  let h = (offerLive()?`<option value="offer">${t("fm.offer")}: ${OFFER[lang].title}</option>`:"") + `<option value="consult">${t("fm.consult")}</option>`;
+  let h = (offerLive()?Object.keys(OFFER.items).map(k=>`<option value="offer-${k}">${t("offer.tag")}: ${OFFER.items[k][lang].title} (${OFFER.items[k][lang].price})</option>`).join(""):"") + `<option value="consult">${t("fm.consult")}</option>`;
   for (const d of ["dental","aesthetic"]) h += `<optgroup label="${t("dept."+d)}">`+S[d].map(it=>`<option value="${it[0]}">${name(it)}</option>`).join("")+`</optgroup>`;
   sel.innerHTML = h; if ([...sel.options].some(o=>o.value===keep)) sel.value = keep; else sel.value = "consult";
 }

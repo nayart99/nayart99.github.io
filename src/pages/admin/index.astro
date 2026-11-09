@@ -715,6 +715,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       }
       if (key !== aRange) return;
       const first = v.first ? new Date(v.first) : null;
+      if (!first) { $('vsNote').textContent = ''; $('vsKpis').innerHTML = '<p class="none">العداد شغال، وأول ما حد يدخل الموقع الزيارات هتظهر هنا. (زياراتك أنت من الأجهزة اللي فتحت منها الداشبورد مش بتتحسب.)</p>'; ['vsFunnel', 'vsSources', 'vsDays', 'vsTop', 'vsDevices'].forEach((id) => $(id).innerHTML = '<p class="none">لسه مفيش زيارات</p>'); return; }
       // orders counted against visits only from the day the counter started
       const ords = live.filter((o) => !first || new Date(o.date) >= first), nO = ords.length, rev = ords.reduce((s, o) => s + Number(o.total || 0), 0);
       const S_ = v.sessions, V = v.visitors, st = v.steps || {}, didnt = Math.max(0, V - nO);

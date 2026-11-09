@@ -37,6 +37,7 @@
 //   GITHUB_TOKEN        lets the dashboard change products on the website (sold out, hide, prices, new paintings).
 //                       Fine-grained GitHub token for nayart99/nayart99.github.io only: Contents read/write + Actions read.
 //   PAY_ALIASES         optional, comma separated: how our account appears on InstaPay receipts (IPA address, account name)
+//   COURIERS            shipping companies shown in the dashboard (JSON list, edited from the dashboard; default Run, Bosta, Taslem Mobasher)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
   DASHBOARD_PASSWORD: '',
@@ -59,7 +60,7 @@ function cfg(k) { return PropertiesService.getScriptProperties().getProperty(k) 
 const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 const CANCELLED = 'ملغي';
 
-const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session', 'Transfer proof', 'Transfer ref', 'Transfer hash', 'Proof check', 'Design jobs'];
+const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session', 'Transfer proof', 'Transfer ref', 'Transfer hash', 'Proof check', 'Design jobs', 'Shipping company'];
 const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
@@ -766,7 +767,18 @@ function admin(d) {
   }
   const ss = book();
   const sh = sheet(ss, 'Orders', ORDERS_HEADERS);
-  if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh) };
+  if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh), couriers: getCouriers() };
+  if (d.action === 'couriers_save') { const list = cleanCouriers(d.couriers); if (!list.length) return { ok: false, error: 'no_couriers' }; PropertiesService.getScriptProperties().setProperty('COURIERS', JSON.stringify(list)); return { ok: true, couriers: list }; }
+  if (d.action === 'courier') {
+    const ids = [].concat(d.ids || d.id || []).map(String).slice(0, 200), name = cleanCouriers([d.courier])[0] || '';
+    const lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try {
+      let n = 0;
+      ids.forEach(function (id) { const r = findRow(sh, id); if (!r) return; setCourier(sh, r, name); n++; });
+      if (name && getCouriers().indexOf(name) < 0) PropertiesService.getScriptProperties().setProperty('COURIERS', JSON.stringify(getCouriers().concat([name]).slice(0, 20)));
+      return { ok: true, updated: n, courier: name, couriers: getCouriers() };
+    } finally { lock.releaseLock(); }
+  }
   if (d.action === 'archive') {
     // Moves orders out of the dashboard into "Archived orders" (nothing is lost; rows can be copied back).
     const ids = [].concat(d.ids || d.id || []).map(String).slice(0, 200);
@@ -817,6 +829,7 @@ function admin(d) {
       sh.getRange(r, C['Status'] + 1).setValue(d.status);
     }
     if (d.note != null) sh.getRange(r, C['Internal notes'] + 1).setValue(String(d.note).slice(0, 2000));
+    if (d.courier != null) setCourier(sh, r, cleanCouriers([d.courier])[0] || '');
     sh.getRange(r, C['Last update'] + 1).setValue(new Date());
     return { ok: true };
   }
@@ -843,6 +856,24 @@ function admin(d) {
   return { ok: false, error: 'unknown action' };
 }
 
+/* ---------------- shipping companies ---------------- */
+// The list lives in the Script property COURIERS (edited from the dashboard); each order keeps its company in "Shipping company".
+const DEFAULT_COURIERS = ['Run', 'Bosta', 'Taslem Mobasher'];
+function cleanCouriers(a) {
+  const seen = {};
+  return [].concat(a || []).map(function (x) { return String(x == null ? '' : x).replace(/\s+/g, ' ').trim().slice(0, 40); })
+    .filter(function (x) { const k = x.toLowerCase(); if (!x || seen[k]) return false; seen[k] = 1; return true; }).slice(0, 20);
+}
+function getCouriers() { try { const l = cleanCouriers(JSON.parse(cfg('COURIERS') || 'null')); if (l.length) return l; } catch (e) {} return DEFAULT_COURIERS.slice(); }
+function setCourier(sh, r, name) {
+  const cur = String(sh.getRange(r, C['Shipping company'] + 1).getValue() || '');
+  if (cur === name) return;
+  sh.getRange(r, C['Shipping company'] + 1).setValue(name);
+  const stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'dd/MM HH:mm'), notes = sh.getRange(r, C['Internal notes'] + 1);
+  notes.setValue((String(notes.getValue() || '') + '\n🚚 ' + stamp + ': شركة الشحن: ' + (cur ? cur + ' ← ' : '') + (name || 'بدون')).trim().slice(0, 4000));
+  sh.getRange(r, C['Last update'] + 1).setValue(new Date());
+}
+
 function listOrders(sh) {
   const n = sh.getLastRow() - 1;
   if (n < 1) return [];
@@ -862,6 +893,7 @@ function listOrders(sh) {
       payment_status: v[C['Payment status']] || 'Unconfirmed',
       payment_ref: v[C['Payment ref']] || '',
       transfer_proof: v[C['Transfer proof']] || '', transfer_ref: v[C['Transfer ref']] || '', proof_check: v[C['Proof check']] || '',
+      courier: v[C['Shipping company']] || '',
       design: (function () { try { return JSON.parse(v[C['Design jobs']] || '[]'); } catch (e) { return []; } })(),
       items: items.length ? items : [{ name: v[C['Items']], option: '', qty: v[C['Units']], line: v[C['Subtotal (EGP)']] }],
       units: v[C['Units']], subtotal: v[C['Subtotal (EGP)']], delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']],

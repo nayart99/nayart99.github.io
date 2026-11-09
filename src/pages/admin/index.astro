@@ -187,6 +187,14 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     .proof img{max-width:100%;max-height:340px;border:1px solid var(--line);border-radius:8px;background:#fff}
     .pay-check{margin:10px 0 0;font-size:.88rem;color:var(--ink)}
     .dlab{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--soft);flex:1}
+    .tag.ship{color:#1F4E79;background:#EAF2FB;border-color:#BCD3EA;font-weight:600}
+    .ship-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}.ship-l{font-size:.85rem;color:var(--soft);font-weight:600}
+    .ship-c{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 14px;font:inherit;font-size:.86rem;color:var(--ink);cursor:pointer}
+    .chip.on{background:#1F4E79;border-color:#1F4E79;color:#fff;font-weight:600}.chip.add{border-style:dashed;color:var(--soft)}.chip.link{border:0;background:none;color:var(--soft);text-decoration:underline;padding:6px 4px}
+    .cpick{position:fixed;inset:0;background:rgba(20,10,12,.55);z-index:80;display:grid;place-items:center;padding:16px}
+    .cpick-box{background:var(--paper);border-radius:14px;padding:20px;width:min(420px,100%);box-shadow:0 20px 50px -20px rgba(0,0,0,.5)}.cpick-box h3{margin:0 0 14px;font-size:1.02rem}
+    .cpick-list{display:grid;gap:8px}.cpick-list .btn{justify-content:flex-start;padding:13px 16px;font-size:1rem;font-weight:600}.cpick-list .btn:hover,.cpick-list .btn:focus{border-color:#1F4E79;background:#EAF2FB}
+    .cpick-add{display:flex;gap:8px;margin-top:10px}.cpick-add .in{flex:1;padding:9px 12px}.cpick .acts{margin-top:12px}
     .tag.paid{color:#2E7D4F;background:#EAF5EE;border-color:#BFE0CB}
     .empty{text-align:center;padding:60px 20px;color:var(--soft);background:var(--paper);border:1px dashed var(--line);border-radius:12px}
     .empty b{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:4px}
@@ -349,6 +357,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         <input type="date" id="fFrom" aria-label="من" hidden /><input type="date" id="fTo" aria-label="إلى" hidden />
         <select id="fCity" aria-label="المحافظة"></select>
         <select id="fPay" aria-label="طريقة الدفع"></select>
+        <select id="fShip" aria-label="شركة الشحن"></select>
         <select id="fType" aria-label="النوع"><option value="">كل الأنواع</option><option value="kit">لوحات جاهزة</option><option value="custom">من صورة العميل</option></select>
         <select id="fSrc" aria-label="المصدر"></select>
         <select id="fSort" aria-label="الترتيب"><option value="new">الأحدث أولًا</option><option value="old">الأقدم أولًا</option><option value="high">الأعلى قيمة</option><option value="low">الأقل قيمة</option></select>
@@ -384,6 +393,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
           <div class="card"><h2>المحافظات</h2><p class="sub">حسب عدد الطلبات</p><div id="bCities"></div></div>
           <div class="card"><h2>مصادر الطلبات</h2><p class="sub">من أين جاء العميل (UTM)</p><div id="bSources"></div></div>
           <div class="card"><h2>طرق الدفع</h2><p class="sub">حسب عدد الطلبات</p><div id="bPay"></div></div>
+          <div class="card"><h2>شركات الشحن</h2><p class="sub">عدد الطلبات · وفلوس الاستلام اللي لسه مع المندوب (اتشحنت ولسه ما اتسلمتش)</p><div id="bShip"></div></div>
           <div class="card"><h2>حالة الطلبات</h2><p class="sub">كل طلبات الفترة</p><div id="bStatus"></div></div>
           <div class="card"><h2>أيام الأسبوع</h2><p class="sub">أي يوم بيجيب طلبات أكتر</p><div id="bDow"></div></div>
           <div class="card"><h2>اللوحات الجاهزة مقابل المخصصة</h2><p class="sub">حسب المبيعات</p><div id="bType"></div></div>
@@ -432,6 +442,8 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     const DEMO = new URLSearchParams(location.search).has('demo');
     const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
     const COLOR = { 'جديد': 'var(--s-new)', 'تم التأكيد': 'var(--s-conf)', 'بانتظار موافقة التصميم': 'var(--s-wait)', 'قيد التجهيز': 'var(--s-prep)', 'تم الشحن': 'var(--s-ship)', 'تم التسليم': 'var(--s-done)', 'ملغي': 'var(--s-cancel)' };
+    let couriers = ['Run', 'Bosta', 'Taslem Mobasher'];
+    const SHIP_STATES = ['تم الشحن', 'تم التسليم'], NO_SHIP = 'بدون شركة شحن';
     const WORKING = ['تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن'];
     const KEY = 'nay-admin-pw';
     let pw = '', orders = [], filter = 'all', seen = new Set(), first = true, openId = null, timer = null;
@@ -461,7 +473,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         const j = await api('list');
         try { (remember ? localStorage : sessionStorage).setItem(KEY, p); } catch {}
         $('login').hidden = true; $('app').hidden = false; $('demoBar').hidden = !DEMO;
-        load(j.orders); timer = setInterval(sync, 45000);
+        if (j.couriers) couriers = j.couriers; load(j.orders); timer = setInterval(sync, 45000);
         return true;
       } catch (e) {
         const m = e.message;
@@ -476,7 +488,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     /* ---------- data ---------- */
     async function sync(manual) {
       const r = $('refresh'); r.classList.add('spin');
-      try { const j = await api('list'); load(j.orders); if (manual) toast('تم التحديث'); }
+      try { const j = await api('list'); if (j.couriers) couriers = j.couriers; load(j.orders); if (manual) toast('تم التحديث'); }
       catch (e) { if (e.message === 'auth') { location.reload(); } else if (manual) toast('تعذّر التحديث'); }
       r.classList.remove('spin');
     }
@@ -522,9 +534,9 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
 
     function filtered() {
       const q = $('q').value.trim().toLowerCase(), b = rangeBounds($('fRange').value, $('fFrom').value, $('fTo').value);
-      const city = $('fCity').value, pay = $('fPay').value, type = $('fType').value, src = $('fSrc').value, sort = $('fSort').value;
+      const city = $('fCity').value, pay = $('fPay').value, ship = $('fShip').value, type = $('fType').value, src = $('fSrc').value, sort = $('fSort').value;
       const list = orders.filter((o) => (filter === 'all' || (filter === 'unpaid' ? unpaid(o) : filter === 'review' ? review(o) : o.status === filter)) && inRange(o, b)
-        && (!city || o.city === city) && (!pay || payLabel(o.payment) === pay) && (!type || (type === 'custom') === isCustom(o)) && (!src || srcLabel(o.source) === src)
+        && (!city || o.city === city) && (!pay || payLabel(o.payment) === pay) && (!ship || (ship === NO_SHIP ? !o.courier : o.courier === ship)) && (!type || (type === 'custom') === isCustom(o)) && (!src || srcLabel(o.source) === src)
         && (!q || [o.id, o.name, o.phone, o.phone_extra || '', o.city, o.address].join(' ').toLowerCase().includes(q)));
       list.sort((x, y) => sort === 'old' ? new Date(x.date) - new Date(y.date) : sort === 'high' ? y.total - x.total : sort === 'low' ? x.total - y.total : new Date(y.date) - new Date(x.date));
       return list;
@@ -546,6 +558,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       $('tabs').innerHTML = [['all', 'الكل'], ['review', 'تحويلات للمراجعة'], ['unpaid', 'بانتظار الدفع'], ...STATUSES.map((s) => [s, s])].map(([k, l]) => `<button class="tab" data-f="${esc(k)}" aria-pressed="${filter === k}">${esc(l)} <em class="num">${counts[k] || 0}</em></button>`).join('');
       fillSelect('fCity', 'كل المحافظات', uniq(orders.map((o) => o.city)));
       fillSelect('fPay', 'كل طرق الدفع', uniq(orders.map((o) => payLabel(o.payment))));
+      fillSelect('fShip', 'كل شركات الشحن', [...new Set([...couriers, ...orders.map((o) => o.courier).filter(Boolean)]), NO_SHIP]);
       fillSelect('fSrc', 'كل المصادر', uniq(orders.map((o) => srcLabel(o.source))));
 
       const shown = filtered();
@@ -559,7 +572,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         return `<div class="ord${fresh.includes(o.id) ? ' fresh' : ''}${sel ? ' sel' : ''}" data-id="${esc(o.id)}" tabindex="0" role="button">
           <input type="checkbox" class="pick" data-pick="${esc(o.id)}" ${sel ? 'checked' : ''} aria-label="تحديد ${esc(o.id)}">
           <div class="th">${th}</div>
-          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${custom ? '<span class="tag">من صورة العميل</span>' : ''}${dState(o) === 'ready' ? '<span class="tag dsg">🎨 ملف الطباعة جاهز</span>' : dState(o) === 'pending' ? '<span class="tag dsg-w">⏳ جارٍ التصميم</span>' : dState(o) === 'failed' ? '<span class="tag flag">التصميم فشل</span>' : ''}${review(o) && flagLvl(o) === 'bad' ? '<span class="tag flag">🔴 صورة التحويل فيها مشكلة</span>' : review(o) ? '<span class="tag review">💳 تحويل بانتظار المراجعة</span>' : unpaid(o) ? `<span class="tag unpaid">${online(o) ? 'لم يكمل الدفع الأونلاين' : 'بانتظار الدفع'}</span>` : ((custom || online(o) || transferPay(o)) && o.payment_status === 'Paid in full' ? `<span class="tag paid">${online(o) ? 'مدفوع أونلاين' : 'تم الدفع'}</span>` : '')}</div>
+          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${o.courier ? `<span class="tag ship">🚚 ${esc(o.courier)}</span>` : ''}${custom ? '<span class="tag">من صورة العميل</span>' : ''}${dState(o) === 'ready' ? '<span class="tag dsg">🎨 ملف الطباعة جاهز</span>' : dState(o) === 'pending' ? '<span class="tag dsg-w">⏳ جارٍ التصميم</span>' : dState(o) === 'failed' ? '<span class="tag flag">التصميم فشل</span>' : ''}${review(o) && flagLvl(o) === 'bad' ? '<span class="tag flag">🔴 صورة التحويل فيها مشكلة</span>' : review(o) ? '<span class="tag review">💳 تحويل بانتظار المراجعة</span>' : unpaid(o) ? `<span class="tag unpaid">${online(o) ? 'لم يكمل الدفع الأونلاين' : 'بانتظار الدفع'}</span>` : ((custom || online(o) || transferPay(o)) && o.payment_status === 'Paid in full' ? `<span class="tag paid">${online(o) ? 'مدفوع أونلاين' : 'تم الدفع'}</span>` : '')}</div>
             <div class="o-who">${esc(o.name)} · ${esc(o.city)}</div><div class="o-items">${esc(items)}</div></div>
           <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></div>`;
       }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب فلتر آخر أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;
@@ -576,7 +589,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
 
     $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; render(); } });
     $('q').addEventListener('input', () => render());
-    ['fCity', 'fPay', 'fType', 'fSrc', 'fSort', 'fFrom', 'fTo'].forEach((id) => $(id).addEventListener('change', () => render()));
+    ['fCity', 'fPay', 'fShip', 'fType', 'fSrc', 'fSort', 'fFrom', 'fTo'].forEach((id) => $(id).addEventListener('change', () => render()));
     $('fRange').addEventListener('change', () => { const c = $('fRange').value === 'custom'; $('fFrom').hidden = !c; $('fTo').hidden = !c; render(); });
     $('list').addEventListener('click', (e) => {
       const pick = e.target.closest('[data-pick]');
@@ -596,10 +609,14 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     $('bulkApply').addEventListener('click', async () => {
       const s = $('bulkStatus').value, ids = [...selected]; if (!ids.length) return;
       if (!confirm(`تغيير حالة ${ids.length} طلب إلى «${s}»؟`)) return;
+      let courier;
+      const noC = ids.filter((id) => !(orders.find((x) => x.id === id) || {}).courier);
+      if (SHIP_STATES.includes(s) && noC.length) { courier = await chooseCourier(`${noC.length} طلب من دول من غير شركة شحن، مع أنهي شركة؟`); if (courier === undefined) return; }
       const b = $('bulkApply'); b.disabled = true; let ok = 0, blocked = 0, fail = 0;
       for (const id of ids) {
         b.textContent = `جارٍ التحديث ${ok + blocked + fail + 1}/${ids.length}`;
-        try { await api('update', { id, status: s }); const o = orders.find((x) => x.id === id); if (o) { o.status = s; o.updated = new Date().toISOString(); } ok++; }
+        const setC = courier && noC.includes(id);
+        try { await api('update', { id, status: s, ...(setC ? { courier } : {}) }); const o = orders.find((x) => x.id === id); if (o) { o.status = s; if (setC) noteCourier(o, courier); o.updated = new Date().toISOString(); } ok++; }
         catch (e) { e.message === 'payment_required' ? blocked++ : fail++; }
       }
       b.disabled = false; b.textContent = 'تغيير الحالة'; selected.clear(); render();
@@ -615,7 +632,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       const cols = [['رقم الطلب', (o) => o.id], ['التاريخ', (o) => new Date(o.date).toLocaleString('en-GB')], ['الحالة', (o) => o.status], ['حالة الدفع', payState],
         ['الاسم', (o) => o.name], ['الموبايل', (o) => '="' + (o.phone || '') + '"'], ['موبايل إضافي', (o) => o.phone_extra ? '="' + o.phone_extra + '"' : ''], ['المحافظة', (o) => o.city], ['العنوان', (o) => o.address], ['موقع التوصيل', (o) => locationLink(o.location)],
         ['المنتجات', (o) => o.items.map((i) => `${i.name}${i.option ? ' (' + i.option + ')' : ''} × ${i.qty}`).join(' | ')], ['القطع', units], ['المجموع', (o) => o.subtotal], ['التوصيل', (o) => o.delivery], ['الإجمالي', (o) => o.total],
-        ['طريقة الدفع', (o) => payLabel(o.payment)], ['المصدر', (o) => srcLabel(o.source)], ['الحملة', (o) => o.campaign || ''], ['ملاحظات العميل', (o) => o.notes || ''], ['ملاحظات داخلية', (o) => o.internal || '']];
+        ['طريقة الدفع', (o) => payLabel(o.payment)], ['شركة الشحن', (o) => o.courier || ''], ['المصدر', (o) => srcLabel(o.source)], ['الحملة', (o) => o.campaign || ''], ['ملاحظات العميل', (o) => o.notes || ''], ['ملاحظات داخلية', (o) => o.internal || '']];
       const q = (v) => { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       const csv = '﻿' + [cols.map((c) => q(c[0])).join(','), ...list.map((o) => cols.map((c) => q(c[1](o))).join(','))].join('\r\n');
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -630,7 +647,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         <table><tr><th>المنتج</th><th>الكمية</th><th>السعر</th></tr>${o.items.map((i) => `<tr><td>${esc(i.name)}${i.option ? ' (' + esc(i.option) + ')' : ''}</td><td>${i.qty}</td><td>${money(i.line)}</td></tr>`).join('')}
         <tr><td>التوصيل</td><td></td><td>${money(o.delivery)}</td></tr><tr><th>الإجمالي</th><th></th><th>${money(o.total)}</th></tr></table>
         <div style="margin-top:8px"><b>الدفع:</b> ${esc(payLabel(o.payment))}${o.payment_status === 'Paid in full' ? ' · مدفوع بالكامل' : isCOD(o) ? ` · يُحصّل عند الاستلام: <b>${money(o.total)}</b>` : ''}</div>
-        ${o.notes ? `<div><b>ملاحظات:</b> ${esc(o.notes)}</div>` : ''}<div style="margin-top:6px;font-size:12px">تاريخ الطلب: ${fmtDate(o.date)}</div></div>`).join('');
+        ${o.courier ? `<div><b>شركة الشحن:</b> ${esc(o.courier)}</div>` : ''}${o.notes ? `<div><b>ملاحظات:</b> ${esc(o.notes)}</div>` : ''}<div style="margin-top:6px;font-size:12px">تاريخ الطلب: ${fmtDate(o.date)}</div></div>`).join('');
       setTimeout(() => window.print(), 50);
     }
 
@@ -712,6 +729,10 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       const src = group(live, (o) => srcLabel(o.source), () => 1), srcRev = Object.fromEntries(group(live, (o) => srcLabel(o.source), (o) => Number(o.total || 0)).map((e) => [e[0], e[1]]));
       $('bSources').innerHTML = barList(src.map((e) => [e[0], e[1], srcRev[e[0]]]), (v, r) => `${v} طلب · ${money(r)}`);
       $('bPay').innerHTML = barList(group(live, (o) => payLabel(o.payment), () => 1), (v) => `${v} طلب`);
+      const withCourier = orders.filter((o) => o.status === 'تم الشحن' && isCOD(o) && o.payment_status !== 'Paid in full'), owed = {};
+      withCourier.forEach((o) => { const c = o.courier || NO_SHIP; owed[c] = (owed[c] || 0) + Number(o.total || 0); });
+      const shipG = group(live, (o) => o.courier || NO_SHIP, () => 1); Object.keys(owed).forEach((c) => { if (!shipG.some((e) => e[0] === c)) shipG.push([c, 0, 0]); });
+      $('bShip').innerHTML = barList(shipG.map((e) => [e[0], e[1], owed[e[0]] || 0]), (v, x) => `${v} طلب` + (x ? ` · ${money(x)} مع المندوب` : ''));
       const st = group(inP, (o) => o.status, () => 1); st.sort((a, c) => STATUSES.indexOf(a[0]) - STATUSES.indexOf(c[0]));
       $('bStatus').innerHTML = barList(st, (v) => `${v} طلب`, (l) => COLOR[l] || 'var(--wine)');
       const DOW = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'], dow = [0, 0, 0, 0, 0, 0, 0], dowRev = [0, 0, 0, 0, 0, 0, 0];
@@ -826,6 +847,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         <div class="sec"><h3>حالة الطلب</h3>
           <div class="row2"><select class="in" id="pStatus">${STATUSES.map((s) => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn p" id="pSave">حفظ</button></div>
           ${nextStatus(o) ? `<div class="acts"><button class="btn" id="pNext">نقل إلى «${esc(nextStatus(o))}» ←</button><button class="btn" id="pPrint">طباعة بوليصة الشحن</button></div>` : '<div class="acts"><button class="btn" id="pPrint">طباعة بوليصة الشحن</button></div>'}
+          <div class="ship-row"><span class="ship-l">🚚 شركة الشحن</span><div class="ship-c">${[...new Set([...couriers, ...(o.courier ? [o.courier] : [])])].map((c) => `<button type="button" class="chip${o.courier === c ? ' on' : ''}" data-ship="${esc(c)}" aria-pressed="${o.courier === c}">${esc(c)}</button>`).join('')}<button type="button" class="chip add" id="shipAdd">+ شركة</button><button type="button" class="chip link" id="shipEdit">تعديل القائمة</button></div></div>
           <div style="margin-top:8px;font-size:.85rem;color:var(--soft)">وصل ${fmtDate(o.date)}${o.updated ? ' · آخر تعديل ' + fmtDate(o.updated) : ''}</div>
         </div>
         ${o.transfer_proof ? `<div class="sec ${paid ? '' : flagLvl(o) === 'bad' ? 'flag' : 'attn'}"><h3>صورة التحويل · ${esc(o.payment)}</h3>
@@ -866,10 +888,25 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
           const next = o.status === 'جديد' ? (custom ? 'بانتظار موافقة التصميم' : 'تم التأكيد') : '';
           if (next) { try { await api('update', { id: o.id, status: next }); o.status = next; } catch {} }
           o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تم تأكيد وصول الدفع' + (next ? ' · الحالة: ' + next : ''));
+          if (!o.courier) { const c = await chooseCourier('الأوردر هيتشحن مع أنهي شركة؟', 'بعدين'); if (c) await saveCourier([o], c); }
         }
         catch { b.disabled = false; toast('تعذّر تأكيد الدفع'); }
       };
-      $('pSave').onclick = async () => { const s = $('pStatus').value; const b = $('pSave'); b.disabled = true; try { await api('update', { id: o.id, status: s }); o.status = s; o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تم تحديث الحالة'); } catch (e) { toast(e.message === 'payment_required' ? 'أكد استلام المبلغ كاملًا قبل بدء التصميم والتنفيذ' : 'تعذّر الحفظ'); } b.disabled = false; };
+      $('pSave').onclick = async () => {
+        const s = $('pStatus').value; let courier;
+        if (SHIP_STATES.includes(s) && !o.courier) { courier = await chooseCourier(`الأوردر ${o.id} مع أنهي شركة شحن؟`); if (courier === undefined) return; }
+        const b = $('pSave'); b.disabled = true;
+        try { await api('update', { id: o.id, status: s, ...(courier ? { courier } : {}) }); o.status = s; if (courier) noteCourier(o, courier); o.updated = new Date().toISOString(); render(); openPanel(o.id); toast('تم تحديث الحالة' + (courier ? ' · ' + courier : '')); }
+        catch (e) { toast(e.message === 'payment_required' ? 'أكد استلام المبلغ كاملًا قبل بدء التصميم والتنفيذ' : 'تعذّر الحفظ'); }
+        b.disabled = false;
+      };
+      document.querySelectorAll('#pBody [data-ship]').forEach((btn) => btn.onclick = async () => {
+        const c = btn.dataset.ship, off = o.courier === c;
+        if (off && !confirm(`شيل «${c}» من الأوردر ده؟`)) return;
+        await saveCourier([o], off ? '' : c);
+      });
+      $('shipAdd').onclick = async () => { const c = (prompt('اسم شركة الشحن الجديدة:') || '').trim(); if (c) await saveCourier([o], c); };
+      $('shipEdit').onclick = () => editCouriers();
       if ($('pNext')) $('pNext').onclick = () => { $('pStatus').value = nextStatus(o); $('pSave').click(); };
       $('pPrint').onclick = () => printLabels([o]);
       wireDesign(o);
@@ -957,6 +994,45 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    /* ---------- shipping companies ---------- */
+    function noteCourier(o, c) {
+      const t = new Date(), stamp = `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+      o.internal = ((o.internal || '') + `\n🚚 ${stamp}: شركة الشحن: ${o.courier ? o.courier + ' ← ' : ''}${c || 'بدون'}`).trim();
+      o.courier = c;
+    }
+    async function saveCourier(list, c) {
+      try {
+        const j = await api('courier', { ids: list.map((o) => o.id), courier: c });
+        list.forEach((o) => { if (o.courier !== c) noteCourier(o, c); o.updated = new Date().toISOString(); });
+        if (j.couriers) couriers = j.couriers; else if (c && !couriers.includes(c)) couriers.push(c);
+        render(); if (openId) openPanel(openId);
+        toast(c ? `🚚 ${list.length > 1 ? list.length + ' طلب' : 'الأوردر'} مع ${c}` : 'اتشالت شركة الشحن');
+      } catch (e) { toast(e.message === 'unknown action' ? 'شركات الشحن محتاجة تحديث السيرفر الأول' : 'تعذّر حفظ شركة الشحن'); }
+    }
+    async function editCouriers() {
+      const v = prompt('أسماء شركات الشحن (افصل بينهم بفاصلة):', couriers.join('، '));
+      if (v == null) return;
+      const list = [...new Set(v.split(/[,،\n]/).map((x) => x.trim()).filter(Boolean))];
+      if (!list.length) return toast('لازم شركة واحدة على الأقل');
+      try { const j = await api('couriers_save', { couriers: list }); couriers = j.couriers || list; render(); if (openId) openPanel(openId); toast('تم حفظ شركات الشحن'); }
+      catch (e) { toast(e.message === 'unknown action' ? 'شركات الشحن محتاجة تحديث السيرفر الأول' : 'تعذّر الحفظ'); }
+    }
+    /** Shows the companies as big buttons. Resolves the name, null for "skip", undefined if closed. */
+    function chooseCourier(title, skipLabel = 'من غير شركة') {
+      return new Promise((resolve) => {
+        const d = document.createElement('div'); d.className = 'cpick'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true');
+        const draw = () => { d.innerHTML = `<div class="cpick-box"><h3>🚚 ${esc(title)}</h3><div class="cpick-list">${couriers.map((c) => `<button type="button" class="btn" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+          <form class="cpick-add"><input class="in" placeholder="شركة تانية؟ اكتب اسمها" maxlength="40"><button class="btn">إضافة</button></form>
+          <div class="acts"><button type="button" class="btn" data-skip>${esc(skipLabel)}</button><button type="button" class="btn" data-x>إلغاء</button></div></div>`; };
+        const done = (v) => { d.remove(); document.removeEventListener('keydown', esc_); resolve(v); };
+        const esc_ = (e) => { if (e.key === 'Escape') { e.stopPropagation(); done(undefined); } };
+        draw(); document.body.appendChild(d); document.addEventListener('keydown', esc_);
+        d.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) return done(b.dataset.c); if (e.target.closest('[data-skip]')) return done(null); if (e.target.closest('[data-x]') || e.target === d) done(undefined); });
+        d.addEventListener('submit', (e) => { e.preventDefault(); const v = d.querySelector('.cpick-add .in').value.trim(); if (v) done(v); });
+        d.querySelector('[data-c]')?.focus();
+      });
+    }
+
     function closePanel() { openId = null; clearTimeout(designTimer); $('panel').classList.remove('on'); $('scrim').classList.remove('on'); $('panel').setAttribute('aria-hidden', 'true'); }
     $('pClose').addEventListener('click', closePanel); $('scrim').addEventListener('click', closePanel);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const lb = document.querySelector('.lightbox'); if (lb) lb.remove(); else closePanel(); } });
@@ -980,7 +1056,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
           { id: 'NA-261020-5190', date: t(1.5), status: 'جديد', name: 'منة الله عادل', phone: '01223456789', city: 'المنصورة', address: 'حي الجامعة، شارع الجمهورية', payment: 'فودافون كاش', payment_status: 'Transfer submitted', transfer_proof: 'demo-proof', transfer_ref: '', proof_check: 'bad: المبلغ 1070 ج.م مش ظاهر في الصورة · رقم المحفظة/InstaPay بتاعنا مش ظاهر في الصورة', items: [{ name: 'Golden Hour', option: '40×50 سم', qty: 1, line: 950 }], delivery: 120, total: 1070, notes: '', internal: '', source: 'facebook', photos: [] },
           { id: 'NA-261019-7710', date: t(20), status: 'بانتظار موافقة التصميم', name: 'ندى حسن', phone: '01055512345', city: 'الإسكندرية', address: 'سموحة، شارع فوزي معاذ', payment: 'فودافون كاش', payment_status: 'Paid in full', design: [{ photo: 'demo', n: 1, size: '20x16', colors: 24, complexity: 'none', status: 'ready', key: 'demo', files: { print_pdf: 'dpdf', print_svg: 'dsvg', numbered: 'dnum', painted: 'dfin', colors_pdf: 'dcol' }, palette: [['#F3E9DC','Cream'],['#2B2B2B','Charcoal'],['#7A1F2B','Wine'],['#D9A88F','Peach'],['#5C7A5A','Sage'],['#E8C872','Honey'],['#3E5A7A','Denim'],['#B5651D','Rust'],['#FFFFFF','White'],['#8C6E5D','Mocha'],['#C94F4F','Rose red'],['#A7BCC9','Sky']].map(([hex, name], i) => ({ n: i + 1, hex, name })) }], items: [{ name: 'لوحة من صورتك', option: '40×50 سم / عرضي', qty: 1, line: 1800, custom: true }], delivery: 120, total: 1920, notes: '', internal: 'تم إرسال التصميم على واتساب', source: 'instagram', photos: [{ id: 'demo', thumb, url: '#' }] },
           { id: 'NA-261019-3302', date: t(26), status: 'قيد التجهيز', name: 'أحمد سمير', phone: '01234567890', city: 'المنصورة', address: 'شارع الجمهورية', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'حقول الغروب', option: '40×50 سم', qty: 2, line: 1500 }], delivery: 120, total: 1620, notes: '', internal: '', photos: [] },
-          { id: 'NA-261018-5520', date: t(50), status: 'تم الشحن', name: 'منة الله', phone: '01511122233', city: 'القاهرة', address: 'التجمع الخامس', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'صباح على البحر', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: 'بوليصة الشحن 88231', photos: [] },
+          { id: 'NA-261018-5520', date: t(50), status: 'تم الشحن', name: 'منة الله', phone: '01511122233', city: 'القاهرة', address: 'التجمع الخامس', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'صباح على البحر', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', courier: 'Bosta', internal: 'بوليصة الشحن 88231', photos: [] },
           { id: 'NA-261015-6107', date: t(120), status: 'تم التسليم', name: 'يوسف كمال', phone: '01022233344', city: 'الجيزة', address: 'الشيخ زايد', payment: 'InstaPay', items: [{ name: 'مدينة المظلات', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: '', photos: [] },
           { id: 'NA-261012-2214', date: t(200), status: 'ملغي', name: 'هالة فؤاد', phone: '01066677788', city: 'طنطا', address: 'شارع البحر', payment: 'الدفع نقدًا عند الاستلام', items: [{ name: 'حلم الورد', option: '40×50 سم', qty: 1, line: 750 }], delivery: 120, total: 870, notes: '', internal: 'العميل ألغى', photos: [] },
         ];
@@ -997,13 +1073,15 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
           const item = custom ? { name: 'لوحة من صورتك', option: size[0], qty: 1, line: size[1], custom: true } : { name: kits[Math.floor(rnd() * kits.length)], option: '40×50 سم', qty, line: 750 * qty };
           const st = h > 300 ? (rnd() < 0.1 ? 'ملغي' : 'تم التسليم') : h > 120 ? 'تم الشحن' : 'قيد التجهيز';
           const nm = names[Math.floor(rnd() * names.length)];
-          demoApi.data.push({ id: 'NA-DEMO-' + (1000 + i), date: t(h), status: st, name: nm, phone: '010' + String(10000000 + names.indexOf(nm) * 1111111).slice(0, 8), city: cities[Math.floor(rnd() * cities.length)], address: 'عنوان تجريبي', payment: custom ? 'InstaPay' : pays[Math.floor(rnd() * pays.length)], payment_status: custom ? 'Paid in full' : 'Unconfirmed', items: [item], delivery: 120, total: item.line + 120, subtotal: item.line, notes: '', internal: '', source: srcs[Math.floor(rnd() * srcs.length)], photos: [] });
+          demoApi.data.push({ id: 'NA-DEMO-' + (1000 + i), date: t(h), status: st, courier: SHIP_STATES.includes(st) ? ['Run', 'Bosta', 'Taslem Mobasher'][i % 3] : '', name: nm, phone: '010' + String(10000000 + names.indexOf(nm) * 1111111).slice(0, 8), city: cities[Math.floor(rnd() * cities.length)], address: 'عنوان تجريبي', payment: custom ? 'InstaPay' : pays[Math.floor(rnd() * pays.length)], payment_status: custom ? 'Paid in full' : 'Unconfirmed', items: [item], delivery: 120, total: item.line + 120, subtotal: item.line, notes: '', internal: '', source: srcs[Math.floor(rnd() * srcs.length)], photos: [] });
         }
       }
-      if (action === 'list') return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)) });
+      if (action === 'list') return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)), couriers: demoApi.couriers || ['Run', 'Bosta', 'Taslem Mobasher'] });
       if (action === 'archive') { demoApi.data = demoApi.data.filter((d) => !x.ids.includes(d.id)); return Promise.resolve({ ok: true, archived: x.ids.length }); }
       if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }
-      if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; return Promise.resolve({ ok: true }); }
+      if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; if (x.courier != null) o.courier = x.courier; return Promise.resolve({ ok: true }); }
+      if (action === 'courier') { [].concat(x.ids || x.id).forEach((id) => { const o = demoApi.data.find((d) => d.id === id); if (o) o.courier = x.courier; }); demoApi.couriers = demoApi.couriers || ['Run', 'Bosta', 'Taslem Mobasher']; if (x.courier && !demoApi.couriers.includes(x.courier)) demoApi.couriers.push(x.courier); return Promise.resolve({ ok: true, couriers: [...demoApi.couriers] }); }
+      if (action === 'couriers_save') { demoApi.couriers = x.couriers; return Promise.resolve({ ok: true, couriers: [...x.couriers] }); }
       if (action === 'catalog_list') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); return Promise.resolve({ ok: true, products: JSON.parse(JSON.stringify(demoApi.cat)), status: { status: 'completed', conclusion: 'success', sha: 'demo' } }); }
       if (action === 'catalog_save') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); x.products.forEach((p) => { const k = demoApi.cat.findIndex((q) => q.slug === p.slug); if (k >= 0) demoApi.cat[k] = p; else demoApi.cat.push(p); }); demoApi.saved = Date.now(); return new Promise((r) => setTimeout(() => r({ ok: true, commit: 'demo' + Date.now(), products: x.products }), 700)); }
       if (action === 'site_get') { demoApi.site = demoApi.site || JSON.parse(JSON.stringify(CFG.site)); return Promise.resolve({ ok: true, settings: JSON.parse(JSON.stringify(demoApi.site)), status: { status: 'completed', conclusion: 'success', sha: 'demo' } }); }

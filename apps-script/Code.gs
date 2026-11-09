@@ -79,6 +79,7 @@ function doPost(e) {
     if (data.type === 'preview_start') return json(previewStart(data));
     if (data.type === 'preview_status') return json(previewStatus(data));
     if (data.type === 'admin') return json(admin(data));
+    if (data.type === 'visit') return json(saveVisit(data));
     return json({ ok: false, error: 'unknown type' });
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -184,7 +185,7 @@ function saveOrderRow(o) {
     row[C['Payment']] = o.payment_label || o.payment || ''; row[C['Items']] = itemText; row[C['Units']] = units;
     row[C['Subtotal (EGP)']] = Number(o.subtotal || 0); row[C['Delivery (EGP)']] = Number(o.delivery || 0); row[C['Total (EGP)']] = Number(o.total || 0);
     row[C['Custom photos']] = links.join('\n'); row[C['Customer notes']] = c.notes || ''; row[C['Last update']] = new Date();
-    row[C['Language']] = o.lang || ''; row[C['Source']] = s.utm_source || (s.fbclid ? 'facebook' : s.gclid ? 'google' : '');
+    row[C['Language']] = o.lang || ''; row[C['Source']] = s.utm_source || (s.fbclid ? 'facebook' : s.gclid ? 'google' : s.via && s.via !== 'direct' ? String(s.via).slice(0, 60) : '');
     row[C['Medium']] = s.utm_medium || ''; row[C['Campaign']] = s.utm_campaign || ''; row[C['Landing page']] = s.landing || ''; row[C['Referrer']] = s.referrer || '';
     row[C['Items JSON']] = JSON.stringify(cleanItems); row[C['Photo IDs']] = ids.join(','); row[C['Thumbs']] = JSON.stringify(thumbList).slice(0, 49000);
     row[C['Additional phone']] = c.phone_extra ? "'" + c.phone_extra : '';
@@ -769,6 +770,7 @@ function admin(d) {
   const sh = sheet(ss, 'Orders', ORDERS_HEADERS);
   if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh), couriers: getCouriers() };
   if (d.action === 'couriers_save') { const list = cleanCouriers(d.couriers); if (!list.length) return { ok: false, error: 'no_couriers' }; PropertiesService.getScriptProperties().setProperty('COURIERS', JSON.stringify(list)); return { ok: true, couriers: list }; }
+  if (d.action === 'visits') return visitStats(ss, d);
   if (d.action === 'courier') {
     const ids = [].concat(d.ids || d.id || []).map(String).slice(0, 200), name = cleanCouriers([d.courier])[0] || '';
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
@@ -854,6 +856,58 @@ function admin(d) {
     return { ok: true, data: 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()), name: blob.getName() };
   }
   return { ok: false, error: 'unknown action' };
+}
+
+/* ---------------- website visits (our own counter, no cookies banner needed) ---------------- */
+// The website sends one row when a visit starts and one row the first time the visitor reaches each step
+// (saw a painting, added to cart, opened checkout, ordered, WhatsApp). Bots and the owner's own devices are skipped on the site.
+const VISITS_HEADERS = ['Date', 'Event', 'Visitor', 'Session', 'Page', 'Source', 'Campaign', 'Device', 'Language', 'Returning'];
+const VISIT_EVENTS = ['visit', 'view', 'photo', 'cart', 'checkout', 'order', 'whatsapp'];
+function saveVisit(d) {
+  const ev = String(d.e || ''), id = function (x) { return String(x || '').replace(/[^\w-]/g, '').slice(0, 40); };
+  if (VISIT_EVENTS.indexOf(ev) < 0 || !id(d.vid) || !id(d.sid)) return { ok: false };
+  const clean = function (x, n) { return String(x == null ? '' : x).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n); };
+  sheet(book(), 'Visits', VISITS_HEADERS).appendRow([new Date(), ev, id(d.vid), id(d.sid), clean(d.path, 120), clean(d.src, 60).toLowerCase(),
+    clean(d.campaign, 80), d.device === 'mobile' ? 'mobile' : d.device === 'tablet' ? 'tablet' : 'desktop', d.lang === 'en' ? 'en' : 'ar', d.ret ? 'yes' : '']);
+  return { ok: true };
+}
+/** Counts for the dashboard: d.from / d.to are ISO dates (to is exclusive). */
+function visitStats(ss, d) {
+  const sh = ss.getSheetByName('Visits');
+  const from = d.from ? new Date(d.from) : null, to = d.to ? new Date(d.to) : null;
+  const out = { ok: true, sessions: 0, visitors: 0, returning: 0, steps: {}, days: {}, sources: {}, devices: {}, pages: {}, products: {}, first: null };
+  if (!sh || sh.getLastRow() < 2) return out;
+  const last = sh.getLastRow(), CH = 5000, seenV = {}, dayV = {}, stepS = {}, prodS = {}, newV = {};
+  out.first = sh.getRange(2, 1).getValue();
+  // rows are in time order: read backwards in chunks and stop once we are before "from"
+  for (let end = last; end >= 2; end -= CH) {
+    const start = Math.max(2, end - CH + 1), rows = sh.getRange(start, 1, end - start + 1, VISITS_HEADERS.length).getValues();
+    let done = false;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const r = rows[i], t = r[0] instanceof Date ? r[0] : new Date(r[0]);
+      if (to && t >= to) continue;
+      if (from && t < from) { done = true; break; }
+      const ev = r[1], vid = r[2], sid = r[3];
+      if (ev === 'visit') {
+        out.sessions++;
+        if (!seenV[vid]) { seenV[vid] = 1; out.visitors++; }
+        if (r[9] !== 'yes') newV[vid] = 1; // first visit ever happened inside this period
+        const day = Utilities.formatDate(t, 'Africa/Cairo', 'yyyy-MM-dd');
+        const D = out.days[day] = out.days[day] || [0, 0]; D[0]++; if (!dayV[day + vid]) { dayV[day + vid] = 1; D[1]++; }
+        const src = r[5] || 'direct'; out.sources[src] = (out.sources[src] || 0) + 1;
+        out.devices[r[7]] = (out.devices[r[7]] || 0) + 1;
+        const pg = String(r[4] || '/'); out.pages[pg] = (out.pages[pg] || 0) + 1;
+      } else {
+        if (!stepS[ev + sid]) { stepS[ev + sid] = 1; out.steps[ev] = (out.steps[ev] || 0) + 1; }
+        if (ev === 'view') { const pg = String(r[4] || ''); if (!prodS[sid + pg]) { prodS[sid + pg] = 1; out.products[pg] = (out.products[pg] || 0) + 1; } }
+      }
+    }
+    if (done) break;
+  }
+  out.returning = out.visitors - Object.keys(newV).length;
+  const top = function (o, n) { return Object.keys(o).map(function (k) { return [k, o[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, n); };
+  out.sources = top(out.sources, 12); out.pages = top(out.pages, 8); out.products = top(out.products, 10); out.devices = top(out.devices, 3);
+  return out;
 }
 
 /* ---------------- shipping companies ---------------- */

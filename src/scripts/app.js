@@ -115,6 +115,7 @@ function track(event, p = {}) {
     }
     if (window.clarity) window.clarity('event', event);
   } catch {}
+  visitStep({ view_item: 'view', add_to_cart: 'cart', begin_checkout: 'checkout', purchase: 'order', contact: p.method === 'whatsapp' ? 'whatsapp' : '', generate_lead: p.method === 'custom_photo' ? 'photo' : '' }[event]);
 }
 // remember where the visitor came from (first visit only)
 (() => {
@@ -129,6 +130,47 @@ function track(event, p = {}) {
   } catch {}
 })();
 const source = () => { try { return JSON.parse(sessionStorage.getItem('nay-src')) || {}; } catch { return {}; } };
+
+/** Where the visitor came from: the ad's utm_source, else the site that sent them (Instagram, Facebook, TikTok, Google…), else direct. */
+function trafficSource() {
+  const src = source(), host = (() => { try { return new URL(src.referrer).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+  return String(src.utm_source || (src.fbclid ? 'facebook' : src.gclid ? 'google' : /instagram/.test(host) ? 'instagram' : /facebook|fb\.|messenger/.test(host) ? 'facebook' : /tiktok/.test(host) ? 'tiktok' : /google\./.test(host) ? 'google' : /whatsapp|wa\.me/.test(host) ? 'whatsapp' : host && host !== location.hostname ? host : 'direct')).toLowerCase().slice(0, 60);
+}
+/* ---------- visit counter (shown in the dashboard: visits → saw a painting → cart → checkout → order) ---------- */
+// One row per visit + one per step the visitor reaches. Bots, previews and the owner's own devices (logged into /admin) are not counted.
+const visit = (() => {
+  try {
+    const ua = navigator.userAgent || '';
+    const test = sessionStorage.getItem('nay-track-test') === '1';
+    if (!S.orders_endpoint || navigator.webdriver && !test || /bot|crawl|spider|slurp|lighthouse|headless|preview|facebookexternalhit|whatsapp\/|telegram/i.test(ua)) return null;
+    if (/^(localhost|127\.|\[::1\])/.test(location.hostname) && !test) return null;
+    if (localStorage.getItem('nay-owner') === '1') return null;
+    const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    let vid = localStorage.getItem('nay-vid'); const ret = !!vid;
+    if (!vid) { vid = rid(); localStorage.setItem('nay-vid', vid); }
+    let ses = null; try { ses = JSON.parse(localStorage.getItem('nay-ses')); } catch {}
+    const now = Date.now(), fresh = !ses || now - ses.last > 30 * 60e3; // a new visit after 30 minutes away
+    if (fresh) ses = { id: rid(), last: now, steps: {} };
+    ses.last = now; localStorage.setItem('nay-ses', JSON.stringify(ses));
+    const src = source(), from = trafficSource();
+    const w = Math.min(screen.width, screen.height), device = /iPad|Tablet/i.test(ua) || (w >= 600 && /Android|Mobi/i.test(ua)) ? 'tablet' : /Mobi|Android|iPhone/i.test(ua) ? 'mobile' : 'desktop';
+    const base = { type: 'visit', vid, sid: ses.id, src: from, campaign: src.utm_campaign || '', device, lang, ret };
+    const send = (e, path) => {
+      const body = JSON.stringify({ ...base, e, path: path || location.pathname });
+      try { if (navigator.sendBeacon && navigator.sendBeacon(S.orders_endpoint, body)) return; } catch {}
+      fetch(S.orders_endpoint, { method: 'POST', body, keepalive: true, mode: 'no-cors' }).catch(() => {});
+    };
+    if (fresh) send('visit', src.landing || location.pathname);
+    return { step(e) {
+      let s = null; try { s = JSON.parse(localStorage.getItem('nay-ses')); } catch {}
+      if (!s || s.id !== ses.id) s = ses;
+      const k = e === 'view' ? 'view:' + location.pathname : e; // each painting page counts once per visit
+      if (s.steps[k]) return;
+      s.steps[k] = 1; s.last = Date.now(); localStorage.setItem('nay-ses', JSON.stringify(s)); send(e);
+    } };
+  } catch { return null; }
+})();
+function visitStep(e) { try { if (e && visit) visit.step(e); } catch {} }
 
 /* ---------- toast ---------- */
 function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2200); }
@@ -269,7 +311,7 @@ async function placeOrder(btn) {
   const customer = { name: $('f-name').value.trim(), phone: phoneNumber($('f-phone').value), phone_extra: phoneNumber($('f-phone-extra').value), location: {...deliveryLocation}, city: T.gov[cityIdx], address: $('f-addr').value.trim(), notes: $('f-note').value.trim() };
   store.set('nay-customer', { name: customer.name, phone: customer.phone, phone_extra:customer.phone_extra, location:customer.location, city: cityIdx, addr: customer.address });
   const items = cart.map((c) => { const l = lineInfo(c); return { slug: c.kind === 'custom' ? 'custom' : c.slug, name: l.name, option: l.option, display: l.display, qty: c.q, price: l.price, line: l.price * c.q, custom: c.kind === 'custom', note: c.note || '', key: c.key, thumb: c.kind === 'custom' ? c.thumb || '' : '', ...(c.kind === 'custom' && c.crop ? { crop: c.crop } : {}), ...(c.kind === 'custom' && c.mimi ? { mimi_key: c.mimi } : {}) }; });
-  const order = { type: 'order', id, created: d.toISOString(), lang, customer, payment: payV, payment_label: payLabel, items, subtotal: t.sub, delivery: t.ship, total: t.total, source: source(), page: location.href };
+  const order = { type: 'order', id, created: d.toISOString(), lang, customer, payment: payV, payment_label: payLabel, items, subtotal: t.sub, delivery: t.ship, total: t.total, source: { ...source(), via: trafficSource() }, page: location.href };
   const transfer = isTransfer(payV) && transferProof ? { data: transferProof, ref: ($('trRef')?.value || '').trim() } : null;
   placingOrder = true; btn.disabled = true; btn.textContent = tr('placing');
   const photoList = (await Promise.all(cart.filter((c) => c.kind === 'custom').map(async (c) => ({ key: c.key, name: c.file || 'photo.jpg', data: photos[c.key] || (await photoDB.get(c.key)) || store.get('nay-photo-' + c.key, '') })))).filter((p) => p.data);

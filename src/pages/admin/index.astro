@@ -266,6 +266,8 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     .a-head small{color:var(--soft)}
     .kpis.k8{grid-template-columns:repeat(4,1fr)}
     .delta{display:inline-block;margin-inline-start:6px;font-size:.78rem;color:var(--soft);font-weight:500}
+    .vsec{margin:4px 0 26px}.vhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:12px}.vhead h2,.ahead2{font-size:1.1rem;margin:0}.vhead small{color:var(--soft);font-size:.8rem}.ahead2{margin:0 0 12px}
+    .vsec .agrid{margin-top:12px}.kpi.hi{border-color:var(--wine);background:#FBF3F0}
     .agrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .agrid .wide{grid-column:1/-1}
     .card .sub{font-size:.8rem;color:var(--soft);margin:-6px 0 10px}
@@ -386,6 +388,18 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
           <small id="aRangeLbl"></small>
         </div>
         <div class="kpis k8" id="aKpis"></div>
+        <div class="vsec" id="vsSec">
+          <div class="vhead"><h2>زيارات الموقع</h2><small id="vsNote"></small></div>
+          <div class="kpis k8" id="vsKpis"><p class="none">جارٍ تحميل الزيارات…</p></div>
+          <div class="agrid">
+            <div class="card"><h2>رحلة الزائر</h2><p class="sub">من أول ما دخل الموقع لحد ما طلب</p><div id="vsFunnel"></div></div>
+            <div class="card"><h2>مصادر الزيارات</h2><p class="sub">الزيارات · الطلبات · نسبة اللي طلبوا</p><div id="vsSources"></div></div>
+            <div class="card wide"><h2>الزيارات يوميًا</h2><p class="sub">عدد الزيارات، والطلبات في نفس اليوم</p><div id="vsDays"></div></div>
+            <div class="card"><h2>أكتر لوحات اتشافت</h2><p class="sub">عدد الزيارات اللي فتحت صفحة اللوحة</p><div id="vsTop"></div></div>
+            <div class="card"><h2>الأجهزة</h2><p class="sub">الزيارات حسب نوع الجهاز</p><div id="vsDevices"></div></div>
+          </div>
+        </div>
+        <h2 class="ahead2">الطلبات والمبيعات</h2>
         <div class="agrid">
           <div class="card wide"><h2>المبيعات</h2><p class="sub" id="revSub">بالجنيه، بدون الطلبات الملغية</p><div id="chRev"></div></div>
           <div class="card wide"><h2>عدد الطلبات</h2><p class="sub" id="ordSub">بدون الطلبات الملغية</p><div id="chOrd"></div></div>
@@ -473,6 +487,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         const j = await api('list');
         try { (remember ? localStorage : sessionStorage).setItem(KEY, p); } catch {}
         $('login').hidden = true; $('app').hidden = false; $('demoBar').hidden = !DEMO;
+        if (!DEMO) try { localStorage.setItem('nay-owner', '1'); } catch {} // the owner's own visits to the website are not counted
         if (j.couriers) couriers = j.couriers; load(j.orders); timer = setInterval(sync, 45000);
         return true;
       } catch (e) {
@@ -681,9 +696,63 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     function group(list, keyFn, valFn) { const m = {}; list.forEach((o) => { const k = keyFn(o); if (k == null || k === '') return; (m[k] = m[k] || [0, 0]); m[k][0] += valFn(o); m[k][1]++; }); return Object.entries(m).map(([k, [v, n]]) => [k, v, n]).sort((a, b) => b[1] - a[1]); }
     function topN(entries, n) { if (entries.length <= n) return entries; const rest = entries.slice(n - 1).reduce((a, e) => [a[0] + e[1], a[1] + e[2]], [0, 0]); return [...entries.slice(0, n - 1), ['أخرى', rest[0], rest[1]]]; }
 
+    /* ---------- website visits ---------- */
+    const visitCache = {};
+    const DEV = { mobile: 'موبايل', desktop: 'كمبيوتر', tablet: 'تابلت' };
+    function pageName(path) {
+      const seg = String(path || '').split('/').filter(Boolean), slug = seg[seg.length - 1] || '';
+      if (!slug || slug === 'ar' || slug === 'en') return 'الصفحة الرئيسية';
+      if (slug === 'custom') return 'لوحة من صورتك';
+      const p = CFG.allProducts.find((x) => x.slug === slug);
+      return p ? (p.name.ar || p.name.en) : decodeURIComponent(path);
+    }
+    async function renderVisits(b, live) {
+      const key = aRange, pct = (a, c) => c ? Math.round((a / c) * 1000) / 10 : 0;
+      let v = visitCache[key];
+      if (!v) {
+        try { v = await api('visits', { from: b[0] ? b[0].toISOString() : '', to: b[1] ? b[1].toISOString() : '' }); visitCache[key] = v; setTimeout(() => delete visitCache[key], 120000); }
+        catch (e) { $('vsKpis').innerHTML = `<p class="none">${e.message === 'unknown action' ? 'عداد الزيارات محتاج تحديث السيرفر الأول.' : 'تعذّر تحميل الزيارات.'}</p>`; ['vsFunnel', 'vsSources', 'vsDays', 'vsTop', 'vsDevices'].forEach((id) => $(id).innerHTML = ''); return; }
+      }
+      if (key !== aRange) return;
+      const first = v.first ? new Date(v.first) : null;
+      // orders counted against visits only from the day the counter started
+      const ords = live.filter((o) => !first || new Date(o.date) >= first), nO = ords.length, rev = ords.reduce((s, o) => s + Number(o.total || 0), 0);
+      const S_ = v.sessions, V = v.visitors, st = v.steps || {}, didnt = Math.max(0, V - nO);
+      $('vsNote').textContent = first ? `بيتحسب من ${first.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' })} · زياراتك أنت (من أي جهاز دخلت منه الداشبورد) مش بتتحسب` : 'العداد لسه هيبدأ يسجّل أول ما حد يدخل الموقع';
+      const k = (label, val, small, hi) => `<div class="kpi${hi ? ' hi' : ''}"><span>${label}</span><b class="num">${val}</b><small>${small}</small></div>`;
+      $('vsKpis').innerHTML = [
+        k('الزيارات', num(S_), `متوسط ${num(Math.round(S_ / Math.max(1, Object.keys(v.days || {}).length)))} زيارة في اليوم`),
+        k('الزوار', num(V), `${num(V - v.returning)} جديد · ${num(v.returning)} رجعوا تاني`),
+        k('طلبوا', num(nO), `من ${num(V)} زائر`, true),
+        k('ماطلبوش', num(didnt), 'دخلوا ومشيوا من غير طلب'),
+        k('نسبة التحويل', pct(nO, V) + '%', V ? `كل 100 زائر بيطلب منهم ${pct(nO, V)}` : '—', true),
+        k('ضافوا للسلة', num(st.cart || 0), `${pct(st.cart || 0, S_)}% من الزيارات`),
+        k('وصلوا لصفحة الدفع', num(st.checkout || 0), `${num(Math.max(0, (st.checkout || 0) - nO))} مكملوش الطلب`),
+        k('الزيارة بتجيب', num(S_ ? Math.round(rev / S_) : 0), 'جنيه في المتوسط (المبيعات ÷ الزيارات)'),
+      ].join('');
+      const steps = [['دخلوا الموقع', S_], ['شافوا لوحة', st.view || 0], ['ضافوا للسلة', st.cart || 0], ['وصلوا لصفحة الدفع', st.checkout || 0], ['طلبوا', nO]];
+      $('vsFunnel').innerHTML = S_ ? barList(steps, (n) => `${num(n)} · ${pct(n, S_)}%`, (l) => l === 'طلبوا' ? 'var(--wine)' : '#C9A7A0') + (st.whatsapp ? `<p class="dnote" style="margin-top:8px">+ ${num(st.whatsapp)} زيارة كلّموكم على واتساب من الموقع${st.photo ? ` · ${num(st.photo)} رفعوا صورة للوحة مخصصة` : ''}</p>` : '') : '<p class="none">لا توجد زيارات في هذه الفترة</p>';
+      const srcOrders = {}; ords.forEach((o) => { const l = srcLabel(o.source); srcOrders[l] = (srcOrders[l] || 0) + 1; });
+      const srcVisits = {}; (v.sources || []).forEach(([sname, n]) => { const l = srcLabel(sname === 'direct' ? '' : sname); srcVisits[l] = (srcVisits[l] || 0) + n; });
+      const srcRows = Object.entries(srcVisits).sort((a, c) => c[1] - a[1]).map(([l, n]) => [l, n, srcOrders[l] || 0]);
+      $('vsSources').innerHTML = barList(srcRows, (n, o) => `${num(n)} زيارة · ${o} طلب · ${pct(o, n)}%`);
+      const dayO = {}; ords.forEach((o) => { const d = new Date(o.date).toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' }); dayO[d] = (dayO[d] || 0) + 1; });
+      const days = Object.keys(v.days || {}).sort();
+      if (days.length) {
+        const pts = []; for (let t = new Date(days[0] + 'T12:00:00'); t.toISOString().slice(0, 10) <= days[days.length - 1]; t = new Date(t.getTime() + 864e5)) {
+          const d = t.toISOString().slice(0, 10), x = v.days[d] || [0, 0];
+          pts.push({ label: t.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' }), v: x[0], txt: `${x[0]} زيارة · ${x[1]} زائر · ${dayO[d] || 0} طلب` });
+        }
+        $('vsDays').innerHTML = colChart(pts, num);
+      } else $('vsDays').innerHTML = '<p class="none">لا توجد زيارات في هذه الفترة</p>';
+      $('vsTop').innerHTML = barList((v.products || []).map(([p, n]) => [pageName(p), n]), (n) => `${num(n)} زيارة`);
+      $('vsDevices').innerHTML = barList((v.devices || []).map(([d, n]) => [DEV[d] || d, n]), (n) => `${num(n)} · ${pct(n, S_)}%`);
+    }
+
     function renderAnalytics() {
       const b = rangeBounds(aRange);
       const inP = orders.filter((o) => inRange(o, b)), live = inP.filter((o) => o.status !== 'ملغي');
+      renderVisits(b, live);
       let prev = null;
       if (b[0]) { const end = b[1] || new Date(), len = end - b[0]; const pb = [new Date(b[0].getTime() - len), b[0]]; prev = orders.filter((o) => inRange(o, pb) && o.status !== 'ملغي'); }
       const sum = (l, f) => l.reduce((s, o) => s + Number(f(o) || 0), 0);
@@ -1081,6 +1150,19 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }
       if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; if (x.courier != null) o.courier = x.courier; return Promise.resolve({ ok: true }); }
       if (action === 'courier') { [].concat(x.ids || x.id).forEach((id) => { const o = demoApi.data.find((d) => d.id === id); if (o) o.courier = x.courier; }); demoApi.couriers = demoApi.couriers || ['Run', 'Bosta', 'Taslem Mobasher']; if (x.courier && !demoApi.couriers.includes(x.courier)) demoApi.couriers.push(x.courier); return Promise.resolve({ ok: true, couriers: [...demoApi.couriers] }); }
+      if (action === 'visits') {
+        const from = x.from ? new Date(x.from) : new Date(Date.now() - 60 * 864e5), to = x.to ? new Date(x.to) : new Date(), days = {};
+        let seed = 3, sessions = 0, visitors = 0; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+        const start = new Date(Math.max(+from, Date.now() - 60 * 864e5));
+        for (let t = new Date(start); t < to; t = new Date(t.getTime() + 864e5)) { const n = Math.round(60 + rnd() * 90), u = Math.round(n * (0.78 + rnd() * 0.1)); days[t.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' })] = [n, u]; sessions += n; visitors += u; }
+        visitors = Math.round(visitors * 0.82);
+        return Promise.resolve({ ok: true, first: new Date(Date.now() - 60 * 864e5).toISOString(), sessions, visitors, returning: Math.round(visitors * 0.18), days,
+          steps: { view: Math.round(sessions * 0.46), photo: Math.round(sessions * 0.04), cart: Math.round(sessions * 0.11), checkout: Math.round(sessions * 0.055), order: Math.round(sessions * 0.02), whatsapp: Math.round(sessions * 0.03) },
+          sources: [['instagram', Math.round(sessions * 0.44)], ['facebook', Math.round(sessions * 0.3)], ['direct', Math.round(sessions * 0.14)], ['tiktok', Math.round(sessions * 0.08)], ['google', Math.round(sessions * 0.04)]],
+          devices: [['mobile', Math.round(sessions * 0.86)], ['desktop', Math.round(sessions * 0.11)], ['tablet', Math.round(sessions * 0.03)]],
+          products: CFG.allProducts.slice(0, 5).map((p, i) => ['/products/' + p.slug + '/', Math.round(sessions * (0.16 - i * 0.025))]).concat([['/custom/', Math.round(sessions * 0.07)]]).sort((a, c) => c[1] - a[1]),
+          pages: [['/', Math.round(sessions * 0.6)]] });
+      }
       if (action === 'couriers_save') { demoApi.couriers = x.couriers; return Promise.resolve({ ok: true, couriers: [...x.couriers] }); }
       if (action === 'catalog_list') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); return Promise.resolve({ ok: true, products: JSON.parse(JSON.stringify(demoApi.cat)), status: { status: 'completed', conclusion: 'success', sha: 'demo' } }); }
       if (action === 'catalog_save') { demoApi.cat = demoApi.cat || JSON.parse(JSON.stringify(CFG.allProducts)); x.products.forEach((p) => { const k = demoApi.cat.findIndex((q) => q.slug === p.slug); if (k >= 0) demoApi.cat[k] = p; else demoApi.cat.push(p); }); demoApi.saved = Date.now(); return new Promise((r) => setTimeout(() => r({ ok: true, commit: 'demo' + Date.now(), products: x.products }), 700)); }

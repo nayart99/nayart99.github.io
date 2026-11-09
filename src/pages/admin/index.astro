@@ -945,9 +945,10 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
             const j = await api('edit_order', { id: o.id, items: rows.map((r) => ({ name: r.name, option: r.option, qty: r.qty, price: r.price, custom: r.custom, note: r.note, from: r.from })), delivery, customer: cust, ...(pay !== pay0 && !paidOnline ? { payment: pay } : {}) });
             Object.assign(o, { items: j.items, subtotal: j.subtotal, delivery: j.delivery, total: j.total, units: j.units, name: cust.name, phone: cust.phone.replace(/[^\d+]/g, ''), phone_extra: cust.phone_extra.replace(/[^\d+]/g, ''), city: cust.city, address: cust.address, notes: cust.notes, updated: new Date().toISOString() });
             if (j.payment) Object.assign(o, { payment: j.payment, payment_status: j.payment_status || o.payment_status });
+            const payPending = pay !== pay0 && !paidOnline && !j.payment;
             if (j.changes && j.changes.length) o.internal = ((o.internal || '') + '\n✏️ ' + j.changes.join(' · ')).trim();
             render(); openPanel(o.id);
-            toast(j.changes && j.changes.length ? 'تم حفظ التعديلات' : 'مفيش تغيير');
+            toast(payPending ? 'باقي التعديلات اتحفظت، لكن تغيير طريقة الدفع محتاج تحديث السيرفر الأول' : j.changes && j.changes.length ? 'تم حفظ التعديلات' : 'مفيش تغيير');
             if (j.paid && j.total !== j.oldTotal) alert(`الطلب مدفوع بالفعل.\nالإجمالي اتغيّر من ${money(j.oldTotal)} إلى ${money(j.total)} — الفرق ${money(j.total - j.oldTotal)}.\nراجع الفرق مع العميل.`);
           } catch (e) { b.disabled = false; b.textContent = 'حفظ التعديلات'; toast(e.message === 'bad_phone' ? 'رقم الموبايل مش صحيح' : e.message === 'paid_online' ? 'الطلب مدفوع أونلاين، طريقة الدفع مش هتتغير' : 'تعذّر حفظ التعديلات'); }
         };

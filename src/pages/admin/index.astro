@@ -168,7 +168,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     .ed-p{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--soft)}.ed-p .in{width:96px}
     .ed-line{font-weight:600}
     .ed-del{color:#a32626;border-color:#e8c2c2;justify-self:end}
-    .ed-tot{margin-top:10px}.ed-tot>label{display:flex;align-items:center;gap:8px;font-size:.88rem;margin-bottom:6px}.ed-tot>label .in{width:120px;padding:7px 10px}
+    .ed-pay{display:flex;flex-wrap:wrap;gap:6px}.ed-pay .btn.on{background:var(--wine);color:#fff;border-color:var(--wine)}.ed-tot{margin-top:10px}.ed-tot>label{display:flex;align-items:center;gap:8px;font-size:.88rem;margin-bottom:6px}.ed-tot>label .in{width:120px;padding:7px 10px}
     .ed-diff{margin:8px 0 0;font-size:.86rem;background:#FFF4E0;border:1px solid #F1D39A;border-radius:8px;padding:8px 10px}
     .ed-cust{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ed-cust label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--soft)}.ed-cust .full{grid-column:1/-1}.ed-cust .in{padding:8px 10px;color:var(--ink)}
     @media (max-width:520px){.ed-row{grid-template-columns:1fr}.ed-name{grid-template-columns:1fr}.ed-cust{grid-template-columns:1fr}}
@@ -235,6 +235,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     .views{display:flex;gap:4px;background:var(--sand);padding:4px;border-radius:12px;width:max-content;margin-bottom:18px}
     .views button{border:0;background:transparent;padding:8px 18px;border-radius:9px;font-weight:500;color:var(--soft)}
     .views button[aria-pressed=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(58,30,34,.15)}
+    @media (max-width:560px){.views{width:auto;max-width:100%;overflow-x:auto;scrollbar-width:none}.views::-webkit-scrollbar{display:none}.views button{padding:8px 12px;flex:none}}
     /* filters + bulk */
     .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
     .filters select,.filters input[type=date]{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 10px;font-size:.88rem;max-width:100%}
@@ -501,7 +502,9 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     const unpaid = (o) => (isCustom(o) || online(o) || transferPay(o)) && o.payment_status !== 'Paid in full' && o.status !== 'ملغي';
     const units = (o) => o.items.reduce((s, i) => s + Number(i.qty || 0), 0);
     const srcLabel = (s) => { s = String(s || '').toLowerCase(); if (!s) return 'مباشر / غير معروف'; if (/^(fb|facebook|meta)/.test(s)) return 'فيسبوك'; if (/^(ig|insta)/.test(s)) return 'إنستجرام'; if (/tiktok/.test(s)) return 'تيك توك'; if (/google/.test(s)) return 'جوجل'; if (/whats/.test(s)) return 'واتساب'; return s; };
-    const payLabel = (p) => { p = String(p || ''); if (/kashier|أونلاين|online/i.test(p)) return 'أونلاين (كارت/محفظة)'; if (/cash|نقد|استلام/i.test(p)) return 'الدفع عند الاستلام'; if (/insta/i.test(p)) return 'InstaPay'; if (/voda|فودافون/i.test(p)) return 'فودافون كاش'; return p || 'غير محدد'; };
+    const payKind = (p) => { p = String(p || ''); if (/kashier|أونلاين|online/i.test(p)) return 'kashier'; if (/voda|فودافون/i.test(p)) return 'vodafone'; if (/insta/i.test(p)) return 'instapay'; if (/^cod$|cash|نقد|استلام/i.test(p)) return 'cod'; return ''; };
+    const PAY_NAMES = { kashier: 'أونلاين (كارت/محفظة)', cod: 'الدفع عند الاستلام', instapay: 'InstaPay', vodafone: 'فودافون كاش' };
+    const payLabel = (p) => PAY_NAMES[payKind(p)] || String(p || '') || 'غير محدد';
     const payState = (o) => o.payment_status === 'Paid in full' ? 'مدفوع بالكامل' + (o.payment_ref ? ' · ' + o.payment_ref : '') : o.payment_status === 'Awaiting online payment' ? 'لم يكمل الدفع الأونلاين' : o.payment_status === 'Transfer submitted' ? 'تحويل بانتظار المراجعة' : unpaid(o) ? 'بانتظار الدفع' : 'غير مؤكد';
     const isCOD = (o) => payLabel(o.payment) === 'الدفع عند الاستلام';
     function rangeBounds(r, from, to) {
@@ -814,7 +817,9 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       const mapURL = locationLink(o.location);
       const first = (o.name || '').split(' ')[0];
       const waMsg = `أهلًا ${first}، معك فريق NAY ART بخصوص طلبك رقم ${o.id}.`;
-      const payMsg = `أهلًا ${first}، شكرًا لطلبك من NAY ART 🎨\nرقم الطلب: ${o.id}\nالإجمالي: ${money(o.total)}\nلبدء تصميم لوحتك، برجاء تحويل المبلغ كاملًا${CFG.payNumber ? ' على الرقم ' + CFG.payNumber + ' (InstaPay أو فودافون كاش)' : ''} وإرسال صورة التحويل هنا.`;
+      const payNum = payKind(o.payment) === 'vodafone' ? (CFG.site.vodafone_cash || CFG.payNumber) : payKind(o.payment) === 'instapay' ? (CFG.site.instapay || CFG.payNumber) : CFG.payNumber;
+      const payVia = payKind(o.payment) === 'vodafone' ? 'فودافون كاش' : payKind(o.payment) === 'instapay' ? 'InstaPay' : 'InstaPay أو فودافون كاش';
+      const payMsg = `أهلًا ${first}، شكرًا لطلبك من NAY ART 🎨\nرقم الطلب: ${o.id}\nالإجمالي: ${money(o.total)}\n${isCustom(o) ? 'لبدء تصميم لوحتك' : 'لتأكيد طلبك'}، برجاء تحويل المبلغ كاملًا${payNum ? ' على الرقم ' + payNum + ' (' + payVia + ')' : ''} وإرسال صورة التحويل هنا.`;
       const badMsg = `أهلًا ${first}، معك فريق NAY ART بخصوص طلبك رقم ${o.id}.\nلم نتمكن من تأكيد وصول التحويل بقيمة ${money(o.total)}. برجاء إرسال صورة واضحة للتحويل أو رقم العملية هنا${CFG.payNumber ? '، والتأكد أن التحويل كان على الرقم ' + CFG.payNumber : ''}.`;
       const lines = o.items.map((i) => `<div class="line"><span>${esc(i.name)}${i.option ? ` <small style="color:var(--soft)">(${esc(i.option)})</small>` : ''} × <span class="num">${i.qty}</span>${i.note ? `<br><small style="color:var(--soft)">ملاحظة للمصمّم: ${esc(i.note)}</small>` : ''}</span><span class="num">${money(i.line)}</span></div>`).join('');
       $('pBody').innerHTML = `
@@ -885,6 +890,8 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       const rows = o.items.map((i, k) => ({ name: i.name, option: i.option || '', qty: Number(i.qty) || 1, price: Number(i.price) || Math.round(Number(i.line || 0) / (Number(i.qty) || 1)), custom: !!i.custom, note: i.note || '', from: k }));
       const cust = { name: o.name || '', phone: o.phone || '', phone_extra: o.phone_extra || '', city: o.city || '', address: o.address || '', notes: o.notes || '' };
       let delivery = Number(o.delivery || 0);
+      const pay0 = payKind(o.payment); let pay = pay0;
+      const paidOnline = pay0 === 'kashier' && o.payment_status === 'Paid in full';
       const sec = $('orderSec');
       const addOpts = `<option value="">+ إضافة لوحة…</option>` + CFG.catalog.map((p, k) => `<option value="p${k}">${esc(p.name)} · ${money(p.price)}</option>`).join('') + CFG.customSizes.map((s, k) => `<option value="c${k}">لوحة من صورة العميل ${esc(s.label)} · ${money(s.price)}</option>`).join('');
       const draw = () => {
@@ -902,6 +909,9 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
             <div class="line"><span>المنتجات</span><span class="num">${money(sub)}</span></div>
             <div class="line t"><span>الإجمالي الجديد</span><span class="num">${money(sub + delivery)}</span></div>
             ${sub + delivery !== Number(o.total) ? `<p class="ed-diff">قبل التعديل: <span class="num">${money(o.total)}</span> · الفرق: <b class="num">${money(sub + delivery - Number(o.total))}</b>${o.payment_status === 'Paid in full' ? ' — الطلب مدفوع، راجع الفرق مع العميل.' : ''}</p>` : ''}</div>
+          <h3 style="margin-top:14px">طريقة الدفع</h3>
+          ${paidOnline ? '<p class="dnote">الطلب اتدفع أونلاين بالكامل، فطريقة الدفع مش هتتغير.</p>' : `<div class="ed-pay" role="group" aria-label="طريقة الدفع">${['cod', 'instapay', 'vodafone'].map((k) => `<button type="button" class="btn${pay === k ? ' on' : ''}" data-pay="${k}" aria-pressed="${pay === k}">${PAY_NAMES[k]}</button>`).join('')}</div>
+          ${pay !== pay0 ? `<p class="ed-diff">هتتغير من «${esc(PAY_NAMES[pay0] || o.payment || 'غير محدد')}» إلى «${PAY_NAMES[pay]}»${o.payment_status === 'Paid in full' ? ' — الطلب متسجّل إنه مدفوع، وده مش هيتغير.' : pay === 'cod' ? (rows.some((r) => r.custom) ? ' — ⚠️ اللوحة من صورة العميل التصميم بتاعها مش هيبدأ غير بعد ما تدوس «تم وصول الدفع».' : ' — هيتحصّل المبلغ عند الاستلام.') : ' — بعد الحفظ هيظهرلك زرار «طلب الدفع على واتساب» برقم ' + (pay === 'vodafone' ? 'فودافون كاش' : 'InstaPay') + '.'}</p>` : ''}`}
           <h3 style="margin-top:14px">بيانات العميل</h3>
           <div class="ed-cust">
             <label>الاسم<input class="in" data-c="name" value="${esc(cust.name)}"></label>
@@ -920,6 +930,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         });
         sec.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { if (rows.length === 1) { toast('الطلب لازم يكون فيه منتج واحد على الأقل. لو عايز تلغيه غيّر الحالة لـ «ملغي».'); return; } rows.splice(+b.dataset.del, 1); draw(); }));
         sec.querySelectorAll('[data-c]').forEach((inp) => inp.addEventListener('input', () => { cust[inp.dataset.c] = inp.value; }));
+        sec.querySelectorAll('[data-pay]').forEach((b) => b.addEventListener('click', () => { pay = b.dataset.pay; draw(); }));
         $('edDel').addEventListener('change', (e) => { delivery = Math.max(0, Math.round(+e.target.value || 0)); draw(); });
         $('edAdd').addEventListener('change', (e) => {
           const v = e.target.value; if (!v) return;
@@ -931,13 +942,14 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         $('edSave').onclick = async () => {
           const b = $('edSave'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
           try {
-            const j = await api('edit_order', { id: o.id, items: rows.map((r) => ({ name: r.name, option: r.option, qty: r.qty, price: r.price, custom: r.custom, note: r.note, from: r.from })), delivery, customer: cust });
+            const j = await api('edit_order', { id: o.id, items: rows.map((r) => ({ name: r.name, option: r.option, qty: r.qty, price: r.price, custom: r.custom, note: r.note, from: r.from })), delivery, customer: cust, ...(pay !== pay0 && !paidOnline ? { payment: pay } : {}) });
             Object.assign(o, { items: j.items, subtotal: j.subtotal, delivery: j.delivery, total: j.total, units: j.units, name: cust.name, phone: cust.phone.replace(/[^\d+]/g, ''), phone_extra: cust.phone_extra.replace(/[^\d+]/g, ''), city: cust.city, address: cust.address, notes: cust.notes, updated: new Date().toISOString() });
+            if (j.payment) Object.assign(o, { payment: j.payment, payment_status: j.payment_status || o.payment_status });
             if (j.changes && j.changes.length) o.internal = ((o.internal || '') + '\n✏️ ' + j.changes.join(' · ')).trim();
             render(); openPanel(o.id);
             toast(j.changes && j.changes.length ? 'تم حفظ التعديلات' : 'مفيش تغيير');
             if (j.paid && j.total !== j.oldTotal) alert(`الطلب مدفوع بالفعل.\nالإجمالي اتغيّر من ${money(j.oldTotal)} إلى ${money(j.total)} — الفرق ${money(j.total - j.oldTotal)}.\nراجع الفرق مع العميل.`);
-          } catch (e) { b.disabled = false; b.textContent = 'حفظ التعديلات'; toast(e.message === 'bad_phone' ? 'رقم الموبايل مش صحيح' : 'تعذّر حفظ التعديلات'); }
+          } catch (e) { b.disabled = false; b.textContent = 'حفظ التعديلات'; toast(e.message === 'bad_phone' ? 'رقم الموبايل مش صحيح' : e.message === 'paid_online' ? 'الطلب مدفوع أونلاين، طريقة الدفع مش هتتغير' : 'تعذّر حفظ التعديلات'); }
         };
       };
       draw();
@@ -996,7 +1008,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       if (action === 'site_get') { demoApi.site = demoApi.site || JSON.parse(JSON.stringify(CFG.site)); return Promise.resolve({ ok: true, settings: JSON.parse(JSON.stringify(demoApi.site)), status: { status: 'completed', conclusion: 'success', sha: 'demo' } }); }
       if (action === 'site_save') { demoApi.saved = Date.now(); return new Promise((r) => setTimeout(() => r({ ok: true, commit: 'demo', settings: x.settings }), 600)); }
       if (action === 'catalog_status') return Promise.resolve({ ok: true, run: Date.now() - (demoApi.saved || 0) < 12000 ? { status: 'in_progress', sha: 'demo' } : { status: 'completed', conclusion: 'success', sha: 'demo' } });
-      if (action === 'edit_order') { const o = demoApi.data.find((d) => d.id === x.id); const old = o.total; const items = x.items.map((i) => ({ ...i, line: i.qty * i.price })); const sub = items.reduce((n, i) => n + i.line, 0); o.items = items; o.delivery = x.delivery; o.total = sub + x.delivery; Object.assign(o, x.customer); return Promise.resolve({ ok: true, items, subtotal: sub, delivery: x.delivery, total: o.total, units: items.reduce((n, i) => n + i.qty, 0), changes: old !== o.total ? ['الإجمالي ' + old + ' ← ' + o.total] : [], paid: o.payment_status === 'Paid in full', oldTotal: old }); }
+      if (action === 'edit_order') { const o = demoApi.data.find((d) => d.id === x.id); const old = o.total; const items = x.items.map((i) => ({ ...i, line: i.qty * i.price })); const sub = items.reduce((n, i) => n + i.line, 0); o.items = items; o.delivery = x.delivery; o.total = sub + x.delivery; Object.assign(o, x.customer); const chg = old !== o.total ? ['الإجمالي ' + old + ' ← ' + o.total] : []; if (x.payment) { const nm = { cod: 'الدفع نقدًا عند الاستلام', instapay: 'InstaPay', vodafone: 'فودافون كاش' }[x.payment]; chg.push('طريقة الدفع: ' + o.payment + ' ← ' + nm); o.payment = nm; if (o.payment_status !== 'Paid in full') o.payment_status = x.payment !== 'cod' && o.transfer_proof ? 'Transfer submitted' : items.some((i) => i.custom) ? 'Awaiting full payment' : 'Unconfirmed'; } return Promise.resolve({ ok: true, payment: x.payment ? o.payment : undefined, payment_status: o.payment_status, items, subtotal: sub, delivery: x.delivery, total: o.total, units: items.reduce((n, i) => n + i.qty, 0), changes: chg, paid: o.payment_status === 'Paid in full', oldTotal: old }); }
       if (action === 'design_start') { const o = demoApi.data.find((d) => d.id === x.id); o.design = [{ photo: 'demo', n: 1, size: '16x20', colors: +x.colors || 24, complexity: x.complexity || 'none', status: 'in_queue', key: 'demo2' }]; o._polls = 0; return Promise.resolve({ ok: true, design: o.design }); }
       if (action === 'design_status') { const o = demoApi.data.find((d) => d.id === x.id); o._polls = (o._polls || 0) + 1; if (o._polls >= 2) o.design = o.design.map((j) => ({ ...j, status: 'ready', files: { print_pdf: 'dpdf', print_svg: 'dsvg', numbered: 'dnum', painted: 'dfin', colors_pdf: 'dcol' }, palette: (demoApi.data.find((d) => d.id === 'NA-261019-7710').design || [{}])[0].palette })); else o.design = o.design.map((j) => ({ ...j, status: 'processing' })); return Promise.resolve({ ok: true, design: JSON.parse(JSON.stringify(o.design)) }); }
       if (action === 'photo' && /^d(fin|num)$/.test(x.fileId)) return Promise.resolve({ ok: true, data: x.fileId === 'dfin' ? '/media/products/couple/fin.webp' : '/media/products/couple/num.webp', name: 'preview.webp' });

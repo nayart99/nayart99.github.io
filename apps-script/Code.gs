@@ -876,6 +876,8 @@ function listOrders(sh) {
 /* ---------------- editing an order from the dashboard ---------------- */
 
 /** Changes items / quantities / prices / delivery / customer details, recalculates the totals and keeps a log. */
+const PAY_LABELS = { cod: 'الدفع نقدًا عند الاستلام', instapay: 'InstaPay', vodafone: 'فودافون كاش' };
+function payKind(p) { p = String(p || ''); if (/kashier|أونلاين|online/i.test(p)) return 'kashier'; if (/voda|فودافون/i.test(p)) return 'vodafone'; if (/insta/i.test(p)) return 'instapay'; if (/^cod$|cash|نقد|استلام/i.test(p)) return 'cod'; return ''; }
 function editOrder(ss, sh, d) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
@@ -903,6 +905,7 @@ function editOrder(ss, sh, d) {
     items.forEach(function (n) { if (!old.some(function (o) { return key(o) === key(n); })) log.push('إضافة ' + key(n) + ' × ' + n.qty); });
     if (delivery !== Number(v[C['Delivery (EGP)']] || 0)) log.push('التوصيل ' + v[C['Delivery (EGP)']] + ' ← ' + delivery);
 
+    if (d.payment && PAY_LABELS[d.payment] && payKind(v[C['Payment']]) === 'kashier' && v[C['Payment status']] === 'Paid in full' && d.payment !== 'kashier') return { ok: false, error: 'paid_online' };
     if (d.customer && d.customer.phone && !/^(\+?20)?0?1[0125]\d{8}$/.test(String(d.customer.phone).replace(/[^\d+]/g, ''))) return { ok: false, error: 'bad_phone' };
     const set = function (h, val) { sh.getRange(r, C[h] + 1).setValue(val); };
     set('Items', items.map(function (i) { return i.name + ' (' + i.option + ') × ' + i.qty; }).join('\n'));
@@ -917,6 +920,18 @@ function editOrder(ss, sh, d) {
       if (c.phone_extra != null) { const pe = String(c.phone_extra).replace(/[^\d+]/g, ''); if (pe !== String(v[C['Additional phone']]).replace(/^'/, '')) { set('Additional phone', pe ? "'" + pe : ''); log.push('الهاتف الإضافي'); } }
     }
     if (total !== oldTotal) log.push('الإجمالي ' + oldTotal + ' ← ' + total);
+
+    // payment method switch (cash on delivery ↔ InstaPay ↔ Vodafone Cash)
+    let payment = String(v[C['Payment']] || ''), payStatus = String(v[C['Payment status']] || 'Unconfirmed');
+    if (d.payment && PAY_LABELS[d.payment] && payKind(payment) !== d.payment) {
+      const hasCustom = items.some(function (i) { return i.custom; });
+      log.push('طريقة الدفع: ' + (payment || '—') + ' ← ' + PAY_LABELS[d.payment]);
+      payment = PAY_LABELS[d.payment]; set('Payment', payment);
+      if (payStatus !== 'Paid in full') {
+        payStatus = d.payment !== 'cod' && v[C['Transfer proof']] ? 'Transfer submitted' : hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
+        set('Payment status', payStatus);
+      }
+    }
     if (log.length) {
       const stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'dd/MM HH:mm');
       set('Internal notes', (String(v[C['Internal notes']] || '') + '\n✏️ ' + stamp + ': ' + log.join(' · ')).trim().slice(0, 4000));
@@ -933,7 +948,7 @@ function editOrder(ss, sh, d) {
     const month = Utilities.formatDate(when, 'Africa/Cairo', 'yyyy-MM');
     items.forEach(function (i) { itemsSh.appendRow([when, d.id, month, i.name, i.option, i.qty, i.price, i.line, i.note || '']); });
 
-    return { ok: true, items: items, subtotal: subtotal, delivery: delivery, total: total, units: units, changes: log, paid: v[C['Payment status']] === 'Paid in full', oldTotal: oldTotal };
+    return { ok: true, items: items, subtotal: subtotal, delivery: delivery, total: total, units: units, changes: log, paid: payStatus === 'Paid in full', oldTotal: oldTotal, payment: payment, payment_status: payStatus };
   } finally { lock.releaseLock(); }
 }
 

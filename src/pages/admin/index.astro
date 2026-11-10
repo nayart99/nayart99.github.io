@@ -288,14 +288,31 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     .tip{position:fixed;z-index:80;background:var(--ink);color:#fff;font-size:.82rem;padding:6px 10px;border-radius:8px;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .1s}
     .tip.on{opacity:1}
     .none{color:var(--soft);font-size:.88rem;padding:10px 0}
-    #printArea{display:none}
+    /* shipping label: one 10×15 cm sticker per order (fits courier label printers; prints centered on A4/A5 too) */
+    #printArea{position:fixed;top:0;left:-200mm;visibility:hidden;pointer-events:none}
+    .lbl{width:92mm;height:141mm;box-sizing:border-box;overflow:hidden;border:2px solid #000;color:#000;background:#fff;font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif;font-size:13.5px;line-height:1.45;display:flex;flex-direction:column;direction:rtl;text-align:right}
+    .lbl .l-top{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2.2mm 3mm;border-bottom:2px solid #000}
+    .lbl .l-brand{font-weight:700;font-size:1.35em;letter-spacing:.06em;direction:ltr}.lbl .l-id{font-size:.95em;direction:ltr;font-weight:600}
+    .lbl .l-ship{border:2px solid #000;border-radius:2mm;padding:.6mm 2.5mm;font-weight:700;font-size:1.1em;direction:ltr;white-space:nowrap;max-width:46mm;overflow:hidden;text-overflow:ellipsis}
+    .lbl .l-cod{border-bottom:2px solid #000;text-align:center;padding:2mm 3mm}
+    .lbl .l-cod small{display:block;font-size:.95em;font-weight:600}.lbl .l-cod b{display:block;font-size:2.3em;line-height:1.15;direction:ltr}
+    .lbl .l-cod.paid b{font-size:1.5em}
+    .lbl .l-to{padding:2mm 3mm;border-bottom:1px solid #000;display:flex;gap:3mm;align-items:flex-start}
+    .lbl .l-to .who{flex:1;min-width:0}.lbl .l-to .row{display:flex;gap:1.5mm}.lbl .l-to .row>span:first-child{flex:none;color:#333;min-width:15mm}
+    .lbl .l-to .nm{font-size:1.3em;font-weight:700;line-height:1.3}.lbl .l-to .l-ph{font-size:1.2em;font-weight:700;direction:ltr;unicode-bidi:embed}
+    .lbl .l-to .addr{overflow-wrap:anywhere}
+    .lbl .l-qr{flex:none;width:22mm;text-align:center;font-size:.72em;line-height:1.2}.lbl .l-qr svg{width:22mm;height:22mm;display:block}
+    .lbl .l-items{padding:2mm 3mm;flex:1;min-height:0;overflow:hidden}
+    .lbl .l-items h4{margin:0 0 1mm;font-size:.9em}.lbl .l-items ul{margin:0;padding:0 4mm 0 0}.lbl .l-items li{overflow-wrap:anywhere}
+    .lbl .l-note{margin-top:1.5mm;padding:1mm 2mm;border:1px dashed #000;overflow-wrap:anywhere}
+    .lbl .l-foot{display:flex;justify-content:space-between;gap:4px;padding:1.5mm 3mm;border-top:1px solid #000;font-size:.82em}
+    @page{size:100mm 150mm;margin:4mm}
     @media print{
       body>*:not(#printArea){display:none!important}
-      #printArea{display:block!important}
-      .lbl{page-break-after:always;border:2px solid #000;padding:18px;font-size:14px;line-height:1.6;color:#000;font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif}
-      .lbl h3{margin:0 0 8px;font-size:18px}
-      .lbl table{width:100%;border-collapse:collapse;margin-top:10px}
-      .lbl td,.lbl th{border:1px solid #999;padding:4px 6px;font-size:13px}
+      html,body{background:#fff!important;margin:0!important;padding:0!important}
+      #printArea{position:static;visibility:visible;left:auto}
+      .lbl{break-after:page;page-break-after:always;break-inside:avoid;page-break-inside:avoid;margin:0 auto}
+      .lbl:last-child{break-after:auto;page-break-after:auto}
     }
     @media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.kpis.k8{grid-template-columns:repeat(2,1fr)}.month{grid-template-columns:1fr}.agrid{grid-template-columns:1fr}}
     @media (max-width:560px){
@@ -449,6 +466,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
   <div class="tip" id="tip"></div>
   <div id="printArea"></div>
 
+  <script is:inline src="/vendor/qrcode.js"></script>
   <script is:inline>
   (() => {
     const CFG = JSON.parse(document.getElementById('cfg').textContent);
@@ -656,13 +674,30 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     }
     function printLabels(list) {
       if (!list.length) return;
-      $('printArea').innerHTML = list.map((o) => `<div class="lbl"><h3>NAY ART · طلب ${esc(o.id)}</h3>
-        <div><b>العميل:</b> ${esc(o.name)}</div><div><b>الموبايل:</b> ${esc(o.phone)}${o.phone_extra ? ' / ' + esc(o.phone_extra) : ''}</div>
-        <div><b>المحافظة:</b> ${esc(o.city)}</div><div><b>العنوان:</b> ${esc(o.address)}</div>${locationLink(o.location) ? `<div><b>الموقع:</b> ${locationLink(o.location)}</div>` : ''}
-        <table><tr><th>المنتج</th><th>الكمية</th><th>السعر</th></tr>${o.items.map((i) => `<tr><td>${esc(i.name)}${i.option ? ' (' + esc(i.option) + ')' : ''}</td><td>${i.qty}</td><td>${money(i.line)}</td></tr>`).join('')}
-        <tr><td>التوصيل</td><td></td><td>${money(o.delivery)}</td></tr><tr><th>الإجمالي</th><th></th><th>${money(o.total)}</th></tr></table>
-        <div style="margin-top:8px"><b>الدفع:</b> ${esc(payLabel(o.payment))}${o.payment_status === 'Paid in full' ? ' · مدفوع بالكامل' : isCOD(o) ? ` · يُحصّل عند الاستلام: <b>${money(o.total)}</b>` : ''}</div>
-        ${o.courier ? `<div><b>شركة الشحن:</b> ${esc(o.courier)}</div>` : ''}${o.notes ? `<div><b>ملاحظات:</b> ${esc(o.notes)}</div>` : ''}<div style="margin-top:6px;font-size:12px">تاريخ الطلب: ${fmtDate(o.date)}</div></div>`).join('');
+      const qr = (url) => { try { const q = qrcode(0, 'M'); q.addData(url); q.make(); return q.createSvgTag({ cellSize: 2, margin: 0, scalable: true }); } catch { return ''; } };
+      const dt = (d) => new Date(d).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+      $('printArea').innerHTML = list.map((o) => {
+        const paid = o.payment_status === 'Paid in full', due = paid ? 0 : Number(o.total || 0), loc = locationLink(o.location);
+        const n = o.items.reduce((s, i) => s + Number(i.qty || 0), 0);
+        return `<div class="lbl">
+          <div class="l-top"><div><div class="l-brand">NAY ART</div><div class="l-id">${esc(o.id)}</div></div>${o.courier ? `<div class="l-ship">${esc(o.courier)}</div>` : ''}</div>
+          <div class="l-cod${due ? '' : ' paid'}">${due ? `<small>المطلوب تحصيله من العميل</small><b>${money(due)}</b>` : `<small>${esc(payLabel(o.payment))}</small><b>مدفوع — لا يُحصّل أي مبلغ</b>`}</div>
+          <div class="l-to"><div class="who">
+            <div class="nm">${esc(o.name)}</div>
+            <div class="l-ph">${esc(o.phone)}${o.phone_extra ? ' / ' + esc(o.phone_extra) : ''}</div>
+            <div class="row"><span>المحافظة:</span><b>${esc(o.city)}</b></div>
+            <div class="row addr"><span>العنوان:</span><span>${esc(o.address)}</span></div>
+          </div>${loc ? `<div class="l-qr">${qr(loc)}امسح للوصول للموقع</div>` : ''}</div>
+          <div class="l-items"><h4>المحتوى (${n} ${n === 1 ? 'قطعة' : n === 2 ? 'قطعتين' : 'قطع'})</h4><ul>${o.items.map((i) => `<li>${esc(i.name)}${i.option ? ' (' + esc(String(i.option).replace(/cm/gi, 'سم')) + ')' : ''} × ${i.qty}</li>`).join('')}</ul>
+            ${o.notes ? `<div class="l-note"><b>ملاحظات:</b> ${esc(o.notes)}</div>` : ''}</div>
+          <div class="l-foot"><span>المنتجات ${money(o.subtotal ?? (Number(o.total || 0) - Number(o.delivery || 0)))} + التوصيل ${money(o.delivery)}</span><span>${dt(o.date)}</span></div>
+        </div>`;
+      }).join('');
+      // long addresses / many items: shrink the text until everything fits on the sticker
+      $('printArea').querySelectorAll('.lbl').forEach((l) => {
+        const it = l.querySelector('.l-items');
+        for (let f = 13.5; f > 8 && (l.scrollHeight > l.clientHeight + 1 || it.scrollHeight > it.clientHeight + 1); f -= 0.5) l.style.fontSize = f - 0.5 + 'px';
+      });
       setTimeout(() => window.print(), 50);
     }
 

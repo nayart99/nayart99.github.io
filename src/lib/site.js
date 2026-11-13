@@ -13,6 +13,9 @@ export const STRINGS = { en, ar };
 export { settings, faq, reviews, hero };
 
 /** All active products, sorted by "order". */
+/** "Canvas from your photo" shown on the website (settings.custom_enabled; off = hidden everywhere, /custom shows a short notice). */
+export const customOn = settings.custom_enabled !== false;
+
 export function getProducts() {
   return Object.values(productFiles)
     .map((m) => m.default || m)

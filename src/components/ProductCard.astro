@@ -1,5 +1,5 @@
 ---
-import { useT, pick, href } from '../lib/site.js';
+import { useT, pick, href, money } from '../lib/site.js';
 const { p, lang = 'en' } = Astro.props;
 const t = useT(lang);
 const badge = p.sold_out ? t('sold_out') : p.sale_until ? pick(p.sale.label, lang) : pick(p.badge, lang);
@@ -15,5 +15,6 @@ const soft = (p.badge?.en || '').toLowerCase() === 'new';
   </div>
   <span class="lvl">{pick(p.level, lang)}</span>
   <h3>{pick(p.name, lang)}</h3>
+  <div class="cprice" data-card-price={p.slug}><b class="price">{money(p.price, lang)}</b>{p.compare_price > p.price && <s class="price">{money(p.compare_price, lang)}</s>}</div>
   <div class="sub">{t('card_sub')}</div>
 </a>

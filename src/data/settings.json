@@ -56,5 +56,6 @@
     "tiktok": "https://www.tiktok.com/@nayart55"
   },
   "launch_offer": true,
-  "preview_mode": "none"
+  "preview_mode": "none",
+  "custom_enabled": false
 }

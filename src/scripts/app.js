@@ -180,7 +180,7 @@ function visitStep(e) { try { if (e && visit) visit.step(e); } catch {} }
 function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2200); }
 
 /* ---------- cart ---------- */
-let cart = store.get('nay-cart', []).filter((c) => c.kind === 'custom' ? S.custom_sizes[c.size] : PRODUCTS.some((p) => p.slug === c.slug && !p.sold_out)); // sold-out paintings leave the cart
+let cart = store.get('nay-cart', []).filter((c) => c.kind === 'custom' ? S.custom_enabled !== false && S.custom_sizes[c.size] : PRODUCTS.some((p) => p.slug === c.slug && !p.sold_out)); // sold-out paintings leave the cart
 const photos = {}; // custom photos kept in memory as a fallback
 // Custom photos are large, so they live in IndexedDB (survives page changes), not localStorage.
 const photoDB = (() => {
@@ -788,6 +788,7 @@ if (payPage) {
     document.querySelectorAll('[data-deal-only]').forEach((e) => e.remove());
     document.querySelectorAll('[data-deal-badge]').forEach((b) => { const t = b.dataset.dealBadge; if (t) { b.textContent = t; b.classList.remove('deal'); delete b.dataset.dealBadge; } else b.remove(); });
     document.getElementById('dealPop')?.remove();
+    PRODUCTS.forEach((x) => { if (!x.regular_price || x.sale_until) return; document.querySelectorAll(`[data-card-price="${x.slug}"]`).forEach((e) => { e.innerHTML = `<b class="price">${money(x.regular_price)}</b>` + (x.regular_compare > x.regular_price ? `<s class="price">${money(x.regular_compare)}</s>` : ''); }); });
     const pdp = $('pdp'), p = pdp && productBySlug(pdp.dataset.slug);
     if (pdp && pdp.dataset.saleUntil && p) {
       const reg = Number(p.regular_price || p.price), cmp = Number(p.regular_compare || 0), save = cmp > reg ? cmp - reg : 0;

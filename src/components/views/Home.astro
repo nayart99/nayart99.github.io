@@ -1,5 +1,5 @@
 ---
-import { useT, pick, href, getProducts, settings, reviews, hero, cm } from '../../lib/site.js';
+import { useT, pick, href, getProducts, settings, reviews, hero, cm, customOn } from '../../lib/site.js';
 import ProductCard from '../ProductCard.astro';
 import CustomCard from '../CustomCard.astro';
 import Compare from '../Compare.astro';
@@ -28,7 +28,7 @@ const ex = settings.custom_example;
       {settings.launch_offer && <div class="offer"><span class="save">{(settings.announce_text && settings.announce_text[lang]) || t('announce_offer')}</span></div>}
       <div class="ctas">
         <a class="btn btn-primary" href="#shop">{t('hero_cta_shop')}</a>
-        <a class="btn hv-ghost" href={href(lang, '/custom')}>{t('hero_cta_custom')}</a>
+        {customOn && <a class="btn hv-ghost" href={href(lang, '/custom')}>{t('hero_cta_custom')}</a>}
       </div>
     </div>
     <div class="hv-phone" id="hvPhone">
@@ -55,7 +55,7 @@ const ex = settings.custom_example;
     <div class="sec-head"><div class="l"><span class="eyebrow">{t('shop_eyebrow')}</span><h2>{t('shop_title')}</h2></div><p>{t('shop_lead')}</p></div>
     <div class="grid">
       {products.map((p) => <ProductCard p={p} lang={lang} />)}
-      <CustomCard lang={lang} />
+      {customOn && <CustomCard lang={lang} />}
     </div>
   </div>
 </section>
@@ -88,6 +88,7 @@ const ex = settings.custom_example;
   </div>
 </section>
 
+{customOn && (
 <section class="band2" id="customBand">
   <div class="wrap band2-in">
     <div class="cmp-stage"><Compare lang={lang} fin={ex.finished} num={ex.numbered} land={false} /></div>
@@ -103,6 +104,7 @@ const ex = settings.custom_example;
     </div>
   </div>
 </section>
+)}
 
 {reviews.show && (
   <section class="sec">

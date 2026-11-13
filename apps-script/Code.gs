@@ -1227,6 +1227,7 @@ function siteSave(n) {
   const url = function (v) { v = txt(v, 300); if (v && !/^https:\/\/[^\s<>"]+$/.test(v)) throw new Error('bad_url'); return v; };
   try {
     if ('orders_paused' in n) cur.orders_paused = !!n.orders_paused;
+    if ('custom_enabled' in n) cur.custom_enabled = !!n.custom_enabled;
     if ('pause_message' in n) cur.pause_message = bi2(n.pause_message);
     if ('launch_offer' in n) cur.launch_offer = !!n.launch_offer;
     if ('announce_text' in n) cur.announce_text = bi2(n.announce_text);

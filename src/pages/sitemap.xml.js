@@ -1,6 +1,6 @@
-import { getProducts, href, absolute } from '../lib/site.js';
+import { getProducts, href, absolute, customOn } from '../lib/site.js';
 export function GET() {
-  const paths = ['/', '/custom', ...getProducts().map((p) => `/products/${p.slug}`)];
+  const paths = ['/', ...(customOn ? ['/custom'] : []), ...getProducts().map((p) => `/products/${p.slug}`)];
   const today = new Date().toISOString().slice(0, 10);
   const urls = paths.flatMap((p) => ['en', 'ar'].map((lang) => `  <url>
     <loc>${absolute(href(lang, p))}</loc>

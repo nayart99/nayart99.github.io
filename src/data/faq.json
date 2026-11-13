@@ -47,7 +47,8 @@
     "a": {
       "en": "Upload your photo, choose a size and pay in full. After payment confirmation, we send your design on WhatsApp within 48 hours. After design approval, we print and deliver within 5–8 working days.",
       "ar": "ارفع صورتك واختر المقاس وسدّد المبلغ كاملًا. بعد تأكيد الدفع، نرسل التصميم على واتساب خلال ٤٨ ساعة. بعد موافقتك على التصميم نطبعها ونوصلها خلال ٥ إلى ٨ أيام عمل."
-    }
+    },
+    "custom": true
   },
   {
     "q": {

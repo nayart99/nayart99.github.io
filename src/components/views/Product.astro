@@ -1,5 +1,5 @@
 ---
-import { useT, pick, href, getProducts, settings, money, cm } from '../../lib/site.js';
+import { useT, pick, href, getProducts, settings, money, cm, customOn } from '../../lib/site.js';
 import ProductCard from '../ProductCard.astro';
 import CustomCard from '../CustomCard.astro';
 import Compare from '../Compare.astro';
@@ -105,7 +105,7 @@ const others = getProducts().filter((x) => x.slug !== p.slug).slice(0, 2);
 
 <section class="sec"><div class="wrap">
   <div class="sec-head"><div class="l"><span class="eyebrow">{t('also_eyebrow')}</span><h2>{t('also_title')}</h2></div></div>
-  <div class="grid">{others.map((o) => <ProductCard p={o} lang={lang} />)}<CustomCard lang={lang} /></div>
+  <div class="grid">{others.map((o) => <ProductCard p={o} lang={lang} />)}{customOn && <CustomCard lang={lang} />}</div>
 </div></section>
 
 <div class="sticky-buy" id="stickyBuy" aria-hidden="true">

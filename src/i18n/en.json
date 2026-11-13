@@ -364,5 +364,8 @@
   "deal_h": "h",
   "deal_m": "m",
   "deal_s": "s",
-  "deal_over": "This deal has ended"
+  "deal_over": "This deal has ended",
+  "custom_off_t": "Canvases from your photo are paused for now",
+  "custom_off_p": "We are not taking photo orders at the moment. Our ready-to-paint canvases are available as usual, with cash on delivery all over Egypt.",
+  "custom_off_cta": "See the paintings"
 }

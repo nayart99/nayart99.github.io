@@ -594,3 +594,7 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .deal-pop .dp-acts{display:grid;gap:8px}
 @keyframes dealIn{from{opacity:0}to{opacity:1}}
 @media (max-width:560px){.deal-bar{font-size:.8rem;padding:8px 12px}.deal-pop h2{font-size:1.3rem}}
+
+/* product card price + "custom paused" notice */
+.card .cprice{display:flex;align-items:baseline;gap:8px;margin-top:-2px}.card .cprice b{font-size:1.05rem;color:var(--burgundy)}.card .cprice s{color:var(--ink-soft);font-size:.88rem}
+.custom-off{max-width:620px;text-align:center;padding:80px 16px 100px}.custom-off h1{font-size:clamp(1.6rem,4vw,2.3rem);margin:0 0 12px}.custom-off p{color:var(--ink-soft);margin:0 0 22px;line-height:1.7}

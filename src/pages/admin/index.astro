@@ -1463,6 +1463,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         <div class="st-grid">
           <div class="st-card ${s.orders_paused ? 'warn' : ''}"><h3>استقبال الطلبات</h3>
             ${sw('sOpen', !s.orders_paused, 'الموقع بيستقبل طلبات')}
+            ${sw('sCustom', s.custom_enabled !== false, 'لوحة من صورة العميل ظاهرة في الموقع')}
             <p class="dnote">لو قفلته، العملاء يقدروا يتفرجوا بس مش هيقدروا يكملوا الطلب، وهتظهرلهم الرسالة دي فوق الموقع:</p>
             <div class="pg-grid">${fld('sPauseAr', 'رسالة الإيقاف (عربي)', (s.pause_message || {}).ar, 'placeholder="لا نستقبل طلبات جديدة حاليًا…"')}${fld('sPauseEn', 'Pause message (English)', (s.pause_message || {}).en, 'dir="ltr"')}</div>
           </div>
@@ -1506,7 +1507,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       if (sizes.some((z) => !(+z.w >= 10 && +z.h >= 10 && +z.p > 0))) return err('اكتب العرض والطول والسعر لكل مقاس.');
       if (!$('sCod').checked && !$('sInsta').checked && !$('sVoda').checked) return err('لازم طريقة دفع واحدة على الأقل.');
       const out = {
-        orders_paused: !$('sOpen').checked, pause_message: { ar: v('sPauseAr'), en: v('sPauseEn') },
+        orders_paused: !$('sOpen').checked, custom_enabled: $('sCustom').checked, pause_message: { ar: v('sPauseAr'), en: v('sPauseEn') },
         launch_offer: $('sOffer').checked, announce_text: { ar: v('sAnn1Ar'), en: v('sAnn1En') }, announce_text2: { ar: v('sAnn2Ar'), en: v('sAnn2En') },
         delivery_fee: +v('sFee') || 0, free_delivery_over: +v('sFree') || 0,
         custom_sizes: sizes.map((z) => ({ label: `${+z.w}×${+z.h} cm`, price: Math.round(+z.p) })),

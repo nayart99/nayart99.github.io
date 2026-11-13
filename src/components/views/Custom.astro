@@ -1,5 +1,5 @@
 ---
-import { useT, href, settings, money, cm } from '../../lib/site.js';
+import { useT, href, settings, money, cm, customOn } from '../../lib/site.js';
 import Compare from '../Compare.astro';
 import Faq from '../Faq.astro';
 const { lang = 'en' } = Astro.props;
@@ -7,6 +7,13 @@ const t = useT(lang);
 const sizes = settings.custom_sizes;
 const ex = settings.custom_example;
 ---
+{!customOn ? (
+<div class="wrap custom-off">
+  <h1>{t('custom_off_t')}</h1>
+  <p>{t('custom_off_p')}</p>
+  <a class="btn btn-primary" href={href(lang, '/') + '#shop'}>{t('custom_off_cta')}</a>
+</div>
+) : (<>
 <div class="wrap">
   <nav class="crumbs" aria-label="Breadcrumb"><a href={href(lang, '/')}>{t('crumb_home')}</a><span>/</span><span>{t('custom_crumb')}</span></nav>
   <div class="pdp" id="customPage">
@@ -80,3 +87,4 @@ const ex = settings.custom_example;
 </div></section>
 
 <section class="sec kit"><Faq lang={lang} /></section>
+</>)}

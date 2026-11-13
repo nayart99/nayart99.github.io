@@ -352,5 +352,17 @@
   "sold_out_note": "Sold out for now. Message us on WhatsApp to know when it's back, or choose another painting.",
   "free_delivery": "Free",
   "free_delivery_hint": "Add {n} more for free delivery",
-  "orders_paused": "We're not taking new orders right now. Message us on WhatsApp and we'll get back to you."
+  "orders_paused": "We're not taking new orders right now. Message us on WhatsApp and we'll get back to you.",
+  "deal_bar": "{name} for {price} instead of {was}",
+  "deal_ends": "Ends in",
+  "deal_title": "Only for 48 hours",
+  "deal_sub": "{name}: the full kit (numbered canvas, 24 paints, 3 brushes) for {price} instead of {was}.",
+  "deal_add": "Add to cart · {price}",
+  "deal_view": "See the painting",
+  "deal_close": "Close",
+  "deal_d": "d",
+  "deal_h": "h",
+  "deal_m": "m",
+  "deal_s": "s",
+  "deal_over": "This deal has ended"
 }

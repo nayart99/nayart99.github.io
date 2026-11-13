@@ -1159,6 +1159,8 @@ function cleanProduct(p) {
     price: Math.max(0, Math.round(Number(p.price) || 0)), compare_price: Math.max(0, Math.round(Number(p.compare_price) || 0)),
     active: p.active !== false, sold_out: p.sold_out === true,
   };
+  // time-limited deal (the website shows it and switches back by itself when it ends)
+  if (p.sale && Number(p.sale.price) > 0 && !isNaN(Date.parse(p.sale.until))) out.sale = { price: Math.round(Number(p.sale.price)), until: String(p.sale.until).slice(0, 40), label: bi(p.sale.label) };
   if (!out.name.ar && !out.name.en) throw new Error('name_required');
   if (!out.price) throw new Error('price_required');
   if (!out.badge.ar && !out.badge.en) delete out.badge;

@@ -17,12 +17,19 @@ export function getProducts() {
   return Object.values(productFiles)
     .map((m) => m.default || m)
     .filter((p) => p.active !== false)
-    .map((p) => ({
-      ...p,
-      price: Number(p.price || settings.default_price),
-      compare_price: Number(p.compare_price || settings.default_compare_price || 0),
-      landscape: (p.orientation || 'landscape') === 'landscape',
-    }))
+    .map((p) => {
+      const price = Number(p.price || settings.default_price), compare = Number(p.compare_price || settings.default_compare_price || 0);
+      // time-limited deal: {"sale": {"price": 650, "until": "2026-11-15T18:10:00+02:00"}} — the website switches back by itself when it ends
+      const until = p.sale && Date.parse(p.sale.until), onSale = !!(until && Date.now() < until && Number(p.sale.price) > 0 && Number(p.sale.price) < price);
+      return {
+        ...p,
+        price: onSale ? Number(p.sale.price) : price,
+        compare_price: onSale ? price : compare,
+        sale_until: onSale ? new Date(until).toISOString() : '',
+        regular_price: price, regular_compare: compare,
+        landscape: (p.orientation || 'landscape') === 'landscape',
+      };
+    })
     .sort((a, b) => (a.order || 99) - (b.order || 99));
 }
 

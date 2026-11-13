@@ -15,7 +15,7 @@ const jsonld = [
     image: [absolute(p.images.finished), absolute(p.images.numbered)],
     brand: { '@type': 'Brand', name: settings.brand },
     sku: p.slug,
-    offers: { '@type': 'Offer', url: absolute(href(lang, path)), priceCurrency: 'EGP', price: p.price, availability: 'https://schema.org/InStock', itemCondition: 'https://schema.org/NewCondition' },
+    offers: { '@type': 'Offer', url: absolute(href(lang, path)), priceCurrency: 'EGP', price: p.price, ...(p.sale_until ? { priceValidUntil: p.sale_until.slice(0, 10) } : {}), availability: 'https://schema.org/InStock', itemCondition: 'https://schema.org/NewCondition' },
   },
   {
     '@context': 'https://schema.org',

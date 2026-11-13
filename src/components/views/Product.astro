@@ -24,7 +24,7 @@ const others = getProducts().filter((x) => x.slug !== p.slug).slice(0, 2);
 ---
 <div class="wrap">
   <nav class="crumbs" aria-label="Breadcrumb"><a href={href(lang, '/')}>{t('crumb_home')}</a><span>/</span><a href={href(lang, '/') + '#shop'}>{t('crumb_canvases')}</a><span>/</span><span>{name}</span></nav>
-  <div class="pdp" id="pdp" data-slug={p.slug} data-name={name} data-price={p.price}>
+  <div class="pdp" id="pdp" data-slug={p.slug} data-name={name} data-price={p.price} data-sale-until={p.sale_until || undefined}>
     <div class="gallery">
       <div class={`g-main${p.landscape ? ' land' : ''}`} id="gBox" data-fin={im.finished} data-num={im.numbered} data-tm={im.timelapse_map || ''}>
         <img id="gMain" src={gallery[1].src} alt={`${name}, ${gallery[1].cap}`} hidden />
@@ -45,6 +45,7 @@ const others = getProducts().filter((x) => x.slug !== p.slug).slice(0, 2);
     <div class="buy">
       <h1>{name}<small>{t('pbn')} · {cm(settings.canvas_size, lang)}</small></h1>
       <div class="rating-line"><span>{pick(p.level, lang)}</span></div>
+      {p.sale_until && <div class="deal-note" data-deal-only><b>{pick(p.sale.label, lang)}</b> · {t('deal_ends')} <b class="num" data-countdown={p.sale_until}></b></div>}
       <div class="price-line"><span class="now price">{money(p.price, lang)}</span>{saving > 0 && <span class="was price">{money(p.compare_price, lang)}</span>}{saving > 0 && <span class="save">{t('save')} {money(saving, lang)}</span>}</div>
       <p class="blurb">{pick(p.blurb, lang)}</p>
       <div class="specs-chips">

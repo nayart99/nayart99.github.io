@@ -1,7 +1,7 @@
 ---
 import 'leaflet/dist/leaflet.css';
 import '../styles/global.css';
-import { settings, useT, href, altPath, absolute, getProducts, pick, STRINGS } from '../lib/site.js';
+import { settings, useT, href, altPath, absolute, getProducts, pick, STRINGS, money } from '../lib/site.js';
 import Social from '../components/Social.astro';
 
 const { lang = 'en', title, description, path = '/', image = '/media/brand/og.jpg', jsonld = [], bodyClass = '', noindex = false } = Astro.props;
@@ -14,13 +14,15 @@ const fullTitle = title ? `${title} | ${settings.brand}` : `${settings.brand} | 
 const desc = description || t('hero_lead');
 const a = settings.analytics || {};
 const products = getProducts();
+const deal = products.find((p) => p.sale_until && !p.sold_out);
 
 // Data the browser scripts need (cart, checkout, support).
 const store = {
   lang,
   base: href(lang, '/'),
   t: STRINGS[lang],
-  products: products.map((p) => ({ slug: p.slug, name: pick(p.name, lang), img: p.images.finished, price: p.price, sold_out: !!p.sold_out })),
+  products: products.map((p) => ({ slug: p.slug, name: pick(p.name, lang), img: p.images.finished, price: p.price, sold_out: !!p.sold_out, ...(p.sale_until ? { sale_until: p.sale_until, regular_price: p.regular_price, regular_compare: p.regular_compare } : {}) })),
+  offer: deal ? { slug: deal.slug, name: pick(deal.name, lang), img: deal.images.finished, num: deal.images.numbered, price: deal.price, was: deal.regular_price, until: deal.sale_until, label: pick(deal.sale.label, lang) || '', url: href(lang, `/products/${deal.slug}`) } : null,
   settings: {
     delivery_fee: settings.delivery_fee,
     free_delivery_over: Number(settings.free_delivery_over || 0),
@@ -87,6 +89,7 @@ const fontsUrl = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:it
 </head>
 <body class={bodyClass}>
   <a class="skip" href="#main">Skip to content</a>
+  {deal && <a class="deal-bar" id="dealBar" href={href(lang, `/products/${deal.slug}`)} data-until={deal.sale_until}><span class="db-tag">{pick(deal.sale.label, lang)}</span><span>{t('deal_bar', { name: pick(deal.name, lang), price: money(deal.price, lang), was: money(deal.regular_price, lang) })}</span><span class="db-time"><span>{t('deal_ends')}</span> <b class="num" data-countdown={deal.sale_until}></b></span></a>}
   <div class="announce"><div class="wrap">
     {settings.orders_paused
       ? <span><b>{(settings.pause_message && settings.pause_message[lang]) || t('orders_paused')}</b></span>

@@ -58,5 +58,13 @@
   ],
   "price": 750,
   "compare_price": 1000,
-  "active": true
+  "active": true,
+  "sale": {
+    "price": 650,
+    "until": "2026-11-15T18:10:00+02:00",
+    "label": {
+      "en": "48-hour deal",
+      "ar": "عرض 48 ساعة"
+    }
+  }
 }

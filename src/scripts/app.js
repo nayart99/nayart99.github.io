@@ -4,6 +4,10 @@ const $ = (id) => document.getElementById(id);
 const DATA = JSON.parse($('store-data').textContent);
 const { lang, settings: S, products: PRODUCTS } = DATA;
 const T = DATA.t;
+/* ---------- time-limited deal: switch back to the normal price the moment it ends (even before the site is rebuilt) ---------- */
+const dealOver = (p) => p && p.sale_until && Date.now() >= Date.parse(p.sale_until);
+PRODUCTS.forEach((p) => { if (dealOver(p)) { p.price = p.regular_price; delete p.sale_until; } });
+const OFFER = DATA.offer && Date.now() < Date.parse(DATA.offer.until) ? DATA.offer : null;
 const tr = (k, vars) => { let s = T[k] ?? k; if (vars) for (const v in vars) s = s.replace(`{${v}}`, vars[v]); return s; };
 const cmL = (s) => (lang === 'ar' ? String(s).replace(/cm/g, 'سم') : s);
 const money = (n) => { const v = Number(n).toLocaleString('en-US'); return lang === 'ar' ? `${v} ج.م` : `EGP ${v}`; };
@@ -440,7 +444,7 @@ class Reveal {
 const pdp = $('pdp');
 let gRev = null, gIdx = 0, pQty = 1;
 if (pdp) {
-  const slug = pdp.dataset.slug, price = Number(pdp.dataset.price);
+  const slug = pdp.dataset.slug, priceNow = () => Number((productBySlug(slug) || {}).price || pdp.dataset.price), price = priceNow();
   const box = $('gBox'), thumbs = [...document.querySelectorAll('#gThumbs button')];
   const src = { fin: box.dataset.fin, num: box.dataset.num, tm: box.dataset.tm };
   gRev = new Reveal($('gReveal'), (p, col) => { $('gLiveTxt').textContent = p >= 1 ? tr('live_done') : tr('live_painting', { n: col }); $('gBar').firstElementChild.style.width = p * 100 + '%'; });
@@ -458,7 +462,8 @@ if (pdp) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) gRev.stop(); else if (gIdx === 0) gRev.start(src); });
   setG(0);
   const soldOut = $('pAdd').disabled;
-  const upd = () => { $('pQty').textContent = pQty; if (!soldOut) $('pAdd').textContent = `${tr('add_to_cart')} · ${money(price * pQty)}`; };
+  const upd = () => { $('pQty').textContent = pQty; if (!soldOut) $('pAdd').textContent = `${tr('add_to_cart')} · ${money(priceNow() * pQty)}`; };
+  pdp.dealUpd = upd;
   $('pDec').addEventListener('click', () => { pQty = Math.max(1, pQty - 1); upd(); });
   $('pInc').addEventListener('click', () => { pQty = Math.min(10, pQty + 1); upd(); });
   $('pAdd').addEventListener('click', () => addKit(slug, pQty));
@@ -766,3 +771,71 @@ if (payPage) {
     } catch { show('unknown'); }
   })();
 }
+
+
+/* ---------- time-limited deal: countdown, popup on arrival, and switching back when it ends ---------- */
+(() => {
+  const els = () => document.querySelectorAll('[data-countdown]');
+  if (!els().length && !OFFER) {
+    // deal ended before this page was built again: put the normal price back on the page
+    document.getElementById('dealBar')?.remove(); document.querySelectorAll('[data-deal-only]').forEach((e) => e.remove());
+  }
+  const pad = (n) => String(n).padStart(2, '0');
+  const parts = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60]; };
+  const fmt = (ms) => parts(ms).map(pad).join(':');
+  function revertPage() {
+    document.getElementById('dealBar')?.remove();
+    document.querySelectorAll('[data-deal-only]').forEach((e) => e.remove());
+    document.querySelectorAll('[data-deal-badge]').forEach((b) => { const t = b.dataset.dealBadge; if (t) { b.textContent = t; b.classList.remove('deal'); delete b.dataset.dealBadge; } else b.remove(); });
+    document.getElementById('dealPop')?.remove();
+    const pdp = $('pdp'), p = pdp && productBySlug(pdp.dataset.slug);
+    if (pdp && pdp.dataset.saleUntil && p) {
+      const reg = Number(p.regular_price || p.price), cmp = Number(p.regular_compare || 0), save = cmp > reg ? cmp - reg : 0;
+      const line = pdp.querySelector('.price-line');
+      if (line) line.innerHTML = `<span class="now price">${money(reg)}</span>` + (save ? `<span class="was price">${money(cmp)}</span><span class="save">${tr('save')} ${money(save)}</span>` : '');
+      document.querySelectorAll('.pp.price').forEach((e) => e.textContent = money(reg));
+      pdp.dataset.price = reg; delete pdp.dataset.saleUntil;
+      if (pdp.dealUpd) pdp.dealUpd();
+    }
+  }
+  // the page was built while the deal ran, but it is over now
+  const pdp = $('pdp');
+  if (pdp && pdp.dataset.saleUntil && Date.now() >= Date.parse(pdp.dataset.saleUntil)) revertPage();
+  if (!OFFER) { revertPage(); return; }
+  const end = Date.parse(OFFER.until);
+  const tick = () => {
+    const left = end - Date.now();
+    if (left <= 0) {
+      clearInterval(timer);
+      PRODUCTS.forEach((p) => { if (p.sale_until) { p.price = p.regular_price; delete p.sale_until; } });
+      revertPage(); counts(); if ($('drawer')?.classList.contains('on')) renderDrawer();
+      return;
+    }
+    els().forEach((e) => e.textContent = fmt(left));
+    const [h, m, s] = parts(left), box = $('dpClock');
+    if (box) box.innerHTML = [[h, tr('deal_h')], [m, tr('deal_m')], [s, tr('deal_s')]].map(([v, l]) => `<span class="num">${pad(v)}<small>${l}</small></span>`).join('');
+  };
+  const timer = setInterval(tick, 1000); tick();
+
+  // popup once per visit, not on the painting's own page, the payment page or while checking out
+  let seen = false; try { seen = sessionStorage.getItem('nay-deal-seen') === OFFER.until; } catch {}
+  const onDealPage = pdp && pdp.dataset.slug === OFFER.slug, onPay = !!$('payBox');
+  if (seen || onDealPage || onPay) return;
+  setTimeout(() => {
+    if (Date.now() >= end || $('drawer')?.classList.contains('on')) return;
+    try { sessionStorage.setItem('nay-deal-seen', OFFER.until); } catch {}
+    const d = document.createElement('div'); d.className = 'deal-pop'; d.id = 'dealPop'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'dpTitle');
+    d.innerHTML = `<div class="dp-box"><div class="dp-img"><img src="${OFFER.img}" alt="${escapeHTML(OFFER.name)}">${OFFER.label ? `<span class="dp-tag">${escapeHTML(OFFER.label)}</span>` : ''}<button class="dp-x" type="button" aria-label="${tr('deal_close')}">×</button></div>
+      <div class="dp-body"><h2 id="dpTitle">${tr('deal_title')}</h2><p class="dp-sub">${escapeHTML(tr('deal_sub', { name: OFFER.name, price: money(OFFER.price), was: money(OFFER.was) }))}</p>
+      <div class="dp-price"><b class="price">${money(OFFER.price)}</b><s class="price">${money(OFFER.was)}</s></div>
+      <div class="dp-clock" id="dpClock" aria-label="${tr('deal_ends')}"></div>
+      <div class="dp-acts"><button class="btn btn-primary" type="button" id="dpAdd">${tr('deal_add', { price: money(OFFER.price) })}</button><a class="btn" href="${OFFER.url}">${tr('deal_view')}</a></div></div></div>`;
+    const close = () => { d.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('.dp-x')) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(d); tick();
+    $('dpAdd').onclick = () => { close(); addKit(OFFER.slug); openDrawer(); };
+    d.querySelector('#dpAdd').focus({ preventScroll: true });
+  }, 1500);
+})();

@@ -72,7 +72,8 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     if (data && data.data && data.event && !data.type) return json(kashierWebhook(data));
-    if (data.type === 'order') return json(saveOrder(data));
+    if (data.type === 'order') return json(safeSaveOrder(data));
+    if (data.type === 'order_backup') return json(orderBackup(data));
     if (data.type === 'pay_verify') return json(payVerify(data));
     if (data.type === 'pay_retry') return json(payRetry(data));
     if (data.type === 'subscribe') return json(saveSubscriber(data));
@@ -121,8 +122,9 @@ function saveOrder(o) {
   return res;
 }
 
-function saveOrderRow(o) {
-  const invalid = validateOrder(o);
+function saveOrderRow(o, opt) {
+  opt = opt || {};
+  const invalid = opt.force ? '' : validateOrder(o);
   if (invalid) return { ok: false, error: invalid };
   // Automatic check of the transfer screenshot (OCR + duplicate detection). Clear junk is refused at checkout.
   let proofCheck = null;
@@ -131,7 +133,7 @@ function saveOrderRow(o) {
     if (proofCheck.level === 'reject') return { ok: false, error: 'proof_rejected' };
   }
   const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  const locked = lock.tryLock(30000); // if the dashboard holds the lock for long, save anyway (appendRow is atomic)
   try {
     const ss = book();
     const orders = sheet(ss, 'Orders', ORDERS_HEADERS);
@@ -189,28 +191,100 @@ function saveOrderRow(o) {
     row[C['Medium']] = s.utm_medium || ''; row[C['Campaign']] = s.utm_campaign || ''; row[C['Landing page']] = s.landing || ''; row[C['Referrer']] = s.referrer || '';
     row[C['Items JSON']] = JSON.stringify(cleanItems); row[C['Photo IDs']] = ids.join(','); row[C['Thumbs']] = JSON.stringify(thumbList).slice(0, 49000);
     row[C['Additional phone']] = c.phone_extra ? "'" + c.phone_extra : '';
-    row[C['Delivery latitude']] = c.location.lat; row[C['Delivery longitude']] = c.location.lng;
+    row[C['Delivery latitude']] = c.location ? c.location.lat : ''; row[C['Delivery longitude']] = c.location ? c.location.lng : '';
     row[C['Delivery map']] = deliveryMap(c);
     row[C['Payment status']] = o.payment === 'kashier' ? 'Awaiting online payment' : proofId ? 'Transfer submitted' : hasCustom ? 'Awaiting full payment' : 'Unconfirmed';
     row[C['Transfer proof']] = proofId; row[C['Transfer ref']] = String((o.transfer || {}).ref || '').slice(0, 60);
     if (proofCheck) { row[C['Transfer hash']] = proofCheck.hash; row[C['Proof check']] = proofCheck.level + (proofCheck.reasons.length ? ': ' + proofCheck.reasons.join(' · ') : proofCheck.hold ? ': ' + proofCheck.hold : ''); }
     orders.appendRow(row);
-    (o.items || []).forEach(function (i) {
-      items.appendRow([when, o.id, month, i.name, i.display || i.option, i.qty, i.price, i.line, i.note || '']);
-    });
-    updateMonthly(ss);
+    // the order is saved now: nothing after this line may turn it into an error for the customer
+    try {
+      (o.items || []).forEach(function (i) {
+        items.appendRow([when, o.id, month, i.name, i.display || i.option, i.qty, i.price, i.line, i.note || '']);
+      });
+      updateMonthly(ss);
+    } catch (err) { console.error('order items ' + o.id + ': ' + err); }
 
-    const startDesign = hasCustom && !!proofCheck && proofCheck.auto === true && mimiReady() && cfg('MIMI_AUTO') !== 'no';
-    notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck, startDesign);
-    if (o.payment === 'kashier') {
+    let startDesign = false;
+    try { startDesign = hasCustom && !!proofCheck && proofCheck.auto === true && mimiReady() && cfg('MIMI_AUTO') !== 'no'; } catch (err) {}
+    try { notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck, startDesign); } catch (err) { console.error('notify ' + o.id + ': ' + err); }
+    if (o.payment === 'kashier' && !opt.force) {
       const pay = kashierSession(o.id, o.id, Number(o.total || 0), o.lang, (o.customer || {}).phone);
       if (pay.url) setOrderField(orders, o.id, { 'Kashier session': pay.sessionId });
       return { ok: true, id: o.id, payUrl: pay.url || '', payError: pay.error || '' };
     }
     return { ok: true, id: o.id, startDesign: startDesign };
   } finally {
-    lock.releaseLock();
+    if (locked) lock.releaseLock();
   }
+}
+
+/* ---------------- orders that could not be saved: never lose them ---------------- */
+// Anything that stops an order from being saved is recorded in "Failed orders" (with the whole order),
+// the owner gets a WhatsApp + email alert, and the dashboard shows it with an "add to orders" button.
+const FAILED_HEADERS = ['Date', 'Order ID', 'Error', 'Name', 'Phone', 'Total (EGP)', 'Payment', 'Order JSON', 'Status'];
+const CUSTOMER_FIXES = ['proof_rejected', 'transfer_proof_required']; // the customer is asked to fix these on the page
+function safeSaveOrder(o) {
+  let res;
+  try { res = saveOrder(o); } catch (err) { res = { ok: false, error: String(err && err.message || err).slice(0, 300) }; }
+  if (!res.ok && CUSTOMER_FIXES.indexOf(res.error) < 0) { try { recordFailed(o, res.error); } catch (err) { console.error('recordFailed ' + err); } }
+  return res;
+}
+/** The website sends this (without photos) when it could not get the order through after retrying. */
+function orderBackup(o) {
+  if (!o || !/^NA-[\w-]{4,30}$/.test(String(o.id || ''))) return { ok: false };
+  try { if (findRow(sheet(book(), 'Orders', ORDERS_HEADERS), o.id)) return { ok: true, saved: true }; } catch (err) {}
+  o.type = 'order'; o.photos = [];
+  const res = safeSaveOrder(o);
+  if (res.ok && !res.duplicate) {
+    const custom = (o.items || []).some(function (i) { return i.custom || i.slug === 'custom'; });
+    try { setOrderField(sheet(book(), 'Orders', ORDERS_HEADERS), o.id, { 'Internal notes': '📶 الطلب وصل من النسخة الاحتياطية (النت عند العميل كان ضعيف) — العميل غالبًا بعته على واتساب كمان، متكررش الطلب.' + (custom ? '\n⚠️ صورة العميل ماوصلتش — اطلبها على واتساب.' : '') }); } catch (err) {}
+  }
+  if (res.ok) markFailed(o.id, 'saved later');
+  return res;
+}
+function recordFailed(o, error) {
+  const sh = sheet(book(), 'Failed orders', FAILED_HEADERS), c = o.customer || {};
+  const lite = JSON.parse(JSON.stringify(o)); delete lite.photos; if (lite.transfer) lite.transfer = { ref: lite.transfer.ref || '', had_screenshot: !!lite.transfer.data };
+  const row = [new Date(), String(o.id || ''), String(error || 'unknown').slice(0, 300), c.name || '', "'" + (c.phone || ''), Number(o.total || 0), o.payment_label || o.payment || '', JSON.stringify(lite).slice(0, 45000), 'new'];
+  const r = findFailed(sh, o.id);
+  if (r) { sh.getRange(r, 3).setValue(row[2]); return; } // already recorded (the backup after a failed try)
+  sh.appendRow(row);
+  const msg = '⚠️ *طلب ماتسجلش تلقائيًا على NAY ART*\nرقم الطلب: ' + o.id + '\nالعميل: ' + (c.name || '') + ' – ' + (c.phone || '') + '\nالإجمالي: ' + (o.total || 0) + ' ج.م\nالسبب: ' + row[2] +
+    '\n\nالطلب محفوظ — افتح اللوحة ودوس «ضيفه للطلبات»:\n' + DASHBOARD_URL;
+  sendWhatsApp(msg);
+  try { MailApp.sendEmail(cfg('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail(), '⚠️ طلب ماتسجلش ' + o.id, msg.replace(/\*/g, '') + '\n\n' + JSON.stringify(lite, null, 2)); } catch (err) {}
+}
+function findFailed(sh, id) {
+  if (!id || sh.getLastRow() < 2) return 0;
+  const ids = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues();
+  for (let i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === String(id)) return i + 2;
+  return 0;
+}
+function markFailed(id, status) {
+  try { const sh = book().getSheetByName('Failed orders'); if (!sh) return; const r = findFailed(sh, id); if (r) sh.getRange(r, 9).setValue(status); } catch (err) {}
+}
+function listFailed(ss) {
+  const sh = ss.getSheetByName('Failed orders');
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, FAILED_HEADERS.length).getValues().filter(function (r) { return r[8] === 'new'; }).map(function (r) {
+    let o = {}; try { o = JSON.parse(r[7]); } catch (e) {}
+    return { date: r[0] instanceof Date ? r[0].toISOString() : String(r[0]), id: r[1], error: r[2], name: r[3], phone: String(r[4]).replace(/^'/, ''), total: r[5], payment: r[6], order: o };
+  }).reverse().slice(0, 50);
+}
+/** Dashboard: add a recorded order to the orders (skips the website checks; the owner reviewed it). */
+function importFailed(ss, id) {
+  const sh = ss.getSheetByName('Failed orders'), r = sh ? findFailed(sh, id) : 0;
+  if (!r) return { ok: false, error: 'not found' };
+  let o; try { o = JSON.parse(sh.getRange(r, 8).getValue()); } catch (e) { return { ok: false, error: 'bad_json' }; }
+  if (findRow(sheet(ss, 'Orders', ORDERS_HEADERS), id)) { sh.getRange(r, 9).setValue('imported'); return { ok: true, already: true }; }
+  o.photos = []; delete o.transfer; o.customer = o.customer || {};
+  if (['cod', 'instapay', 'vodafone', 'kashier'].indexOf(o.payment) < 0) o.payment = 'cod';
+  if (o.payment === 'kashier') o.payment_label = (o.payment_label || '') + ' (لم يكتمل)';
+  let res;
+  try { res = saveOrderRow(o, { force: true }); } catch (err) { res = { ok: false, error: String(err).slice(0, 200) }; }
+  if (res.ok) sh.getRange(r, 9).setValue('imported');
+  return res.ok ? { ok: true } : res;
 }
 
 function saveSubscriber(d) {
@@ -768,7 +842,9 @@ function admin(d) {
   }
   const ss = book();
   const sh = sheet(ss, 'Orders', ORDERS_HEADERS);
-  if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh), couriers: getCouriers() };
+  if (d.action === 'list') return { ok: true, statuses: STATUSES, orders: listOrders(sh), couriers: getCouriers(), failed: listFailed(ss) };
+  if (d.action === 'failed_import') return importFailed(ss, String(d.id || ''));
+  if (d.action === 'failed_dismiss') { markFailed(String(d.id || ''), 'dismissed'); return { ok: true }; }
   if (d.action === 'couriers_save') { const list = cleanCouriers(d.couriers); if (!list.length) return { ok: false, error: 'no_couriers' }; PropertiesService.getScriptProperties().setProperty('COURIERS', JSON.stringify(list)); return { ok: true, couriers: list }; }
   if (d.action === 'visits') return visitStats(ss, d);
   if (d.action === 'courier') {

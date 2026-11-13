@@ -319,11 +319,24 @@ async function placeOrder(btn) {
   btn.disabled = true; btn.textContent = tr('placing');
   let sent = false, reply = {};
   if (S.orders_endpoint) {
-    try {
-      const res = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify({ ...order, photos: photoList, ...(transfer ? { transfer } : {}) }) });
-      reply = await res.json().catch(() => ({}));
-      sent = res.ok && reply.ok !== false;
-    } catch { sent = false; }
+    // Up to 3 tries (weak mobile networks). The server ignores a repeated order id, so a retry never doubles an order.
+    const body = JSON.stringify({ ...order, photos: photoList, ...(transfer ? { transfer } : {}) });
+    for (let attempt = 0; attempt < 3 && !sent; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 2000 * attempt));
+      const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 90000);
+      try {
+        const res = await fetch(S.orders_endpoint, { method: 'POST', body, signal: ctrl.signal });
+        reply = await res.json().catch(() => ({}));
+        sent = res.ok && reply.ok === true;
+        if (reply.ok === false) break; // the server answered with a reason (and keeps a copy itself): no retry
+      } catch { reply = {}; }
+      clearTimeout(timer);
+    }
+    // Still nothing from the server (network, Google error page…): send a light copy so the order is never lost.
+    if (!sent && reply.ok !== false) {
+      const copy = JSON.stringify({ ...order, type: 'order_backup', transfer: transfer ? { ref: transfer.ref || '' } : undefined });
+      try { if (!(navigator.sendBeacon && navigator.sendBeacon(S.orders_endpoint, copy))) fetch(S.orders_endpoint, { method: 'POST', body: copy, keepalive: true, mode: 'no-cors' }).catch(() => {}); } catch {}
+    }
   }
   placingOrder = false;
   if (reply.error === 'proof_rejected' || reply.error === 'transfer_proof_required') {

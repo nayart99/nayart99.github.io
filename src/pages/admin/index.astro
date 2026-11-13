@@ -187,6 +187,8 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     .proof img{max-width:100%;max-height:340px;border:1px solid var(--line);border-radius:8px;background:#fff}
     .pay-check{margin:10px 0 0;font-size:.88rem;color:var(--ink)}
     .dlab{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--soft);flex:1}
+    .failed{border:2px solid #C62828;background:#FFF3F2;border-radius:12px;padding:14px 16px;margin-bottom:16px}.failed h2{font-size:1rem;margin:0 0 10px;color:#9B1C1C}
+    .fo{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px dashed #E7B4B0}.fo-main{flex:1 1 320px;font-size:.9rem}.fo-sub{color:var(--soft);font-size:.82rem;margin-top:3px}
     .tag.ship{color:#1F4E79;background:#EAF2FB;border-color:#BCD3EA;font-weight:600}
     .ship-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}.ship-l{font-size:.85rem;color:var(--soft);font-weight:600}
     .ship-c{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 14px;font:inherit;font-size:.86rem;color:var(--ink);cursor:pointer}
@@ -357,6 +359,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       </div>
 
       <section id="vOrders">
+      <div class="failed" id="failedBox" hidden></div>
       <div class="kpis">
         <div class="kpi hot"><span>طلبات جديدة</span><b class="num" id="kNew">0</b><small>بحاجة لتأكيد</small></div>
         <div class="kpi"><span>قيد التنفيذ</span><b class="num" id="kWork">0</b><small>مؤكدة وقيد التجهيز</small></div>
@@ -474,7 +477,29 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     const DEMO = new URLSearchParams(location.search).has('demo');
     const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
     const COLOR = { 'جديد': 'var(--s-new)', 'تم التأكيد': 'var(--s-conf)', 'بانتظار موافقة التصميم': 'var(--s-wait)', 'قيد التجهيز': 'var(--s-prep)', 'تم الشحن': 'var(--s-ship)', 'تم التسليم': 'var(--s-done)', 'ملغي': 'var(--s-cancel)' };
-    let couriers = ['Run', 'Bosta', 'Taslem Mobasher'];
+    let couriers = ['Run', 'Bosta', 'Taslem Mobasher'], failedOrders = [];
+    /* orders the website could not save automatically (network / server error): kept safe until the owner adds them */
+    const FAIL_WHY = (e) => /lock/i.test(e) ? 'السيرفر كان مشغول' : /invalid_phone/.test(e) ? 'رقم الموبايل مش مقبول' : /location/.test(e) ? 'موقع التوصيل ناقص' : /customer_required/.test(e) ? 'بيانات العميل ناقصة' : /custom_prepayment/.test(e) ? 'لوحة من صورة بالدفع عند الاستلام' : /network|backup/i.test(e) ? 'النت عند العميل قطع' : e;
+    function renderFailed() {
+      const box = $('failedBox'); if (!box) return;
+      box.hidden = !failedOrders.length; if (!failedOrders.length) { box.innerHTML = ''; return; }
+      box.innerHTML = `<h2>⚠️ ${failedOrders.length === 1 ? 'طلب' : failedOrders.length + ' طلبات'} ماتسجلش تلقائيًا — محفوظ هنا، راجعه وضيفه</h2>` + failedOrders.map((f) => {
+        const o = f.order || {}, c = o.customer || {}, items = (o.items || []).map((i) => `${esc(i.name)}${i.display || i.option ? ' (' + esc(i.display || i.option) + ')' : ''} × ${i.qty}`).join('، ');
+        return `<div class="fo"><div class="fo-main"><b class="num">${esc(f.id)}</b> · ${esc(f.name)} · <span class="num">${esc(f.phone)}</span> · ${esc(c.city || '')} · <b class="num">${money(f.total)}</b> · ${esc(f.payment)}
+          <div class="fo-sub">${items}${(o.items || []).some((i) => i.custom) ? ' · 📷 صورة العميل ماوصلتش، اطلبها على واتساب' : ''}</div>
+          <div class="fo-sub">${fmtDate(f.date)} · السبب: ${esc(FAIL_WHY(String(f.error || '')))}</div></div>
+          <div class="acts"><button class="btn ok" data-fimport="${esc(f.id)}">ضيفه للطلبات</button><button class="btn" data-fdismiss="${esc(f.id)}">تجاهل</button></div></div>`;
+      }).join('');
+    }
+    document.addEventListener('click', async (e) => {
+      const imp = e.target.closest('[data-fimport]'), dis = e.target.closest('[data-fdismiss]');
+      if (!imp && !dis) return;
+      const id = (imp || dis).dataset.fimport || (imp || dis).dataset.fdismiss;
+      if (dis && !confirm(`تجاهل الطلب ${id}؟ (مثلًا لو اتسجل بالفعل أو طلب تجربة)`)) return;
+      (imp || dis).disabled = true;
+      try { await api(imp ? 'failed_import' : 'failed_dismiss', { id }); failedOrders = failedOrders.filter((f) => f.id !== id); renderFailed(); toast(imp ? `تمت إضافة ${id} للطلبات` : 'تم'); if (imp) sync(); }
+      catch (err) { (imp || dis).disabled = false; toast('تعذّر: ' + err.message); }
+    });
     const SHIP_STATES = ['تم الشحن', 'تم التسليم'], NO_SHIP = 'بدون شركة شحن';
     const WORKING = ['تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن'];
     const KEY = 'nay-admin-pw';
@@ -506,7 +531,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         try { (remember ? localStorage : sessionStorage).setItem(KEY, p); } catch {}
         $('login').hidden = true; $('app').hidden = false; $('demoBar').hidden = !DEMO;
         if (!DEMO) try { localStorage.setItem('nay-owner', '1'); } catch {} // the owner's own visits to the website are not counted
-        if (j.couriers) couriers = j.couriers; load(j.orders); timer = setInterval(sync, 45000);
+        if (j.couriers) couriers = j.couriers; failedOrders = j.failed || []; load(j.orders); renderFailed(); timer = setInterval(sync, 45000);
         return true;
       } catch (e) {
         const m = e.message;
@@ -521,7 +546,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     /* ---------- data ---------- */
     async function sync(manual) {
       const r = $('refresh'); r.classList.add('spin');
-      try { const j = await api('list'); if (j.couriers) couriers = j.couriers; load(j.orders); if (manual) toast('تم التحديث'); }
+      try { const j = await api('list'); if (j.couriers) couriers = j.couriers; failedOrders = j.failed || []; load(j.orders); renderFailed(); if (manual) toast('تم التحديث'); }
       catch (e) { if (e.message === 'auth') { location.reload(); } else if (manual) toast('تعذّر التحديث'); }
       r.classList.remove('spin');
     }
@@ -1181,7 +1206,12 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
           demoApi.data.push({ id: 'NA-DEMO-' + (1000 + i), date: t(h), status: st, courier: SHIP_STATES.includes(st) ? ['Run', 'Bosta', 'Taslem Mobasher'][i % 3] : '', name: nm, phone: '010' + String(10000000 + names.indexOf(nm) * 1111111).slice(0, 8), city: cities[Math.floor(rnd() * cities.length)], address: 'عنوان تجريبي', payment: custom ? 'InstaPay' : pays[Math.floor(rnd() * pays.length)], payment_status: custom ? 'Paid in full' : 'Unconfirmed', items: [item], delivery: 120, total: item.line + 120, subtotal: item.line, notes: '', internal: '', source: srcs[Math.floor(rnd() * srcs.length)], photos: [] });
         }
       }
-      if (action === 'list') return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)), couriers: demoApi.couriers || ['Run', 'Bosta', 'Taslem Mobasher'] });
+      if (action === 'list') { demoApi.failed = demoApi.failed || [{ date: new Date(Date.now() - 20 * 3600e3).toISOString(), id: 'NA-261112-1326', error: 'backup', name: 'nourhan hany', phone: '01222846017', total: 1620, payment: 'Cash on delivery', order: { customer: { city: 'Cairo' }, items: [{ name: 'Rose Reverie', display: '40×50 cm', qty: 1 }, { name: 'Golden Hour Fields', display: '40×50 cm', qty: 1 }] } }]; return Promise.resolve({ ok: true, orders: JSON.parse(JSON.stringify(demoApi.data)), couriers: demoApi.couriers || ['Run', 'Bosta', 'Taslem Mobasher'], failed: JSON.parse(JSON.stringify(demoApi.failed)) }); }
+      if (action === 'failed_import' || action === 'failed_dismiss') {
+        const f = demoApi.failed.find((y) => y.id === x.id); demoApi.failed = demoApi.failed.filter((y) => y.id !== x.id);
+        if (action === 'failed_import' && f) demoApi.data.unshift({ id: f.id, date: f.date, status: 'جديد', name: f.name, phone: f.phone, city: f.order.customer.city, address: '', payment: f.payment, items: f.order.items.map((i) => ({ name: i.name, option: i.display, qty: i.qty, line: 750 })), delivery: 120, total: f.total, notes: '', internal: '', photos: [] });
+        return Promise.resolve({ ok: true });
+      }
       if (action === 'archive') { demoApi.data = demoApi.data.filter((d) => !x.ids.includes(d.id)); return Promise.resolve({ ok: true, archived: x.ids.length }); }
       if (action === 'confirm_payment') { const o = demoApi.data.find(d => d.id === x.id); o.payment_status = 'Paid in full'; return Promise.resolve({ok:true}); }
       if (action === 'update') { const o = demoApi.data.find((d) => d.id === x.id); if (x.status) o.status = x.status; if (x.note != null) o.internal = x.note; if (x.courier != null) o.courier = x.courier; return Promise.resolve({ ok: true }); }

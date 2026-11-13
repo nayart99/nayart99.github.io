@@ -227,7 +227,7 @@ const CUSTOMER_FIXES = ['proof_rejected', 'transfer_proof_required']; // the cus
 function safeSaveOrder(o) {
   let res;
   try { res = saveOrder(o); } catch (err) { res = { ok: false, error: String(err && err.message || err).slice(0, 300) }; }
-  if (!res.ok && CUSTOMER_FIXES.indexOf(res.error) < 0) { try { recordFailed(o, res.error); } catch (err) { console.error('recordFailed ' + err); } }
+  if (!res.ok && CUSTOMER_FIXES.indexOf(res.error) < 0) { console.error('order ' + (o && o.id) + ' not saved: ' + res.error); try { recordFailed(o, res.error); } catch (err) { console.error('recordFailed ' + err); } }
   return res;
 }
 /** The website sends this (without photos) when it could not get the order through after retrying. */

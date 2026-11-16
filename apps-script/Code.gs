@@ -1160,7 +1160,7 @@ function cleanProduct(p) {
     active: p.active !== false, sold_out: p.sold_out === true,
   };
   // time-limited deal (the website shows it and switches back by itself when it ends)
-  if (p.sale && Number(p.sale.price) > 0 && !isNaN(Date.parse(p.sale.until))) out.sale = { price: Math.round(Number(p.sale.price)), until: String(p.sale.until).slice(0, 40), label: bi(p.sale.label) };
+  if (p.sale && Number(p.sale.price) > 0 && !isNaN(Date.parse(p.sale.until))) out.sale = { price: Math.round(Number(p.sale.price)), was: Math.round(Number(p.sale.was) || 0) || undefined, until: String(p.sale.until).slice(0, 40), label: bi(p.sale.label) };
   if (!out.name.ar && !out.name.en) throw new Error('name_required');
   if (!out.price) throw new Error('price_required');
   if (!out.badge.ar && !out.badge.en) delete out.badge;

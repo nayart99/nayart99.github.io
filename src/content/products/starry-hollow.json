@@ -58,5 +58,14 @@
   ],
   "price": 750,
   "compare_price": 1000,
-  "active": true
+  "active": true,
+  "sale": {
+    "price": 650,
+    "was": 1000,
+    "until": "2026-11-18T02:50:00+02:00",
+    "label": {
+      "en": "Limited-time deal",
+      "ar": "عرض لفترة محدودة"
+    }
+  }
 }

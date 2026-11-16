@@ -266,7 +266,9 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     .seg button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
     .a-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px}
     .a-head small{color:var(--soft)}
-    .kpis.k8{grid-template-columns:repeat(4,1fr)}
+    .kpis.k8{grid-template-columns:repeat(4,1fr)}.kpis.k10{grid-template-columns:repeat(5,1fr)}
+    .money{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:4px 0 12px}.money>div{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+    .money span{display:block;color:var(--soft);font-size:.82rem}.money b{display:block;font-size:1.35rem;margin-top:2px}.money small{color:var(--soft);font-size:.78rem}.money .tot{border-color:var(--wine);background:#FBF3F0}
     .delta{display:inline-block;margin-inline-start:6px;font-size:.78rem;color:var(--soft);font-weight:500}
     .vsec{margin:4px 0 26px}.vhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:12px}.vhead h2,.ahead2{font-size:1.1rem;margin:0}.vhead small{color:var(--soft);font-size:.8rem}.ahead2{margin:0 0 12px}
     .vsec .agrid{margin-top:12px}.kpi.hi{border-color:var(--wine);background:#FBF3F0}
@@ -316,7 +318,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       .lbl{break-after:page;page-break-after:always;break-inside:avoid;page-break-inside:avoid;margin:0 auto}
       .lbl:last-child{break-after:auto;page-break-after:auto}
     }
-    @media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.kpis.k8{grid-template-columns:repeat(2,1fr)}.month{grid-template-columns:1fr}.agrid{grid-template-columns:1fr}}
+    @media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}.kpis.k8,.kpis.k10{grid-template-columns:repeat(2,1fr)}.money{grid-template-columns:1fr 1fr}.money .tot{grid-column:1/-1}.month{grid-template-columns:1fr}.agrid{grid-template-columns:1fr}}
     @media (max-width:560px){
       header h1{font-size:.95rem}.live span{display:none}
       .ord{grid-template-columns:22px 48px 1fr;gap:10px}.th{width:48px;height:48px}
@@ -364,7 +366,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         <div class="kpi hot"><span>طلبات جديدة</span><b class="num" id="kNew">0</b><small>بحاجة لتأكيد</small></div>
         <div class="kpi"><span>قيد التنفيذ</span><b class="num" id="kWork">0</b><small>مؤكدة وقيد التجهيز</small></div>
         <div class="kpi"><span>طلبات اليوم</span><b class="num" id="kToday">0</b><small id="kTodaySum">0 ج.م</small></div>
-        <div class="kpi"><span>مبيعات هذا الشهر</span><b class="num" id="kMonth">0</b><small id="kMonthN">0 طلب</small></div>
+        <div class="kpi"><span>مبيعات اللوحات هذا الشهر</span><b class="num" id="kMonth">0</b><small id="kMonthN">0 طلب</small></div>
       </div>
 
       <div class="tools">
@@ -395,6 +397,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         <button class="btn" id="bulkArchive">حذف من اللوحة</button>
         <button class="btn" id="bulkClear">إلغاء التحديد</button>
       </div>
+      <div class="money" id="moneyBar" aria-live="polite"></div>
       <p class="count-line"><label class="selall"><input type="checkbox" id="selAll" /> <span id="countLine"></span></label></p>
 
       <div class="list" id="list"></div>
@@ -607,9 +610,10 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       $('kNew').textContent = newN;
       $('kWork').textContent = orders.filter((o) => WORKING.includes(o.status)).length;
       const td = live.filter((o) => new Date(o.date).toDateString() === today);
-      $('kToday').textContent = td.length; $('kTodaySum').textContent = money(td.reduce((s, o) => s + Number(o.total || 0), 0));
+      $('kToday').textContent = td.length; { const t2 = split(td); $('kTodaySum').textContent = `لوحات ${money(t2.items)} · توصيل ${money(t2.ship)}`; }
       const mo = live.filter((o) => (o.date || '').slice(0, 7) === ym);
-      $('kMonth').textContent = Number(mo.reduce((s, o) => s + Number(o.total || 0), 0)).toLocaleString('en-US'); $('kMonthN').textContent = `جنيه مصري · ${mo.length} ${mo.length > 2 && mo.length < 11 ? 'طلبات' : 'طلب'}`;
+      const moS = split(mo);
+      $('kMonth').textContent = Number(moS.items).toLocaleString('en-US'); $('kMonthN').textContent = `جنيه لوحات · + ${Number(moS.ship).toLocaleString("en-US")} توصيل · ${mo.length} ${mo.length > 2 && mo.length < 11 ? 'طلبات' : 'طلب'}`;
       document.title = (newN ? `(${newN}) ` : '') + 'لوحة الطلبات | NAY ART';
 
       const counts = { all: orders.length, unpaid: orders.filter(unpaid).length, review: orders.filter(review).length }; STATUSES.forEach((s) => counts[s] = orders.filter((o) => o.status === s).length);
@@ -622,6 +626,8 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       const shown = filtered();
       const ids = new Set(orders.map((o) => o.id)); [...selected].forEach((id) => { if (!ids.has(id)) selected.delete(id); });
       $('countLine').textContent = `${shown.length} طلب · ${money(shown.filter((o) => o.status !== 'ملغي').reduce((s, o) => s + Number(o.total || 0), 0))}`;
+      { const ok = shown.filter((o) => o.status !== 'ملغي'), sp = split(ok);
+        $('moneyBar').innerHTML = `<div><span>اللوحات</span><b class="num">${money(sp.items)}</b><small>${sp.units} ${sp.units === 1 ? 'لوحة' : 'لوحات'}</small></div><div><span>التوصيل</span><b class="num">${money(sp.ship)}</b><small>${ok.filter((o) => Number(o.delivery || 0) > 0).length} طلب عليه توصيل</small></div><div class="tot"><span>الإجمالي</span><b class="num">${money(sp.items + sp.ship)}</b><small>${ok.length} طلب${ok.length !== shown.length ? ' · من غير الملغي' : ''}</small></div>`; }
       $('selAll').checked = shown.length > 0 && shown.every((o) => selected.has(o.id));
       $('list').innerHTML = shown.length ? shown.map((o) => {
         const custom = isCustom(o), sel = selected.has(o.id);
@@ -740,6 +746,10 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     /* ---------- analytics ---------- */
     const niceMax = (v) => { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
     const num = (n) => Number(n || 0).toLocaleString('en-US');
+    /** paintings vs delivery money for a list of orders */
+    function split(list) {
+      return list.reduce((a, o) => { const ship = Number(o.delivery || 0), tot = Number(o.total || 0); a.ship += ship; a.items += o.subtotal != null && o.subtotal !== '' ? Number(o.subtotal) : tot - ship; a.units += o.items.reduce((s, i) => s + Number(i.qty || 0), 0); return a; }, { items: 0, ship: 0, units: 0 });
+    }
     function colChart(pts, fmt) {
       if (!pts.some((p) => p.v)) return '<p class="none">لا توجد بيانات في هذه الفترة</p>';
       const max = niceMax(Math.max(...pts.map((p) => p.v)));
@@ -826,8 +836,11 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       const custP = new Set(live.map((o) => o.phone)), repeat = [...custP].filter((p) => (byPhone[p] || []).length > 1).length;
       const d = (cur, pv) => pv == null ? '' : pv === 0 ? (cur ? '<span class="delta">جديد</span>' : '') : `<span class="delta">${cur >= pv ? '▲' : '▼'} ${Math.abs(Math.round(((cur - pv) / pv) * 100))}%</span>`;
       const k = (label, val, small) => `<div class="kpi"><span>${label}</span><b class="num">${val}</b><small>${small}</small></div>`;
+      const aS = split(live), pS = prev ? split(prev) : null;
       $('aKpis').innerHTML = [
-        k('المبيعات', num(rev), 'جنيه' + d(rev, pRev)),
+        k('مبيعات اللوحات', num(aS.items), 'جنيه (من غير التوصيل)' + d(aS.items, pS && pS.items)),
+        k('التوصيل', num(aS.ship), 'جنيه' + d(aS.ship, pS && pS.ship)),
+        k('الإجمالي', num(rev), 'جنيه (لوحات + توصيل)' + d(rev, pRev)),
         k('عدد الطلبات', n, 'طلب' + d(n, pN)),
         k('متوسط قيمة الطلب', num(aov), 'جنيه' + d(aov, pAov)),
         k('القطع المباعة', u, 'لوحة' + d(u, pU)),
@@ -836,6 +849,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         k('نسبة الإلغاء', cancelRate + '%', `${cancelled} من ${inP.length} طلب`),
         k('العملاء', custP.size, `${repeat} اشترى أكثر من مرة`),
       ].join('');
+      $('aKpis').className = 'kpis k10';
       const endD = b[1] ? new Date(b[1].getTime() - 864e5) : new Date();
       $('aRangeLbl').textContent = b[0] ? `${b[0].toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })} – ${endD.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' })}${prev ? ' · النسب مقارنة بالفترة السابقة' : ''}` : 'كل الطلبات';
 

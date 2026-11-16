@@ -27,7 +27,7 @@ export function getProducts() {
       return {
         ...p,
         price: onSale ? Number(p.sale.price) : price,
-        compare_price: onSale ? price : compare,
+        compare_price: onSale ? Math.max(Number(p.sale.was) || price, price) : compare, // the crossed-out price during the deal (sale.was, else the normal price)
         sale_until: onSale ? new Date(until).toISOString() : '',
         regular_price: price, regular_compare: compare,
         landscape: (p.orientation || 'landscape') === 'landscape',

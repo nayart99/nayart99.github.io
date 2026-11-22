@@ -293,7 +293,7 @@ html[dir="rtl"] .stage.in .dname span{animation-name:dWipeR}
 .thumbs{list-style:none;margin:clamp(28px,4vw,44px) 0 0;padding:0;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .thumbs button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:8px;font-size:.85rem;color:rgba(251,250,247,.6);transition:color .25s}
 .thumbs .face{position:relative;width:66px;height:66px;border-radius:50%;padding:3px;border:1.5px solid rgba(251,250,247,.2);transition:border-color .3s}
-.thumbs .face i{display:block;width:100%;height:100%;border-radius:50%;background:#34312d no-repeat 50% 3%/240% auto}
+.thumbs .face i{display:block;width:100%;height:100%;border-radius:50%;background:#34312d no-repeat center/cover}
 .thumbs button[aria-current="true"]{color:var(--paper)}
 .thumbs button[aria-current="true"] .face{border-color:var(--gold)}
 .thumbs button:hover .face{border-color:var(--gold)}
@@ -1057,8 +1057,8 @@ const DOCTORS = [
   en:{l1:"Dr. Hesham", l2:"Mostafa", role:"Master’s Degree in Prosthodontics · Fellow of the Royal College in England", bio:"Focuses on aesthetic restorative dentistry, veneer treatments and smile design, combining dental function with refined aesthetic results."},
   ar:{l1:"د. هشام", l2:"مصطفى", role:"ماجستير التركيبات · زميل الكلية الملكية بإنجلترا", bio:"يركّز على طب الأسنان التجميلي والترميمي وعلاجات الفينير وتصميم الابتسامة، بالجمع بين وظيفة الأسنان ونتيجة جمالية راقية."}},
  {img:"moaz", script:"Moaz",
-  en:{l1:"Dr. Moaz", l2:"Elsbagh", role:"General Practitioner", bio:""},
-  ar:{l1:"د. معاذ", l2:"الصباغ", role:"طبيب ممارس عام", bio:""}},
+  en:{l1:"Dr. Moaz", l2:"Elsbagh", role:"General Dentist", bio:"Provides complete oral and dental care, from regular check-ups, cleaning and treating cavities to fillings and cosmetic dentistry, using the latest techniques with precision for a healthy, natural smile."},
+  ar:{l1:"د. معاذ", l2:"الصباغ", role:"طبيب أسنان عام", bio:"يقدّم رعاية متكاملة لصحة الفم والأسنان، تشمل الفحوصات الدورية والتنظيف وعلاج التسوس والحشوات، إلى جانب إجراءات طب الأسنان التجميلي، مع التركيز على أحدث الأساليب العلمية والدقة في تحقيق ابتسامة صحية وطبيعية."}},
  {img:"gamal", script:"Mohamed",
   en:{l1:"Dr. Mohamed", l2:"Gamal", role:"General Dentist", bio:"Provides everyday dental care, from check-ups and cleaning to fillings, to keep your teeth healthy."},
   ar:{l1:"د. محمد", l2:"جمال", role:"طبيب أسنان عام", bio:"يقدّم رعاية الأسنان اليومية، من الكشف والتنظيف للحشوات، علشان أسنانك تفضل سليمة."}},
@@ -1073,7 +1073,7 @@ const DOCTORS = [
   ar:{l1:"د. صفية", l2:"محمد", role:"أخصائية جراحات التجميل", bio:"تهتم بتقديم الحلول التجميلية التي تجمع بين الدقة الطبية والتناسق الجمالي، مع التركيز على نتائج طبيعية تتناسب مع ملامح كل حالة."}}
 ];
 const DOC_SECONDS = 7;
-const IMG_V = "20261122b";   // bump this whenever a doctor photo changes, so phones load the new one
+const IMG_V = "20261122d";   // bump this whenever a doctor photo changes, so phones load the new one
 
 let lang = "en", current = null;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1093,7 +1093,7 @@ function render(){
   }
   $$(".wa-link").forEach(a=>a.href=wa(t("msgGen")));
   renderOffer(); fillForm();
-  $("#thumbs").innerHTML = DOCTORS.map((d,i)=>`<li><button type="button" data-doc="${i}" aria-label="${d[lang].l1} ${d[lang].l2}"><span class="face"><i style="background-image:url(drc-${d.img}.webp?v=${IMG_V})"></i></span>${d[lang].l1.replace(/^(Dr\.|د\.)\s*/,"") || d[lang].l2}</button></li>`).join("");
+  $("#thumbs").innerHTML = DOCTORS.map((d,i)=>`<li><button type="button" data-doc="${i}" aria-label="${d[lang].l1} ${d[lang].l2}"><span class="face"><i style="background-image:url(face-${d.img}.webp?v=${IMG_V})"></i></span>${d[lang].l1.replace(/^(Dr\.|د\.)\s*/,"") || d[lang].l2}</button></li>`).join("");
   showDoc(docI, false);
   if (current) fill(current);
 }

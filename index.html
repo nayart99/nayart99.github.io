@@ -640,7 +640,7 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
         </div>
         <div class="pic">
           <span class="script" id="d-script" aria-hidden="true"></span>
-          <img id="d-img" src="drc-abdelrahman.webp" alt="">
+          <img id="d-img" src="drc-abdelrahman.webp?v=20261122b" alt="">
         </div>
       </div>
       <ul class="thumbs" id="thumbs"></ul>
@@ -1073,6 +1073,7 @@ const DOCTORS = [
   ar:{l1:"د. صفية", l2:"محمد", role:"أخصائية جراحات التجميل", bio:"تهتم بتقديم الحلول التجميلية التي تجمع بين الدقة الطبية والتناسق الجمالي، مع التركيز على نتائج طبيعية تتناسب مع ملامح كل حالة."}}
 ];
 const DOC_SECONDS = 7;
+const IMG_V = "20261122b";   // bump this whenever a doctor photo changes, so phones load the new one
 
 let lang = "en", current = null;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -1092,7 +1093,7 @@ function render(){
   }
   $$(".wa-link").forEach(a=>a.href=wa(t("msgGen")));
   renderOffer(); fillForm();
-  $("#thumbs").innerHTML = DOCTORS.map((d,i)=>`<li><button type="button" data-doc="${i}" aria-label="${d[lang].l1} ${d[lang].l2}"><span class="face"><i style="background-image:url(drc-${d.img}.webp)"></i></span>${d[lang].l1.replace(/^(Dr\.|د\.)\s*/,"") || d[lang].l2}</button></li>`).join("");
+  $("#thumbs").innerHTML = DOCTORS.map((d,i)=>`<li><button type="button" data-doc="${i}" aria-label="${d[lang].l1} ${d[lang].l2}"><span class="face"><i style="background-image:url(drc-${d.img}.webp?v=${IMG_V})"></i></span>${d[lang].l1.replace(/^(Dr\.|د\.)\s*/,"") || d[lang].l2}</button></li>`).join("");
   showDoc(docI, false);
   if (current) fill(current);
 }
@@ -1172,7 +1173,7 @@ $("#sh-form").addEventListener("click", ()=>{
 /* doctors spotlight */
 let docI = 0, docTimer = null, docVisible = false, docPaused = false;
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-DOCTORS.forEach(d=>{ const im=new Image(); im.src=`drc-${d.img}.webp`; });
+DOCTORS.forEach(d=>{ const im=new Image(); im.src=`drc-${d.img}.webp?v=${IMG_V}`; });
 function showDoc(i, animate=true){
   docI = (i + DOCTORS.length) % DOCTORS.length;
   const d = DOCTORS[docI], L = d[lang];
@@ -1182,7 +1183,7 @@ function showDoc(i, animate=true){
   $("#d-role").textContent = L.role || t("doc.role");
   $("#d-bio").textContent = L.bio || t("doc.bio");
   $("#d-script").textContent = d.script;
-  $("#d-img").src = `drc-${d.img}.webp`; $("#d-img").alt = `${L.l1} ${L.l2}`;
+  $("#d-img").src = `drc-${d.img}.webp?v=${IMG_V}`; $("#d-img").alt = `${L.l1} ${L.l2}`;
   $("#d-i").textContent = String(docI+1).padStart(2,"0"); $("#d-n").textContent = String(DOCTORS.length).padStart(2,"0");
   $$("#thumbs button").forEach((b,k)=>b.setAttribute("aria-current", k===docI));
   if (animate && !reduceMotion){ st.classList.remove("in"); void st.offsetWidth; st.classList.add("in"); }

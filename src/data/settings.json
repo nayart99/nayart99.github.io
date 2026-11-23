@@ -57,5 +57,5 @@
   },
   "launch_offer": true,
   "preview_mode": "none",
-  "custom_enabled": false
+  "custom_enabled": true
 }

@@ -243,7 +243,17 @@ function sendWhatsAppTo(phone, text) {
   const p = String(phone || '').replace(/[^\d]/g, '').replace(/^0/, '20').replace(/^(?!20)/, '20');
   if (!/^201[0125]\d{8}$/.test(p)) return false;
   const r = UrlFetchApp.fetch('https://api.textmebot.com/send.php?recipient=%2B' + p + '&apikey=' + encodeURIComponent(key) + '&text=' + encodeURIComponent(text), { muteHttpExceptions: true });
-  return r.getResponseCode() < 300;
+  const body = String(r.getContentText() || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+  console.log('TextMeBot to +' + p + ': HTTP ' + r.getResponseCode() + ' ' + body);
+  return r.getResponseCode() < 300 && !/error|invalid|not (allowed|registered|connected)|limit|expired/i.test(body);
+}
+/** Run from the editor: sends a test WhatsApp to the phone of the newest order and logs TextMeBot's answer. */
+function testCustomerWhatsApp() {
+  const sh = sheet(book(), 'Orders', ORDERS_HEADERS), v = sh.getRange(sh.getLastRow(), 1, 1, ORDERS_HEADERS.length).getValues()[0];
+  const phone = String(v[C['Phone']]).replace(/^'/, '');
+  console.log('Newest order ' + v[C['Order ID']] + ' – phone ' + phone + ' – TEXTMEBOT_KEY set: ' + !!cfg('TEXTMEBOT_KEY'));
+  const ok = sendWhatsAppTo(phone, '✅ تجربة من NAY ART: رسالة تأكيد الأوردر للعميل شغالة.');
+  console.log('sent ok: ' + ok);
 }
 function messageCustomer(o, hasCustom) {
   if (String(cfg('CUSTOMER_WHATSAPP') || 'on').toLowerCase() === 'off') return;

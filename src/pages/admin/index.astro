@@ -914,7 +914,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     const cxOpts = (v) => [['none', 'أعلى تفاصيل'], ['level1', 'تفاصيل عالية'], ['level2', 'متوسط'], ['level3', 'بسيط'], ['simplest', 'أبسط (مساحات كبيرة)']].map(([k, l]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${l}</option>`).join('');
     function designMsg(o) {
       const first = (o.name || '').split(' ')[0];
-      return `أهلًا ${first} 🤍\nتصميم لوحتك جاهز 🎨 (أوردر رقم ${o.id})\nهبعتلك دلوقتي صورة المعاينة. لو عجبتك ابعتلنا «موافق» ونبدأ الطباعة والتجهيز على طول، ولو حابب أي تعديل قولنا.`;
+      return `أهلًا ${first} 🤍\nتصميم لوحتك جاهز 🎨 (أوردر رقم ${o.id})\nهبعتلك دلوقتي صورة المعاينة. لو عجبتك ابعتلنا «موافق» ونبدأ التنفيذ على طول (اللوحة بتاخد 10 أيام تنفيذ)، ولو حابب أي تعديل قولنا.`;
     }
     function designHTML(o, paid) {
       const jobs = o.design || [], st = dState(o);
@@ -971,8 +971,8 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     function confirmMsg(o) {
       const first = (o.name || '').split(' ')[0];
       return `أهلًا ${first}،\nتم تأكيد أوردر حضرتك بنجاح 🤍\nرقم الأوردر: ${o.id}\n\nشكرًا لاختيارك NAY ART 🎨\n\n` +
-        (isCustom(o) ? 'هنبعتلك تصميم لوحتك هنا للموافقة خلال 48 ساعة، وبعد موافقتك بنبدأ التنفيذ والشحن.\n\n' : '') +
-        `ميعاد التوصيل المتوقع:\n📍 القاهرة والجيزة: من 3 لـ 5 أيام.\n📍 المحافظات: خلال أسبوع.\n\nنتمنى تستمتع بتجربتك معانا ✨`;
+        (isCustom(o) ? 'هنبعتلك تصميم لوحتك هنا للموافقة خلال 48 ساعة، وبعد موافقتك اللوحة بتاخد 10 أيام تنفيذ، وبعدها بنشحنها لحضرتك.\n\n' : '') +
+        `ميعاد التوصيل المتوقع${isCustom(o) ? ' بعد التنفيذ' : ''}:\n📍 القاهرة والجيزة: من 3 لـ 5 أيام.\n📍 المحافظات: خلال أسبوع.\n\nنتمنى تستمتع بتجربتك معانا ✨`;
     }
     function fillPanelHeader(o) { $('pTitle').innerHTML = `طلب <span class="num">${esc(o.id)}</span>`; }
     function openPanel(id) {

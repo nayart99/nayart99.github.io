@@ -209,6 +209,30 @@ html[lang="ar"] .pop h4{font-family:var(--ar-display);font-weight:600;line-heigh
 html[lang="ar"] .pop .price b{font-family:var(--ar-display)}
 .pop .btn.line{color:var(--paper);border-color:rgba(251,250,247,.4);background:transparent}
 .pop .x{position:absolute;top:10px;inset-inline-end:10px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(251,250,247,.25);background:transparent;color:var(--paper);cursor:pointer}
+.ad{position:fixed;inset:0;z-index:190;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:rgba(20,11,13,.74);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+.ad.on{opacity:1;visibility:visible}
+html.ad-open{overflow:hidden}
+.ad-card{position:relative;width:min(430px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:var(--bf);color:var(--paper);border-radius:24px;box-shadow:0 30px 70px rgba(0,0,0,.45);transform:translateY(26px) scale(.97);transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.ad.on .ad-card{transform:none}
+.ad-fig{margin:0}
+.ad-fig img{display:block;width:100%;height:auto;aspect-ratio:4/5;max-height:50dvh;object-fit:cover;object-position:center 30%}
+.ad-body{padding:18px 20px 20px;display:grid;gap:11px}
+.ad-body .tag{justify-self:start}
+.ad h4{margin:0;font:500 1.55rem/1.2 var(--display);color:var(--paper)}
+html[lang="ar"] .ad h4{font-family:var(--ar-display);font-weight:600;line-height:1.5}
+.ad ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px}
+.ad li{display:flex;gap:8px;align-items:center;font-size:.92rem;color:rgba(251,250,247,.82)}
+.ad li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);flex:none}
+.ad-price{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(251,250,247,.12)}
+.ad-price b{font:500 2.1rem/1 var(--display);color:var(--gold)}
+html[lang="ar"] .ad-price b{font-family:var(--ar-display)}
+.ad-ends{font-size:.82rem;color:rgba(251,250,247,.6)}
+.ad-book{width:100%;min-height:56px;font-size:.95rem}
+.ad-skip{justify-self:center;background:none;border:0;padding:4px 8px;color:rgba(251,250,247,.7);font:inherit;font-size:.88rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ad .x{position:absolute;top:12px;right:12px;z-index:2;width:38px;height:38px;border-radius:50%;border:0;background:rgba(20,11,13,.6);color:#fff;font-size:1rem;cursor:pointer}
+.ad .x:focus-visible,.ad-skip:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-width:600px){.ad-fig img{max-height:36dvh}.ad-body{padding:14px 16px 16px;gap:9px}.ad h4{font-size:1.3rem}html[lang="ar"] .ad h4{line-height:1.4}.ad li{font-size:.85rem}.ad-price b{font-size:1.75rem}.ad-book{min-height:52px}}
+@media (prefers-reduced-motion:reduce){.ad,.ad-card{transition:none}}
 .pop .btn{width:100%;min-height:46px}
 @media (max-width:640px){.pop{width:auto;inset-inline-end:max(18px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px))}.bubble{display:none}}
 
@@ -528,7 +552,7 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
 <script>
 (function(){
   var h=document.documentElement, reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if(reduce) return;
+  if(reduce || /[?&]offer=/.test(location.search)){ var s=document.getElementById("splash"); if(s) s.remove(); return; }
   h.classList.add("intro-on","intro-run");
   function end(){ h.classList.remove("intro-on"); var el=document.getElementById("splash"); if(el) el.remove(); }
   setTimeout(end,3750);
@@ -551,7 +575,7 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
 </header>
 
 <main id="top">
-  <section class="hero">
+  <section class="hero" id="hero">
     <figure class="slide rec on"><img src="hero-reception.webp" alt="ÉLEVÉ reception desk under the clinic sign"></figure>
     <div class="copy">
       <h1 data-i18n="hero.title"></h1>
@@ -884,12 +908,20 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
   <a class="bubble wa-link" href="#" target="_blank" rel="noopener"><b data-i18n="fab.t"></b><span data-i18n="fab.s"></span></a>
 </div>
 
-<div class="pop" id="pop" role="dialog" aria-labelledby="pop-t" aria-hidden="true">
-  <button class="x" type="button" id="pop-x" aria-label="Close">✕</button>
-  <span class="tag"><i></i><span data-i18n="offer.tag"></span></span>
-  <h4 id="pop-t" data-i18n="bf.popT"></h4>
-  <p data-i18n="bf.popP"></p>
-  <div class="price"><b data-i18n="bf.price"></b><s></s></div>
+<div class="ad" id="pop" role="dialog" aria-modal="true" aria-labelledby="pop-t" aria-hidden="true">
+  <div class="ad-card">
+    <button class="x" type="button" id="pop-x" aria-label="Close">✕</button>
+    <figure class="ad-fig"><img id="pop-img" src="bf-aesthetic.webp" alt="" width="800" height="1000" decoding="async"></figure>
+    <div class="ad-body">
+      <span class="tag"><i></i><span data-i18n="offer.tag"></span></span>
+      <h4 id="pop-t"></h4>
+      <ul id="pop-items"></ul>
+      <div class="ad-price"><b id="pop-price"></b><span class="ad-ends" id="pop-ends"></span></div>
+      <a class="btn ad-book" id="pop-book" href="#" target="_blank" rel="noopener"><svg class="wa"><use href="#wa"/></svg><span data-i18n="ad.book"></span></a>
+      <button class="ad-skip" type="button" id="pop-see" data-i18n="ad.skip"></button>
+    </div>
+  </div>
+</div>
   <a class="btn" id="pop-see" href="#offer" data-i18n="bf.see"></a>
 </div>
   <a class="btn o-link" href="#" target="_blank" rel="noopener"><svg class="wa"><use href="#wa"/></svg><span data-i18n="offer.cta"></span></a>
@@ -914,6 +946,59 @@ html[lang="ar"] .facts dt{font-family:var(--ar-body);letter-spacing:0;font-size:
 </div>
 
 <script>
+
+/* ===================== Analytics =====================
+   Fill these two IDs to start collecting data. Until then the site records nothing.
+   GA4:     analytics.google.com → Admin → Data streams → Measurement ID (G-XXXXXXX)
+   Clarity: clarity.microsoft.com → Settings → Overview → Project ID            */
+const GA_ID = "";
+const CLARITY_ID = "";
+
+(function(){
+  const params = new URLSearchParams(location.search);
+  const ref = document.referrer || "", ua = navigator.userAgent || "";
+  // Where the visitor came from: UTM tag first, then the app's in-app browser, then the referring site
+  function detectSource(){
+    const u = (params.get("utm_source")||"").toLowerCase();
+    if (u) return u;
+    if (/Instagram/i.test(ua)) return "instagram";
+    if (/FBAN|FBAV|FB_IAB|FBIOS/i.test(ua)) return "facebook";
+    if (/Snapchat/i.test(ua)) return "snapchat";
+    if (/TikTok|musical_ly|BytedanceWebview/i.test(ua)) return "tiktok";
+    if (/WhatsApp/i.test(ua)) return "whatsapp";
+    const h = (()=>{ try{ return new URL(ref).hostname.replace(/^www\./,""); }catch(e){ return ""; } })();
+    if (!h || h === location.hostname) return "direct";
+    if (/facebook\.com|fb\.com|fb\.me/.test(h)) return "facebook";
+    if (/instagram\.com/.test(h)) return "instagram";
+    if (/snapchat\.com|snap\.com/.test(h)) return "snapchat";
+    if (/tiktok\.com/.test(h)) return "tiktok";
+    if (/google\./.test(h)) return "google";
+    if (/whatsapp|wa\.me/.test(h)) return "whatsapp";
+    return h;
+  }
+  let source = detectSource();
+  try{ const saved = sessionStorage.getItem("eleve-src"); if (saved && source==="direct") source = saved; else sessionStorage.setItem("eleve-src", source); }catch(e){}
+  window.ELEVE_SOURCE = source;
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function(){ dataLayer.push(arguments); };
+  if (GA_ID){
+    const s = document.createElement("script"); s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id="+GA_ID; document.head.appendChild(s);
+    gtag("js", new Date());
+    gtag("config", GA_ID, { visitor_source: source });
+    gtag("set", "user_properties", { visitor_source: source });
+  }
+  if (CLARITY_ID){
+    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script",CLARITY_ID);
+    clarity("set","visitor_source",source);
+  }
+  window.track = function(name, p){
+    p = Object.assign({ visitor_source: source, lang: document.documentElement.lang }, p||{});
+    if (GA_ID) gtag("event", name, p);
+    if (CLARITY_ID && window.clarity){ clarity("event", name); }
+  };
+})();
+
 /* ===== Replace before launch ===== */
 const WHATSAPP_NUMBER = "201037343514";
 
@@ -921,6 +1006,7 @@ const WHATSAPP_NUMBER = "201037343514";
 const OFFER = {
   active: true,
   ends: "2026-11-30T23:59:00+02:00",      // countdown end; the offers hide themselves after this
+  popupOffer: "aesthetic",               // offer shown full-screen when someone opens the site ("aesthetic" or "dental")
   popupDelaySeconds: 15,                  // the offer message slides in after this, or as soon as the visitor scrolls past the top section
   items: {
     dental:   { en:{ title:"Teeth cleaning + Whitening", items:["Professional teeth cleaning","In-clinic teeth whitening"], price:"1,500 EGP" },
@@ -950,7 +1036,7 @@ en:{
  "sh.book":"Book this on WhatsApp","sh.note":"Typical figures. Your doctor confirms your plan at the consultation.",
  "dept.dental":"Dental","dept.aesthetic":"Aesthetic","brands":"Brands:",
  "msg":"Hello ÉLEVÉ, I'd like to book","msgGen":"Hello ÉLEVÉ, I'd like to book an appointment.",
- "offer.tag":"Black Friday","offer.cta":"Book this offer","offer.msg":"Hello ÉLEVÉ, I'd like to book the Black Friday offer","offer.ended":"Offer ended","bf.t":"Black Friday <em>offers</em>","bf.p":"One offer from each clinic, for a limited time only.","bf.only":"only","bf.popT":"Black Friday at ÉLEVÉ","bf.popP":"Teeth cleaning + whitening, or a full facial package.","bf.price":"1,500 EGP each","bf.see":"See the offers",
+ "offer.tag":"Black Friday","ad.book":"Book now","ad.skip":"Continue to the website","ad.ends":"Offer ends","offer.cta":"Book this offer","offer.msg":"Hello ÉLEVÉ, I'd like to book the Black Friday offer","offer.ended":"Offer ended","bf.t":"Black Friday <em>offers</em>","bf.p":"One offer from each clinic, for a limited time only.","bf.only":"only","bf.popT":"Black Friday at ÉLEVÉ","bf.popP":"Teeth cleaning + whitening, or a full facial package.","bf.price":"1,500 EGP each","bf.see":"See the offers",
  "d":"Days","h":"Hrs","m":"Min","s":"Sec",
  "fab.t":"Questions? Chat with us","fab.s":"We reply on WhatsApp",
  "book.alt":"Prefer to chat?","book.altLink":"Message us on WhatsApp",
@@ -981,7 +1067,7 @@ ar:{
  "sh.book":"احجز الخدمة دي على واتساب","sh.note":"أرقام تقريبية. الطبيب بيأكد خطتك في الاستشارة.",
  "dept.dental":"الأسنان","dept.aesthetic":"التجميل","brands":"الخامات:",
  "msg":"مرحبًا إيليفيه، أحب أحجز","msgGen":"مرحبًا إيليفيه، أحب أحجز معاد.",
- "offer.tag":"بلاك فرايداي","offer.cta":"احجز العرض","offer.msg":"مرحبًا إيليفيه، أحب أحجز عرض البلاك فرايداي","bf.t":"عروض <em>البلاك فرايداي</em>","bf.p":"عرض من كل عيادة، لفترة محدودة بس.","bf.only":"فقط","bf.popT":"بلاك فرايداي في إيليفيه","bf.popP":"تنظيف وتبييض للأسنان، أو باكدج كاملة للبشرة.","bf.price":"١٬٥٠٠ جنيه للعرض","bf.see":"شوف العروض","offer.ended":"انتهى العرض",
+ "offer.tag":"بلاك فرايداي","ad.book":"احجز الآن","ad.skip":"كمّل على الموقع","ad.ends":"العرض لحد","offer.cta":"احجز العرض","offer.msg":"مرحبًا إيليفيه، أحب أحجز عرض البلاك فرايداي","bf.t":"عروض <em>البلاك فرايداي</em>","bf.p":"عرض من كل عيادة، لفترة محدودة بس.","bf.only":"فقط","bf.popT":"بلاك فرايداي في إيليفيه","bf.popP":"تنظيف وتبييض للأسنان، أو باكدج كاملة للبشرة.","bf.price":"١٬٥٠٠ جنيه للعرض","bf.see":"شوف العروض","offer.ended":"انتهى العرض",
  "d":"يوم","h":"ساعة","m":"دقيقة","s":"ثانية",
  "fab.t":"عندك سؤال؟ كلمنا","fab.s":"بنرد على واتساب",
  "book.alt":"تحب تتكلم معانا مباشرة؟","book.altLink":"ابعت لنا على واتساب",
@@ -1076,6 +1162,9 @@ const DOC_SECONDS = 7;
 const IMG_V = "20261122d";   // bump this whenever a doctor photo changes, so phones load the new one
 
 let lang = "en", current = null;
+const QS = new URLSearchParams(location.search);
+(function(){ const q=QS.get("lang"); let s=null; try{s=localStorage.getItem("eleve-lang")}catch(e){}
+  if (q==="ar"||q==="en") lang=q; else if (s==="ar"||s==="en") lang=s; })();
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const t = k => T[lang][k] ?? k;
 const L = a => a[lang==="en"?0:1];
@@ -1120,6 +1209,7 @@ function renderOffer(){
     card.querySelector("img").alt=`Black Friday: ${OFFER.items[k].en.title}, ${OFFER.items[k].en.price}`;
   });
   $("#offer").hidden = !offerLive();
+  renderPop();
   tick();
 }
 function tick(){
@@ -1131,15 +1221,41 @@ function tick(){
   el.innerHTML = [[d,"d"],[h,"h"],[m,"m"],[sec,"s"]].map(([v,k])=>`<span><b>${p(v)}</b><small>${t(k)}</small></span>`).join("");
 }
 setInterval(tick,1000);
-function showPop(){ $("#pop").classList.add("on"); $("#pop").setAttribute("aria-hidden","false"); }
-function hidePop(){ $("#pop").classList.remove("on"); $("#pop").setAttribute("aria-hidden","true"); try{sessionStorage.setItem("eleve-pop","1")}catch(e){} }
+/* full-screen offer ad: shows on arrival; ?offer=aesthetic|dental picks the offer and skips the intro */
+const FROM_AD = !!OFFER.items[QS.get("offer")];
+const POP_KEY = FROM_AD ? QS.get("offer") : OFFER.popupOffer;
+function renderPop(){
+  const o = OFFER.items[POP_KEY][lang];
+  const img = $("#pop-img");
+  if (!img.src.endsWith(`bf-${POP_KEY}.webp`)) img.src = `bf-${POP_KEY}.webp`;
+  img.alt = `Black Friday: ${OFFER.items[POP_KEY].en.title}, ${OFFER.items[POP_KEY].en.price}`;
+  $("#pop-t").textContent = o.title;
+  $("#pop-items").innerHTML = o.items.map(x=>`<li>${x}</li>`).join("");
+  $("#pop-price").textContent = o.price;
+  $("#pop-book").href = wa(`${t("offer.msg")}: ${o.title} (${o.price})`);
+  const end = new Date(OFFER.ends);
+  $("#pop-ends").textContent = `${t("ad.ends")} ${end.toLocaleDateString(lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"long",timeZone:"Africa/Cairo"})}`;
+}
+let popLastFocus = null;
+function showPop(){
+  const p=$("#pop"); popLastFocus=document.activeElement;
+  p.classList.add("on"); p.setAttribute("aria-hidden","false"); document.documentElement.classList.add("ad-open");
+  setTimeout(()=>{ try{ $("#pop-book").focus({preventScroll:true}); }catch(e){} }, 60);
+}
+function hidePop(){
+  const p=$("#pop"); if(!p.classList.contains("on")) return;
+  p.classList.remove("on"); p.setAttribute("aria-hidden","true"); document.documentElement.classList.remove("ad-open");
+  try{sessionStorage.setItem("eleve-pop","1")}catch(e){}
+  if (popLastFocus && popLastFocus.focus) try{ popLastFocus.focus({preventScroll:true}); }catch(e){}
+}
 $("#pop-x").addEventListener("click", hidePop);
 $("#pop-see").addEventListener("click", hidePop);
+$("#pop").addEventListener("click", e=>{ if (e.target.id==="pop") hidePop(); });
+addEventListener("keydown", e=>{ if (e.key==="Escape") hidePop(); });
 (function(){ let seen=false; try{seen=sessionStorage.getItem("eleve-pop")==="1"}catch(e){}
-  if (!offerLive() || seen) return;
-  let shown=false; const once=()=>{ if(shown) return; shown=true; removeEventListener("scroll",onS); showPop(); };
-  const onS=()=>{ const h=document.querySelector(".hero"); if(h && scrollY > h.offsetHeight*.7) once(); };
-  addEventListener("scroll",onS,{passive:true}); setTimeout(once, OFFER.popupDelaySeconds*1000); })();
+  if (!offerLive() || (seen && !FROM_AD)) return;
+  const wait = document.getElementById("splash") ? 3900 : 350;   // after the logo intro, or right away
+  setTimeout(showPop, wait); })();
 
 /* form */
 function fillForm(){
@@ -1239,6 +1355,75 @@ document.addEventListener("input", e=>{ if(e.target.matches(".ba input")) e.targ
   sw.dataset.on="dental"; })();
 
 try{ const s=localStorage.getItem("eleve-lang"); if(s==="ar"||s==="en") lang=s; }catch(e){}
+
+/* ---- what visitors do ---- */
+(function(){
+  // 1. How far down the page each visitor gets
+  const order = ["hero","offer","dental","aesthetic","doctors","results","reviews","payment","book"];
+  const seen = new Set();
+  if ("IntersectionObserver" in window){
+    const io = new IntersectionObserver(es=>es.forEach(en=>{
+      if (!en.isIntersecting) return; const id = en.target.id; if (seen.has(id)) return; seen.add(id);
+      track("section_view", { section: id, step: order.indexOf(id)+1 });
+      if (id==="offer") track("offer_view", {});
+      if (id==="book") track("booking_section_view", {});
+    }), { threshold: .35 });
+    order.forEach(id=>{ const el=document.getElementById(id); if (el) io.observe(el); });
+  }
+  const marks=[25,50,75,100], hit=new Set();
+  addEventListener("scroll", ()=>{
+    const h=document.documentElement, pct=Math.round((scrollY+innerHeight)/h.scrollHeight*100);
+    marks.forEach(m=>{ if (pct>=m && !hit.has(m)){ hit.add(m); track("scroll_depth", { percent: m }); } });
+  }, { passive:true });
+
+  // 2. Every WhatsApp tap, with the button it came from
+  function waLocation(a){
+    if (a.closest(".bf")) return "offer_"+a.closest(".bf").dataset.offer;
+    if (a.closest("#pop")) return "offer_popup";
+    if (a.closest(".fab")) return "floating_button";
+    if (a.closest(".hero")) return "hero";
+    if (a.id==="sh-book") return "service_"+((typeof current!=="undefined" && current)||"");
+    if (a.id==="f-wa") return "booking_form";
+    if (a.closest("header")) return "header";
+    if (a.closest(".info")) return "contact_info";
+    if (a.closest("#book")) return "booking_section";
+    return "other";
+  }
+  document.addEventListener("click", e=>{
+    const a = e.target.closest("a");
+    if (a){
+      const href = a.getAttribute("href")||"";
+      if (/wa\.me/.test(a.href)){
+        const where = waLocation(a);
+        track("whatsapp_click", { button: where });
+        if (where.startsWith("offer")) track("offer_click", { offer: where });
+        if (where==="booking_form") track("generate_lead", { method: "form_whatsapp" });
+      }
+      else if (/maps\.google|google\.com\/maps/.test(a.href)) track("map_click", {});
+      else if (/instagram\.com/.test(a.href)) track("social_click", { network: "instagram" });
+      else if (/facebook\.com/.test(a.href)) track("social_click", { network: "facebook" });
+      else if (href==="#book" || href==="#offer") track("nav_click", { target: href.slice(1), from: a.closest("section,header,.pop")?.id || a.closest("header")?"header":"" });
+    }
+    const svc = e.target.closest("[data-svc]"); if (svc) track("service_open", { service: svc.dataset.svc });
+    const doc = e.target.closest("[data-doc]"); if (doc) track("doctor_view", { doctor: DOCTORS[+doc.dataset.doc]?.img });
+    const sw = e.target.closest("[data-sw]"); if (sw) track("results_switch", { clinic: sw.dataset.sw });
+    if (e.target.closest("#lang-btn")) track("language_switch", { to: document.documentElement.lang==="en"?"ar":"en" });
+    if (e.target.closest("#pop-x")) track("offer_popup_close", {});
+  }, true);
+
+  // 3. The booking form: started, completed
+  let started=false;
+  document.getElementById("bk")?.addEventListener("focusin", ()=>{ if(!started){ started=true; track("form_start", {}); } });
+  document.getElementById("bk")?.addEventListener("submit", ()=>{
+    setTimeout(()=>{ if (!document.getElementById("f-done").hidden){
+      const sel=document.getElementById("f-svc"); track("form_submit", { service: sel.value, contact: document.querySelector('input[name="contact"]:checked')?.value });
+    }}, 50);
+  });
+  // offer popup shown
+  const pop=document.getElementById("pop");
+  if (pop) new MutationObserver(()=>{ if (pop.classList.contains("on")) track("offer_popup_view", {}); }).observe(pop,{attributes:true,attributeFilter:["class"]});
+})();
+
 render();
 </script>
 

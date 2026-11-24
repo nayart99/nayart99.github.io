@@ -769,12 +769,16 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     /* ---------- website visits ---------- */
     const visitCache = {};
     const DEV = { mobile: 'موبايل', desktop: 'كمبيوتر', tablet: 'تابلت' };
+    /* one English name per painting, whatever language the customer ordered in (best sellers, most viewed) */
+    const CUSTOM_EN = 'Custom Canvas';
+    const NAME_EN = {}; CFG.allProducts.forEach((p) => { const en = (p.name && (p.name.en || p.name.ar)) || p.slug; [p.name && p.name.en, p.name && p.name.ar, p.slug].filter(Boolean).forEach((n) => NAME_EN[String(n).trim().toLowerCase()] = en); });
+    const enName = (n) => NAME_EN[String(n || '').trim().toLowerCase()] || String(n || '').trim();
     function pageName(path) {
       const seg = String(path || '').split('/').filter(Boolean), slug = seg[seg.length - 1] || '';
-      if (!slug || slug === 'ar' || slug === 'en') return 'الصفحة الرئيسية';
-      if (slug === 'custom') return 'لوحة من صورتك';
+      if (!slug || slug === 'ar' || slug === 'en') return 'Home page';
+      if (slug === 'custom') return CUSTOM_EN;
       const p = CFG.allProducts.find((x) => x.slug === slug);
-      return p ? (p.name.ar || p.name.en) : decodeURIComponent(path);
+      return p ? (p.name.en || p.name.ar) : decodeURIComponent(path);
     }
     async function renderVisits(b, live) {
       const key = aRange, pct = (a, c) => c ? Math.round((a / c) * 1000) / 10 : 0;
@@ -867,8 +871,8 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       $('chOrd').innerHTML = colChart(buckets.map((x) => ({ label: fmtB(x.t), v: x.n, txt: x.n + ' طلب · ' + money(x.rev) })), num);
 
       // products (by item)
-      const prod = {}; live.forEach((o) => o.items.forEach((i) => { const key = i.custom ? 'لوحة من صورة العميل' : i.name; (prod[key] = prod[key] || [0, 0]); prod[key][0] += Number(i.line || 0); prod[key][1] += Number(i.qty || 0); }));
-      $('bProducts').innerHTML = barList(topN(Object.entries(prod).map(([k2, [v, q]]) => [k2, v, q]).sort((a, c) => c[1] - a[1]), 8), (v, q) => `${money(v)} · ${q} قطعة`);
+      const prod = {}; live.forEach((o) => o.items.forEach((i) => { const key = i.custom ? CUSTOM_EN : enName(i.name); (prod[key] = prod[key] || [0, 0]); prod[key][0] += Number(i.line || 0); prod[key][1] += Number(i.qty || 0); }));
+      $('bProducts').innerHTML = barList(topN(Object.entries(prod).map(([k2, [v, q]]) => [k2, v, q]).sort((a, c) => c[1] - a[1]), 12), (v, q) => `${money(v)} · ${q} قطعة`);
       $('bCities').innerHTML = barList(topN(group(live, (o) => o.city, () => 1), 8), (v) => `${v} طلب`);
       const src = group(live, (o) => srcLabel(o.source), () => 1), srcRev = Object.fromEntries(group(live, (o) => srcLabel(o.source), (o) => Number(o.total || 0)).map((e) => [e[0], e[1]]));
       $('bSources').innerHTML = barList(src.map((e) => [e[0], e[1], srcRev[e[0]]]), (v, r) => `${v} طلب · ${money(r)}`);
@@ -895,7 +899,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       const byM = {}; all.forEach((o) => { const m = (o.date || '').slice(0, 7); (byM[m] = byM[m] || { n: 0, s: 0 }); byM[m].n++; byM[m].s += Number(o.total || 0); });
       const ms = Object.keys(byM).sort().reverse().slice(0, 12);
       $('mBody').innerHTML = ms.length ? ms.map((m) => { const dd = new Date(m + '-01T00:00:00'); return `<tr><td>${dd.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</td><td class="num">${byM[m].n}</td><td class="num">${money(byM[m].s)}</td><td class="num">${money(Math.round(byM[m].s / byM[m].n))}</td></tr>`; }).join('') : '<tr><td colspan="4" style="color:var(--soft)">لا توجد مبيعات بعد</td></tr>';
-      const tp = {}; all.forEach((o) => o.items.forEach((i) => { const key = i.custom ? 'لوحة من صورة العميل' : i.name; (tp[key] = tp[key] || { q: 0, s: 0 }); tp[key].q += Number(i.qty || 0); tp[key].s += Number(i.line || 0); }));
+      const tp = {}; all.forEach((o) => o.items.forEach((i) => { const key = i.custom ? CUSTOM_EN : enName(i.name); (tp[key] = tp[key] || { q: 0, s: 0 }); tp[key].q += Number(i.qty || 0); tp[key].s += Number(i.line || 0); }));
       const tps = Object.entries(tp).sort((a, c) => c[1].s - a[1].s).slice(0, 8);
       $('tBody').innerHTML = tps.length ? tps.map(([k2, v]) => `<tr><td>${esc(k2)}</td><td class="num">${v.q}</td><td class="num">${money(v.s)}</td></tr>`).join('') : '<tr><td colspan="3" style="color:var(--soft)">—</td></tr>';
     }

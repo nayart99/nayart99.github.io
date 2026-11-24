@@ -245,7 +245,7 @@ function sendWhatsAppTo(phone, text) {
   const r = UrlFetchApp.fetch('https://api.textmebot.com/send.php?recipient=%2B' + p + '&apikey=' + encodeURIComponent(key) + '&text=' + encodeURIComponent(text), { muteHttpExceptions: true });
   const body = String(r.getContentText() || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
   console.log('TextMeBot to +' + p + ': HTTP ' + r.getResponseCode() + ' ' + body);
-  return r.getResponseCode() < 300 && !/error|invalid|not (allowed|registered|connected)|limit|expired/i.test(body);
+  return r.getResponseCode() < 300 && !/error|invalid|not (allowed|registered|connected)|limit|expired|trial period is over|subscribe/i.test(body);
 }
 /** Run from the editor: sends a test WhatsApp to the phone of the newest order and logs TextMeBot's answer. */
 function testCustomerWhatsApp() {

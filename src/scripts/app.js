@@ -825,7 +825,7 @@ if (payPage) {
 
   // popup once per visit, not on the painting's own page, the payment page or while checking out
   let seen = false; try { seen = sessionStorage.getItem('nay-deal-seen') === OFFER.until; } catch {}
-  const onDealPage = pdp && pdp.dataset.slug === OFFER.slug, onPay = !!$('payBox');
+  const onDealPage = pdp && pdp.dataset.slug === OFFER.slug, onPay = !!$('payBox') || !!$('orderBox');
   if (seen || onDealPage || onPay) return;
   setTimeout(() => {
     if (Date.now() >= end || $('drawer')?.classList.contains('on')) return;
@@ -845,3 +845,53 @@ if (payPage) {
     d.querySelector('#dpAdd').focus({ preventScroll: true });
   }, 1500);
 })();
+
+
+/* ---------- /o/ : the customer confirms, changes the address or cancels (link from the WhatsApp message) ---------- */
+const orderBox = $('orderBox');
+if (orderBox) {
+  const q = new URLSearchParams(location.search), id = q.get('id') || '', k = q.get('k') || '';
+  const govs = JSON.parse(orderBox.dataset.govs || '[]');
+  const wa = () => `<a class="btn wa-btn" href="${waLink((lang === 'ar' ? 'بخصوص طلبي رقم ' : 'About my order ') + id)}" target="_blank" rel="noopener">${tr('oa_wa')}</a>`;
+  const call = async (body) => { const r = await fetch(S.orders_endpoint, { method: 'POST', body: JSON.stringify({ id, k, ...body }) }); return r.json(); };
+  let o = null;
+  const done = (icon, title, p, extra = '') => { orderBox.innerHTML = `<div class="pay-icon ${icon === '✓' ? 'ok' : icon === '!' ? 'fail' : ''}" style="align-self:center">${icon}</div><h1>${title}</h1><p style="text-align:center;align-self:center">${p}</p>${extra}<div class="pay-actions">${wa()}<a class="btn" href="${DATA.base}#shop">${tr('oa_shop')}</a></div>`; };
+  const summary = () => `<div class="oa-sum"><div class="row"><span>${tr('oa_order')}</span><b>${escapeHTML(o.id)}</b></div>${o.items.map((i) => `<div class="row"><span>${escapeHTML(i.name)}${i.option ? ' (' + escapeHTML(cmL(i.option)) + ')' : ''} × ${i.qty}</span><span class="price">${money(i.line)}</span></div>`).join('')}
+    <div class="row"><span>${tr('oa_delivery')}</span><span class="price">${money(o.delivery)}</span></div><div class="row tot"><span>${tr('oa_total')}</span><span class="price">${money(o.total)}</span></div>
+    <div class="row"><span>${tr('oa_payment')}</span><span>${escapeHTML(o.payment)}</span></div><div class="row"><span>${tr('oa_address')}</span><span>${escapeHTML(o.city)} – ${escapeHTML(o.address)}</span></div></div>`;
+  const main = (msg = '') => {
+    if (o.status === 'ملغي') return done('!', tr('oa_cancelled_t'), tr('oa_cancelled_p'));
+    if (o.locked) return done('i', tr('oa_title'), tr('oa_locked'), summary());
+    orderBox.innerHTML = `<h1>${escapeHTML(tr('oa_hi', { name: o.name }))}</h1><p style="align-self:center;text-align:center">${/أكّد/.test(o.reply) ? tr('oa_done_already') : tr('oa_q')}</p>${summary()}
+      <div class="oa-acts"><button class="btn btn-primary" id="oaConfirm">${tr('oa_confirm')}</button><button class="btn" id="oaEdit">${tr('oa_edit')}</button><button class="btn oa-cancel" id="oaCancel">${tr('oa_cancel')}</button></div>${msg ? `<p class="oa-err">${msg}</p>` : ''}`;
+    $('oaConfirm').onclick = () => act({ action: 'confirm' }, () => done('✓', tr('oa_confirmed_t'), tr('oa_confirmed_p'), summary()));
+    $('oaEdit').onclick = edit; $('oaCancel').onclick = cancel;
+  };
+  const act = async (body, ok) => {
+    orderBox.querySelectorAll('button').forEach((b) => b.disabled = true);
+    try { const j = await call({ type: 'order_action', ...body }); if (j.ok) { o = j.order; ok(); } else if (j.error === 'locked' || j.error === 'cancelled') { o.locked = j.error === 'locked'; if (j.error === 'cancelled') o.status = 'ملغي'; main(); } else if (j.error === 'address_required') edit(tr('oa_addr_err')); else main(tr('oa_err')); }
+    catch { main(tr('oa_err')); }
+  };
+  const edit = (msg) => {
+    orderBox.innerHTML = `<h1>${tr('oa_edit')}</h1><div class="oa-form"><label>${tr('oa_city')}<select id="oaCity">${govs.map((g) => `<option ${g === o.city ? 'selected' : ''}>${escapeHTML(g)}</option>`).join('')}${govs.includes(o.city) ? '' : `<option selected>${escapeHTML(o.city)}</option>`}</select></label>
+      <label>${tr('oa_addr')}<textarea id="oaAddr" rows="3" minlength="8">${escapeHTML(o.address)}</textarea></label><label>${tr('oa_notes')}<input id="oaNotes" maxlength="200"></label>
+      ${typeof msg === 'string' && msg ? `<p class="oa-err">${msg}</p>` : ''}<div class="oa-acts"><button class="btn btn-primary" id="oaSave">${tr('oa_save')}</button><button class="btn" id="oaBack">${tr('oa_back')}</button></div></div>`;
+    $('oaBack').onclick = () => main();
+    $('oaSave').onclick = () => { const address = $('oaAddr').value.trim(), city = $('oaCity').value; if (address.length < 8 || !city) return edit(tr('oa_addr_err')); act({ action: 'address', address, city, notes: $('oaNotes').value.trim() }, () => done('✓', tr('oa_edited_t'), tr('oa_edited_p'), summary())); };
+  };
+  const cancel = () => {
+    orderBox.innerHTML = `<h1>${tr('oa_cancel_q')}</h1>${summary()}<div class="oa-form"><label>${tr('oa_reason')}<input id="oaReason" maxlength="200"></label>
+      <div class="oa-acts"><button class="btn oa-cancel" id="oaYes">${tr('oa_cancel_yes')}</button><button class="btn btn-primary" id="oaKeep">${tr('oa_keep')}</button></div></div>`;
+    $('oaKeep').onclick = () => main();
+    $('oaYes').onclick = () => { const paid = o.paid; act({ action: 'cancel', reason: $('oaReason').value.trim() }, () => done('!', tr('oa_cancelled_t'), tr('oa_cancelled_p') + (paid ? '<br>' + tr('oa_paid_note') : ''))); };
+  };
+  (async () => {
+    if (!id || !k || !S.orders_endpoint) return done('!', tr('oa_title'), tr('oa_notfound'));
+    try {
+      const j = await call({ type: 'order_view' });
+      if (!j.ok) return done('!', tr('oa_title'), tr('oa_notfound'));
+      o = j.order; main();
+      const a = q.get('a'); if (!o.locked && o.status !== 'ملغي') { if (a === 'edit') edit(); else if (a === 'cancel') cancel(); else if (a === 'confirm' && !/أكّد/.test(o.reply)) $('oaConfirm').click(); }
+    } catch { done('!', tr('oa_title'), tr('oa_err')); }
+  })();
+}

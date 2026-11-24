@@ -1,0 +1,7 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import OrderAction from '../../components/views/OrderAction.astro';
+import { useT } from '../../lib/site.js';
+const t = useT('ar');
+---
+<Layout lang="ar" path="/o" title={t('oa_title')} noindex><OrderAction lang="ar" /></Layout>

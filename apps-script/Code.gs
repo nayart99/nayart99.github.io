@@ -37,6 +37,7 @@
 //   GITHUB_TOKEN        lets the dashboard change products on the website (sold out, hide, prices, new paintings).
 //                       Fine-grained GitHub token for nayart99/nayart99.github.io only: Contents read/write + Actions read.
 //   PAY_ALIASES         optional, comma separated: how our account appears on InstaPay receipts (IPA address, account name)
+//   CUSTOMER_WHATSAPP   off = don't send the customer the WhatsApp message with confirm / change address / cancel links (default on, needs TEXTMEBOT_KEY)
 //   COURIERS            shipping companies shown in the dashboard (JSON list, edited from the dashboard; default Run, Bosta, Taslem Mobasher)
 const DEFAULTS = {
   SHEET_ID: '1w8IP62nrk7jwDoGb30MAtT_0u2LG1TyIHg50WYt0GDk', // the NAY ART Orders spreadsheet
@@ -60,7 +61,7 @@ function cfg(k) { return PropertiesService.getScriptProperties().getProperty(k) 
 const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
 const CANCELLED = 'ملغي';
 
-const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session', 'Transfer proof', 'Transfer ref', 'Transfer hash', 'Proof check', 'Design jobs', 'Shipping company'];
+const ORDERS_HEADERS = ['Date', 'Order ID', 'Status', 'Name', 'Phone', 'Governorate', 'Address', 'Payment', 'Items', 'Units', 'Subtotal (EGP)', 'Delivery (EGP)', 'Total (EGP)', 'Custom photos', 'Customer notes', 'Internal notes', 'Last update', 'Language', 'Source', 'Medium', 'Campaign', 'Landing page', 'Referrer', 'Items JSON', 'Photo IDs', 'Thumbs', 'Additional phone', 'Delivery latitude', 'Delivery longitude', 'Delivery map', 'Payment status', 'Payment ref', 'Kashier session', 'Transfer proof', 'Transfer ref', 'Transfer hash', 'Proof check', 'Design jobs', 'Shipping company', 'Customer reply'];
 const C = {}; ORDERS_HEADERS.forEach(function (h, i) { C[h] = i; });
 const ITEMS_HEADERS = ['Date', 'Order ID', 'Month', 'Product', 'Option', 'Qty', 'Unit price (EGP)', 'Line total (EGP)', 'Designer notes'];
 const SUBS_HEADERS = ['Date', 'Email', 'Language', 'Source'];
@@ -81,6 +82,8 @@ function doPost(e) {
     if (data.type === 'preview_status') return json(previewStatus(data));
     if (data.type === 'admin') return json(admin(data));
     if (data.type === 'visit') return json(saveVisit(data));
+    if (data.type === 'order_view') return json(orderView(data));
+    if (data.type === 'order_action') return json(orderAction(data));
     return json({ ok: false, error: 'unknown type' });
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -208,6 +211,7 @@ function saveOrderRow(o, opt) {
     let startDesign = false;
     try { startDesign = hasCustom && !!proofCheck && proofCheck.auto === true && mimiReady() && cfg('MIMI_AUTO') !== 'no'; } catch (err) {}
     try { notifyOwner(o, itemText, hasCustom, links, proofLink, proofCheck, startDesign); } catch (err) { console.error('notify ' + o.id + ': ' + err); }
+    if (!opt.force) { try { messageCustomer(o, hasCustom); } catch (err) { console.error('customer msg ' + o.id + ': ' + err); } }
     if (o.payment === 'kashier' && !opt.force) {
       const pay = kashierSession(o.id, o.id, Number(o.total || 0), o.lang, (o.customer || {}).phone);
       if (pay.url) setOrderField(orders, o.id, { 'Kashier session': pay.sessionId });
@@ -217,6 +221,92 @@ function saveOrderRow(o, opt) {
   } finally {
     if (locked) lock.releaseLock();
   }
+}
+
+/* ---------------- WhatsApp to the customer: confirm / cancel / change the address ---------------- */
+// Right after an order is saved, the customer gets a WhatsApp message (TextMeBot, from the number connected to it)
+// with 3 links to nayarts.com/o/ — confirm the order, change the address, or cancel. The link carries a signed key,
+// so nobody can open or change someone else's order. Script property CUSTOMER_WHATSAPP = off stops these messages.
+function orderKey(id) {
+  const props = PropertiesService.getScriptProperties();
+  let secret = props.getProperty('ORDER_LINK_SECRET');
+  if (!secret) { secret = Utilities.getUuid() + Utilities.getUuid(); props.setProperty('ORDER_LINK_SECRET', secret); }
+  const sig = Utilities.computeHmacSha256Signature(String(id), secret);
+  return Utilities.base64EncodeWebSafe(sig).replace(/=+$/, '').slice(0, 22);
+}
+function orderLink(o, action) {
+  const base = String(cfg('SITE_URL') || 'https://nayarts.com').replace(/\/$/, '') + (o.lang === 'ar' ? '/ar' : '') + '/o/';
+  return base + '?id=' + encodeURIComponent(o.id) + '&k=' + orderKey(o.id) + (action ? '&a=' + action : '');
+}
+function sendWhatsAppTo(phone, text) {
+  const key = cfg('TEXTMEBOT_KEY'); if (!key) return false;
+  const p = String(phone || '').replace(/[^\d]/g, '').replace(/^0/, '20').replace(/^(?!20)/, '20');
+  if (!/^201[0125]\d{8}$/.test(p)) return false;
+  const r = UrlFetchApp.fetch('https://api.textmebot.com/send.php?recipient=%2B' + p + '&apikey=' + encodeURIComponent(key) + '&text=' + encodeURIComponent(text), { muteHttpExceptions: true });
+  return r.getResponseCode() < 300;
+}
+function messageCustomer(o, hasCustom) {
+  if (String(cfg('CUSTOMER_WHATSAPP') || 'on').toLowerCase() === 'off') return;
+  const c = o.customer || {}, ar = o.lang === 'ar', first = String(c.name || '').trim().split(/\s+/)[0] || '';
+  const money = function (n) { return ar ? Number(n || 0).toLocaleString('en-US') + ' ج.م' : 'EGP ' + Number(n || 0).toLocaleString('en-US'); };
+  const lines = (o.items || []).map(function (i) { return '• ' + i.name + ' (' + (i.display || i.option || '') + ') × ' + i.qty; }).join('\n');
+  const text = ar
+    ? 'أهلًا ' + first + ' 🤍\nوصلنا طلبك من NAY ART 🎨\nرقم الأوردر: ' + o.id + '\n\n' + lines + '\nالتوصيل: ' + money(o.delivery) + '\nالإجمالي: ' + money(o.total) + '\nالدفع: ' + (o.payment_label || o.payment) +
+      '\nالعنوان: ' + (c.city || '') + ' – ' + (c.address || '') + (hasCustom ? '\n\n🎨 هنبعتلك تصميم لوحتك هنا خلال 48 ساعة من تأكيد الدفع، واللوحة بتاخد 10 أيام تنفيذ بعد اعتمادك للتصميم.' : '') +
+      '\n\nمن فضلك أكّد الأوردر بضغطة واحدة:\n✅ تأكيد الأوردر:\n' + orderLink(o, 'confirm') + '\n\n✏️ تعديل العنوان:\n' + orderLink(o, 'edit') + '\n\n❌ إلغاء الأوردر:\n' + orderLink(o, 'cancel') + '\n\nشكرًا لاختيارك NAY ART ✨'
+    : 'Hi ' + first + ' 🤍\nWe received your NAY ART order 🎨\nOrder number: ' + o.id + '\n\n' + lines + '\nDelivery: ' + money(o.delivery) + '\nTotal: ' + money(o.total) + '\nPayment: ' + (o.payment_label || o.payment) +
+      '\nAddress: ' + (c.city || '') + ' – ' + (c.address || '') + (hasCustom ? '\n\n🎨 We will send your canvas design here within 48 hours of payment confirmation; production takes 10 days after you approve the design.' : '') +
+      '\n\nPlease confirm your order with one tap:\n✅ Confirm the order:\n' + orderLink(o, 'confirm') + '\n\n✏️ Change the address:\n' + orderLink(o, 'edit') + '\n\n❌ Cancel the order:\n' + orderLink(o, 'cancel') + '\n\nThank you for choosing NAY ART ✨';
+  sendWhatsAppTo(c.phone, text);
+}
+function orderForKey(d) {
+  const id = String(d.id || ''), k = String(d.k || '');
+  if (!/^NA-[\w-]{4,30}$/.test(id) || !k || k !== orderKey(id)) return null;
+  const sh = sheet(book(), 'Orders', ORDERS_HEADERS), r = findRow(sh, id);
+  if (!r) return null;
+  return { sh: sh, r: r, v: sh.getRange(r, 1, 1, ORDERS_HEADERS.length).getValues()[0] };
+}
+const LOCKED_FOR_CUSTOMER = ['قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
+function orderView(d) {
+  const f = orderForKey(d); if (!f) return { ok: false, error: 'not_found' };
+  const v = f.v; let items = []; try { items = JSON.parse(v[C['Items JSON']] || '[]'); } catch (e) {}
+  return { ok: true, order: { id: v[C['Order ID']], name: String(v[C['Name']] || '').split(' ')[0], status: v[C['Status']], city: v[C['Governorate']], address: v[C['Address']],
+    items: items.map(function (i) { return { name: i.name, option: i.option, qty: i.qty, line: i.line }; }), delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']], payment: v[C['Payment']],
+    paid: v[C['Payment status']] === 'Paid in full', reply: v[C['Customer reply']] || '', locked: LOCKED_FOR_CUSTOMER.indexOf(v[C['Status']]) >= 0 } };
+}
+function orderAction(d) {
+  const lock = LockService.getScriptLock(); lock.tryLock(20000);
+  try {
+    const f = orderForKey(d); if (!f) return { ok: false, error: 'not_found' };
+    const sh = f.sh, r = f.r, v = f.v, status = v[C['Status']], id = v[C['Order ID']];
+    const stamp = Utilities.formatDate(new Date(), 'Africa/Cairo', 'dd/MM HH:mm');
+    const note = function (line) { sh.getRange(r, C['Internal notes'] + 1).setValue((String(sh.getRange(r, C['Internal notes'] + 1).getValue() || '') + '\n' + line).trim().slice(0, 4000)); };
+    const set = function (h, val) { sh.getRange(r, C[h] + 1).setValue(val); };
+    const who = (v[C['Name']] || '') + ' – ' + String(v[C['Phone']]).replace(/^'/, '');
+    if (LOCKED_FOR_CUSTOMER.indexOf(status) >= 0) return { ok: false, error: status === 'ملغي' ? 'cancelled' : 'locked' };
+    if (d.action === 'confirm') {
+      set('Customer reply', '✅ أكّد ' + stamp);
+      if (status === 'جديد' && v[C['Payment']] && /cash|نقد|استلام/i.test(v[C['Payment']]) && !/voda|فودافون/i.test(v[C['Payment']])) set('Status', 'تم التأكيد');
+      note('✅ ' + stamp + ': العميل أكّد الأوردر من رسالة الواتساب');
+    } else if (d.action === 'cancel') {
+      set('Customer reply', '❌ ألغى ' + stamp); set('Status', 'ملغي');
+      const paid = v[C['Payment status']] === 'Paid in full';
+      note('❌ ' + stamp + ': العميل ألغى الأوردر من رسالة الواتساب' + (d.reason ? ' — السبب: ' + String(d.reason).slice(0, 300) : '') + (paid ? ' — ⚠️ الأوردر مدفوع: راجع الاسترداد' : ''));
+      sendWhatsApp('❌ العميل ألغى الأوردر ' + id + '\n' + who + (d.reason ? '\nالسبب: ' + String(d.reason).slice(0, 300) : '') + (paid ? '\n⚠️ الأوردر مدفوع — راجع الاسترداد' : '') + '\n' + DASHBOARD_URL);
+    } else if (d.action === 'address') {
+      const addr = String(d.address || '').replace(/\s+/g, ' ').trim().slice(0, 300), city = String(d.city || '').trim().slice(0, 60);
+      if (addr.length < 8 || !city) return { ok: false, error: 'address_required' };
+      const old = (v[C['Governorate']] || '') + ' – ' + (v[C['Address']] || '');
+      set('Governorate', city); set('Address', addr);
+      if (d.notes) set('Customer notes', (String(v[C['Customer notes']] || '') + ' | ' + String(d.notes).slice(0, 300)).replace(/^ \| /, ''));
+      const prev = String(v[C['Customer reply']] || '');
+      set('Customer reply', (/أكّد/.test(prev) ? prev.replace(/ · ✏️.*$/, '') + ' · ' : '') + '✏️ عدّل العنوان ' + stamp);
+      note('✏️ ' + stamp + ': العميل عدّل العنوان من رسالة الواتساب: ' + old + ' ← ' + city + ' – ' + addr);
+      sendWhatsApp('✏️ العميل عدّل عنوان الأوردر ' + id + '\n' + who + '\nالعنوان الجديد: ' + city + ' – ' + addr + '\n' + DASHBOARD_URL);
+    } else return { ok: false, error: 'bad_action' };
+    set('Last update', new Date());
+    return orderView(d);
+  } finally { try { lock.releaseLock(); } catch (e) {} }
 }
 
 /* ---------------- orders that could not be saved: never lose them ---------------- */
@@ -1023,7 +1113,7 @@ function listOrders(sh) {
       payment_status: v[C['Payment status']] || 'Unconfirmed',
       payment_ref: v[C['Payment ref']] || '',
       transfer_proof: v[C['Transfer proof']] || '', transfer_ref: v[C['Transfer ref']] || '', proof_check: v[C['Proof check']] || '',
-      courier: v[C['Shipping company']] || '',
+      courier: v[C['Shipping company']] || '', customer_reply: v[C['Customer reply']] || '',
       design: (function () { try { return JSON.parse(v[C['Design jobs']] || '[]'); } catch (e) { return []; } })(),
       items: items.length ? items : [{ name: v[C['Items']], option: '', qty: v[C['Units']], line: v[C['Subtotal (EGP)']] }],
       units: v[C['Units']], subtotal: v[C['Subtotal (EGP)']], delivery: v[C['Delivery (EGP)']], total: v[C['Total (EGP)']],

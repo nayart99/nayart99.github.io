@@ -608,3 +608,12 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .terms-part{border-top:1px solid var(--line);padding:14px 0}.terms-part h3{font-size:1.05rem;margin:0 0 8px}
 .terms-part ul{margin:0;padding-inline-start:20px;display:grid;gap:8px}.terms-part li{line-height:1.7;color:var(--ink-soft)}.terms-part li b{color:var(--ink)}
 .terms-box #termsAccept{margin-top:10px;white-space:normal;text-align:center}
+
+/* /o/ — customer confirms, cancels or changes the address from the WhatsApp message */
+.oa-box{text-align:start;align-items:stretch}.oa-box h1{text-align:center}
+.oa-sum{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:6px;font-size:.92rem}
+.oa-sum .row{display:flex;justify-content:space-between;gap:10px}.oa-sum .row span:first-child{color:var(--ink-soft)}.oa-sum .tot{font-weight:600;border-top:1px dashed var(--line);padding-top:6px}
+.oa-acts{display:grid;gap:10px}.oa-acts .btn{width:100%}.oa-cancel{color:var(--burgundy)!important;border-color:var(--line)!important;background:transparent!important}
+.oa-form{display:grid;gap:10px}.oa-form label{display:grid;gap:4px;font-size:.88rem;color:var(--ink-soft)}.oa-form select,.oa-form textarea,.oa-form input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+.oa-err{color:var(--burgundy);font-size:.88rem;text-align:center}
+.oa-sum .row .price{white-space:nowrap;flex:none}.oa-sum .row span:first-child{min-width:0}

@@ -1,0 +1,15 @@
+---
+// /o/?id=…&k=…&a=confirm|edit|cancel — the page the customer opens from the WhatsApp message.
+import { useT, STRINGS } from '../../lib/site.js';
+const { lang = 'en' } = Astro.props;
+const t = useT(lang);
+const govs = (STRINGS[lang] && STRINGS[lang].gov) || [];
+---
+<section class="pay-page" id="orderPage">
+  <div class="wrap">
+    <div class="pay-box oa-box" id="orderBox" aria-live="polite" data-govs={JSON.stringify(govs)}>
+      <div class="pay-spin" aria-hidden="true"></div>
+      <h1>{t('oa_loading')}</h1>
+    </div>
+  </div>
+</section>

@@ -598,3 +598,13 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 /* product card price + "custom paused" notice */
 .card .cprice{display:flex;align-items:baseline;gap:8px;margin-top:-2px}.card .cprice b{font-size:1.05rem;color:var(--burgundy)}.card .cprice s{color:var(--ink-soft);font-size:.88rem}
 .custom-off{max-width:620px;text-align:center;padding:80px 16px 100px}.custom-off h1{font-size:clamp(1.6rem,4vw,2.3rem);margin:0 0 12px}.custom-off p{color:var(--ink-soft);margin:0 0 22px;line-height:1.7}
+
+/* custom order terms */
+.terms-ok{display:flex;gap:10px;align-items:flex-start;margin:6px 0 14px;font-size:.92rem;line-height:1.55;cursor:pointer}
+.terms-ok input{width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--burgundy)}
+.terms-ok a{color:var(--burgundy);font-weight:600;text-decoration:underline}
+.terms-sec .terms-box{max-width:860px;margin:0 auto;background:var(--paper,#FFFDF9);border:1px solid var(--line);border-radius:var(--radius,14px);padding:clamp(18px,4vw,34px)}
+.terms-box h2{font-size:clamp(1.3rem,3vw,1.75rem);margin:0 0 8px}.terms-intro{color:var(--ink-soft);margin:0 0 18px;line-height:1.7}
+.terms-part{border-top:1px solid var(--line);padding:14px 0}.terms-part h3{font-size:1.05rem;margin:0 0 8px}
+.terms-part ul{margin:0;padding-inline-start:20px;display:grid;gap:8px}.terms-part li{line-height:1.7;color:var(--ink-soft)}.terms-part li b{color:var(--ink)}
+.terms-box #termsAccept{margin-top:10px;white-space:normal;text-align:center}

@@ -2,6 +2,7 @@
 import { useT, href, settings, money, cm, customOn } from '../../lib/site.js';
 import Compare from '../Compare.astro';
 import Faq from '../Faq.astro';
+import CustomTerms from '../CustomTerms.astro';
 const { lang = 'en' } = Astro.props;
 const t = useT(lang);
 const sizes = settings.custom_sizes;
@@ -63,11 +64,13 @@ const ex = settings.custom_example;
         </div>
       </div>
       <div class="field"><label for="cNote">{t('notes_label')}</label><textarea id="cNote" rows="2" placeholder={t('notes_ph')}></textarea></div>
+      <label class="terms-ok"><input type="checkbox" id="cTerms" /><span set:html={t('terms_agree', { link: `<a href="#customTerms" id="cTermsLink">${t('terms_link')}</a>` })}></span></label>
       <div class="buy-row">
         <div class="qty"><button id="cDec" aria-label={t('dec')}>−</button><span id="cQty">1</span><button id="cInc" aria-label={t('inc')}>+</button></div>
         <button class="btn btn-primary" id="cAdd" disabled>{t('add_to_cart')} · {money(sizes[0].price, lang)}</button>
       </div>
       <p class="need" id="cNeed">{t('need_photo')}</p>
+      <p class="need" id="cNeedTerms" hidden>{t('terms_need')}</p>
       <div class="eta"><b>{t('custom_eta_t')}</b><span>{t('custom_eta_s')}</span></div>
       <div class="tips">{[1, 2, 3, 4].map((n) => <div class="tip"><b>{t(`tip${n}_t`)}</b>{t(`tip${n}_s`)}</div>)}</div>
     </div>
@@ -85,6 +88,8 @@ const ex = settings.custom_example;
     <div class="cmp-stage"><Compare lang={lang} fin={ex.finished} num={ex.numbered} land={false} /></div>
   </div>
 </div></section>
+
+<CustomTerms lang={lang} t={t} />
 
 <section class="sec kit"><Faq lang={lang} /></section>
 </>)}

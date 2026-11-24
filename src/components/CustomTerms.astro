@@ -1,0 +1,16 @@
+---
+// Terms every customer agrees to before ordering a canvas from their photo (text lives in src/data/custom-terms.json).
+import terms from '../data/custom-terms.json';
+const { lang = 'en', t } = Astro.props;
+const T = terms[lang] || terms.en;
+---
+<section class="sec terms-sec" id="customTerms" aria-labelledby="termsTitle"><div class="wrap">
+  <div class="terms-box">
+    <h2 id="termsTitle">{T.title}</h2>
+    <p class="terms-intro">{T.intro}</p>
+    {T.sections.map((s) => (
+      <div class="terms-part"><h3>{s.t}</h3><ul>{s.items.map(([k, v]) => <li><b>{k}:</b> {v}</li>)}</ul></div>
+    ))}
+    <button type="button" class="btn btn-primary" id="termsAccept">{t('terms_agree', { link: t('terms_link') })} ✓</button>
+  </div>
+</div></section>

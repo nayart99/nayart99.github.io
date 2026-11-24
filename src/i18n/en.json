@@ -183,7 +183,7 @@
   "pv_note": "After payment is confirmed, we send your canvas design on WhatsApp within 2 days at most, for your approval before printing.",
   "need_photo": "Upload a photo to continue.",
   "custom_eta_t": "Your design on WhatsApp within 2 days at most after payment confirmation",
-  "custom_eta_s": "We print after you approve. Delivery 5–8 working days after approval.",
+  "custom_eta_s": "Production starts after you approve the design; your canvas is ready within 10 days of your final approval.",
   "tip1_t": "Good light",
   "tip1_s": "Daylight photos give truer colours.",
   "tip2_t": "Sharp and close",
@@ -367,5 +367,10 @@
   "deal_over": "This deal has ended",
   "custom_off_t": "Canvases from your photo are paused for now",
   "custom_off_p": "We are not taking photo orders at the moment. Our ready-to-paint canvases are available as usual, with cash on delivery all over Egypt.",
-  "custom_off_cta": "See the paintings"
+  "custom_off_cta": "See the paintings",
+  "terms_agree": "I have read and agree to the {link}",
+  "terms_link": "custom order terms",
+  "terms_need": "Please agree to the custom order terms to continue.",
+  "terms_read": "Read the terms",
+  "terms_cart": "✓ Custom order terms accepted"
 }

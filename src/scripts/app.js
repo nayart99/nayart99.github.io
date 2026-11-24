@@ -290,7 +290,7 @@ function renderDrawer() {
 
 function orderText(o) {
   const lines = o.items.map((i) => `• ${i.name} (${i.display}) × ${i.qty} = ${money(i.line)}`).join('\n');
-  return `${lang === "ar" ? "طلب NAY ART رقم" : "NAY ART order"} ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}${o.items.some(i => i.custom) ? '\n' + tr('custom_payment_notice') : ''}\n\n${o.customer.name}\n${o.customer.phone}${o.customer.phone_extra ? '\n' + tr('f_phone_extra') + ': ' + o.customer.phone_extra : ''}\n${mapsURL(o.customer.location)}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(سأرسل لكم الصورة المطلوبة للوحة في هذه المحادثة)' : '(I will send the custom photo in this chat)') : ''}`;
+  return `${lang === "ar" ? "طلب NAY ART رقم" : "NAY ART order"} ${o.id}\n${lines}\n${tr('delivery')}: ${money(o.delivery)}\n${tr('total')}: ${money(o.total)}\n${tr('payment')}: ${o.payment_label}${o.items.some(i => i.custom) ? '\n' + tr('custom_payment_notice') + '\n' + tr('terms_cart') : ''}\n\n${o.customer.name}\n${o.customer.phone}${o.customer.phone_extra ? '\n' + tr('f_phone_extra') + ': ' + o.customer.phone_extra : ''}\n${mapsURL(o.customer.location)}\n${o.customer.city} – ${o.customer.address}${o.customer.notes ? '\n' + o.customer.notes : ''}${o.items.some((i) => i.custom) ? '\n\n' + (lang === 'ar' ? '(سأرسل لكم الصورة المطلوبة للوحة في هذه المحادثة)' : '(I will send the custom photo in this chat)') : ''}`;
 }
 const waLink = (text) => `https://wa.me/${S.whatsapp_intl}?text=${encodeURIComponent(text)}`;
 
@@ -672,7 +672,8 @@ if (customPage) {
   function upd() {
     const s = S.custom_sizes[cSize];
     $('cPrice').textContent = money(s.price); $('cSizeLbl').textContent = cmL(s.label); $('cOrLbl').textContent = cOrLabel; $('cQty').textContent = cQty;
-    $('cAdd').textContent = `${tr('add_to_cart')} · ${money(s.price * cQty)}`; $('cAdd').disabled = !has; $('cNeed').hidden = has;
+    const agreed = !!$('cTerms')?.checked || !$('cTerms');
+    $('cAdd').textContent = `${tr('add_to_cart')} · ${money(s.price * cQty)}`; $('cAdd').disabled = !has || !agreed; $('cNeed').hidden = has; if ($('cNeedTerms')) $('cNeedTerms').hidden = !has || agreed;
     document.querySelectorAll('#cSizes .opt').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.size === cSize ? 'true' : 'false'));
     document.querySelectorAll('#cOrient .opt').forEach((b) => b.setAttribute('aria-pressed', b.dataset.or === cOr ? 'true' : 'false'));
   }
@@ -688,12 +689,16 @@ if (customPage) {
   document.querySelectorAll('#cOrient .opt').forEach((b) => b.addEventListener('click', () => { if (busy()) return toast(tr('pbn_wait_toast')); cOr = b.dataset.or; cOrLabel = b.dataset.orLabel; upd(); reframe(); }));
   $('cDec').addEventListener('click', () => { cQty = Math.max(1, cQty - 1); upd(); });
   $('cInc').addEventListener('click', () => { cQty = Math.min(5, cQty + 1); upd(); });
+  // the customer has to agree to the custom order terms (proofs, timing, cancellation) before adding to cart
+  $('cTerms')?.addEventListener('change', upd);
+  $('cTermsLink')?.addEventListener('click', (e) => { e.preventDefault(); $('customTerms').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('termsAccept')?.addEventListener('click', () => { $('cTerms').checked = true; upd(); $('cTerms').closest('.terms-ok').scrollIntoView({ behavior: 'smooth', block: 'center' }); toast(tr('terms_cart')); });
   $('cAdd').addEventListener('click', async () => {
-    if (!has) return; const key = 'custom-' + Date.now();
+    if (!has || ($('cTerms') && !$('cTerms').checked)) return; const key = 'custom-' + Date.now();
     photos[key] = cPhoto; await photoDB.put(key, cPhoto);
     const crop = cImg ? curCrop() : null;
     const mimi = pvShown && pvShown.sig === sig() ? pvShown.key : '';
-    cart.push({ key, kind: 'custom', size: cSize, or: cOr, orLabel: cOrLabel, file: cFile, note: $('cNote').value.trim(), thumb: cThumb, q: cQty, crop, mimi });
+    cart.push({ key, kind: 'custom', size: cSize, or: cOr, orLabel: cOrLabel, file: cFile, note: $('cNote').value.trim(), thumb: cThumb, q: cQty, crop, mimi, terms: true });
     save(); counts(); bump(); toast(tr('custom_added'));
     const s = S.custom_sizes[cSize]; track('add_to_cart', { currency: 'EGP', value: s.price * cQty, items: [{ item_id: 'custom-' + s.label, item_name: 'Custom Canvas', price: s.price, quantity: cQty }] });
     openDrawer();

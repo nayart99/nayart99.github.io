@@ -50,11 +50,11 @@ const others = getProducts().filter((x) => x.slug !== p.slug).slice(0, 2);
       <p class="blurb">{pick(p.blurb, lang)}</p>
       <div class="specs-chips">
         <div class="chip"><b>40×50</b>{t('chip_canvas')}</div>
-        <div class="chip"><b>24</b>{t('chip_colours')}</div>
+        <div class="chip"><b>18–24</b>{t('chip_colours')}</div>
         <div class="chip"><b>3</b>{t('chip_brushes')}</div>
         <div class="chip"><b>1</b>{t('chip_ref')}</div>
       </div>
-      {p.palette?.length > 0 && <div class="palette"><span>{t('palette_title')}</span><div class="swatches">{p.palette.map((c) => <i style={`background:${c}`}></i>)}</div></div>}
+      {p.palette?.length > 0 && <div class="palette"><span>{t('palette_title', { n: lang === 'ar' ? p.palette.length.toLocaleString('ar-EG') : p.palette.length })}</span><div class="swatches">{p.palette.map((c) => <i style={`background:${c}`}></i>)}</div></div>}
       <div class="opt-group"><span>{t('size')}: <b>{cm(settings.canvas_size, lang)}</b></span><div class="opts"><button class="opt" aria-pressed="true">{cm(settings.canvas_size, lang)}<small>{t('full_kit')}</small></button></div></div>
       <div class="buy-row">
         <div class="qty"><button id="pDec" aria-label={t('dec')}>−</button><span id="pQty">1</span><button id="pInc" aria-label={t('inc')}>+</button></div>

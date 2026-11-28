@@ -108,16 +108,17 @@ async function initDeliveryMap() {
     $('useMapCenter').onclick = () => { if (map.getZoom() < 15) { map.setZoom(16); status(tr('location_zoom_more')); return; } choose(map.getCenter(), 'center'); };
     // governorate picked → show that governorate (unless the pin is already placed)
     $('f-city')?.addEventListener('change', (e) => { const c = GOV_CENTER[Number(e.target.value)]; if (c && !mapMarker) map.setView(c, 11); });
-    const locate = (auto) => {
+    const locate = (auto, hadSaved) => {
       if (!navigator.geolocation) { if (!auto) status(tr('location_denied'), true); return; }
       const b = $('locateMe'); b.disabled = true; status(tr('location_finding'));
       navigator.geolocation.getCurrentPosition((pos) => {
         if (!container.isConnected || checkoutMap !== map) return;
         const p = L.latLng(pos.coords.latitude, pos.coords.longitude);
         b.disabled = false;
-        if (Math.abs(p.lat - 26.8) > 5.5 || Math.abs(p.lng - 30.8) > 6.5) { status(tr('location_outside'), true); return; } // not in Egypt (e.g. VPN / abroad)
+        if (Math.abs(p.lat - 26.8) > 5.5 || Math.abs(p.lng - 30.8) > 6.5) { if (auto && hadSaved) status(tr('location_saved')); else status(tr('location_outside'), true); return; } // not in Egypt (abroad / VPN): pick by hand
+        if (auto && hadSaved && pos.coords.accuracy > 150) { status(tr('location_saved')); return; } // keep the saved spot rather than a rough fix
         choose(p, 'gps', pos.coords.accuracy); map.setView(p, pos.coords.accuracy > 500 ? 15 : 17);
-      }, () => { if (container.isConnected) { b.disabled = false; status(tr(auto ? 'location_pick' : 'location_denied'), !auto); } }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+      }, (err) => { if (container.isConnected) { b.disabled = false; if (auto && hadSaved) { status(tr('location_saved')); return; } status(tr(auto ? 'location_pick' : err && err.code === 1 ? 'location_blocked' : 'location_denied'), !auto); } }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     };
     $('locateMe').onclick = () => locate(false);
     // search a place, street or compound
@@ -147,7 +148,8 @@ async function initDeliveryMap() {
     document.addEventListener('click', (e) => { if (!e.target.closest('.loc-search')) list.hidden = true; });
     requestAnimationFrame(() => { if (container.isConnected) map.invalidateSize(); });
     // first time at checkout: try the customer's own location straight away (the browser asks for permission)
-    if (!validLocation(deliveryLocation)) locate(true); else locPrecise = true;
+    if (validLocation(deliveryLocation)) locPrecise = true;
+    locate(true, validLocation(deliveryLocation));
   } catch { if (container.isConnected) { $('locationStatus').textContent = tr('location_load_error'); $('locateMe').disabled = true; $('useMapCenter').disabled = true; } }
 }
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;

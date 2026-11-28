@@ -415,9 +415,10 @@
   "location_saved": "✓ This is your last delivery spot. If it’s somewhere else, move the pin or search.",
   "location_zoom_more": "We zoomed in — tap your exact spot again or drag the pin.",
   "location_pick": "Search your area or tap your spot on the map.",
-  "location_outside": "The location we got isn’t in Egypt. Search your address or place the pin by hand.",
+  "location_outside": "Your device location is outside Egypt, so we can’t use it. Search the delivery address in Egypt or place the pin by hand.",
   "location_search_set": "✓ Pin placed on that address. Drag it to your exact door if needed.",
   "location_no_results": "No results. Try your area or compound name, or place the pin by hand.",
   "location_search_error": "Search isn’t available right now. Place the pin on the map by hand.",
-  "err_location_rough": "Your location is approximate. Drag the pin to your home or search your address."
+  "err_location_rough": "Your location is approximate. Drag the pin to your home or search your address.",
+  "location_blocked": "Your browser is blocking location. Allow location for nayarts.com in the browser settings, or search your address and place the pin by hand."
 }

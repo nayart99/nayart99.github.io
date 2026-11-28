@@ -500,7 +500,7 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 [dir="rtl"] .price-line,[dir="rtl"] .pr{direction:rtl}
 
 /* Delivery map in checkout */
-.delivery-map{height:240px;min-height:240px;border:1px solid var(--line);border-radius:var(--radius);direction:ltr;isolation:isolate;z-index:0}
+.delivery-map{height:300px;min-height:300px;border:1px solid var(--line);border-radius:var(--radius);direction:ltr;isolation:isolate;z-index:0}
 .location-field .field-help{font-size:.82rem;color:var(--ink-soft);margin:0;line-height:1.6}
 .location-actions{display:flex;gap:8px;flex-wrap:wrap}.location-actions .btn{padding:8px 10px;font-size:.78rem;flex:1}
 .location-field>a{font-size:.85rem;color:var(--burgundy)}
@@ -617,3 +617,10 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .oa-form{display:grid;gap:10px}.oa-form label{display:grid;gap:4px;font-size:.88rem;color:var(--ink-soft)}.oa-form select,.oa-form textarea,.oa-form input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
 .oa-err{color:var(--burgundy);font-size:.88rem;text-align:center}
 .oa-sum .row .price{white-space:nowrap;flex:none}.oa-sum .row span:first-child{min-width:0}
+
+/* checkout location: search + pin */
+.loc-search{position:relative;margin-bottom:8px}.loc-search input{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+.loc-results{position:absolute;inset-inline:0;top:calc(100% + 4px);z-index:1000;list-style:none;margin:0;padding:4px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px -12px rgba(0,0,0,.35);max-height:260px;overflow:auto}
+.loc-results button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:start;background:none;border:0;padding:8px 10px;border-radius:8px;font:inherit;color:var(--ink);cursor:pointer}
+.loc-results button:hover,.loc-results button:focus{background:var(--cream)}.loc-results small{color:var(--ink-soft);font-size:.78rem}.loc-results .none{padding:10px;color:var(--ink-soft);font-size:.85rem}
+#locationStatus.warn{color:#9a5b00;font-weight:600}

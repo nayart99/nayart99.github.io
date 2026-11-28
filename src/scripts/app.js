@@ -63,43 +63,91 @@ function rememberCheckout() {
   if (!$('coForm')) return;
   checkoutDraft = {name:$('f-name').value,phone:$('f-phone').value,phone_extra:$('f-phone-extra').value,city:$('f-city').value,addr:$('f-addr').value,notes:$('f-note').value,location:deliveryLocation};
 }
+// Governorate centres (same order as T.gov) — the map jumps there when the customer picks a governorate.
+const GOV_CENTER = [[30.0444,31.2357],[30.0131,31.2089],[31.2001,29.9187],[30.3292,31.2168],[31.0409,31.3785],[30.5877,31.502],[30.7865,31.0004],[30.5972,30.9876],[31.0364,30.4706],[31.1107,30.9388],[31.4165,31.8133],[31.2653,32.3019],[30.5965,32.2715],[29.9668,32.5498],[29.3084,30.8428],[29.0661,31.0994],[28.1099,30.7503],[27.18,31.1837],[26.5591,31.6957],[26.1551,32.716],[25.6872,32.6396],[24.0889,32.8998],[27.2579,33.8116],[31.3543,27.2373],[31.1316,33.7984],[28.2364,33.6254],[25.4517,30.5455]];
+const EG_BOX = '24.6,21.9,37.1,31.8'; // lon_min,lat_min,lon_max,lat_max
+let locPrecise = false; // true once the pin was set by GPS, search, dragging, or a tap when zoomed in close
 async function initDeliveryMap() {
   const container = $('deliveryMap');
   try {
     const { default: L } = await import('leaflet');
     if (!container.isConnected) return;
-    const point = validLocation(deliveryLocation) ? deliveryLocation : {lat:30.0444,lng:31.2357};
-    const map = checkoutMap = L.map(container, {scrollWheelZoom:false}).setView([point.lat,point.lng], validLocation(deliveryLocation) ? 16 : 7);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
-    const icon = L.divIcon({className:'delivery-pin',html:'<span></span>',iconSize:[28,36],iconAnchor:[14,36]});
-    const choose = (latlng) => {
+    const gi = Number($('f-city')?.value || 0), gc = GOV_CENTER[gi] || GOV_CENTER[0];
+    const point = validLocation(deliveryLocation) ? deliveryLocation : { lat: gc[0], lng: gc[1] };
+    const map = checkoutMap = L.map(container, { scrollWheelZoom: false, tap: true }).setView([point.lat, point.lng], validLocation(deliveryLocation) ? 17 : 11);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+    const icon = L.divIcon({ className: 'delivery-pin', html: '<span></span>', iconSize: [28, 36], iconAnchor: [14, 36] });
+    let acc = null;
+    const status = (msg, warn) => { const el = $('locationStatus'); el.textContent = msg; el.classList.toggle('warn', !!warn); };
+    const choose = (latlng, how, accuracy) => {
       if (!container.isConnected || checkoutMap !== map) return;
-      deliveryLocation = {lat:Number(latlng.lat.toFixed(6)),lng:Number(latlng.lng.toFixed(6))};
+      deliveryLocation = { lat: Number(latlng.lat.toFixed(6)), lng: Number(latlng.lng.toFixed(6)) };
+      locPrecise = how === 'gps' ? !(accuracy > 150) : true;
       if (mapMarker) mapMarker.setLatLng(latlng); else {
-        mapMarker = L.marker(latlng,{icon,draggable:true,alt:tr('f_location')}).addTo(map);
-        mapMarker.on('dragend', () => choose(mapMarker.getLatLng()));
+        mapMarker = L.marker(latlng, { icon, draggable: true, autoPan: true, alt: tr('f_location') }).addTo(map);
+        mapMarker.on('dragend', () => choose(mapMarker.getLatLng(), 'drag'));
       }
-      $('locationStatus').textContent = tr('location_selected');
+      if (acc) { acc.remove(); acc = null; }
+      if (how === 'gps' && accuracy) acc = L.circle(latlng, { radius: accuracy, color: '#7A1F2B', weight: 1, fillOpacity: 0.08, interactive: false }).addTo(map);
+      if (how === 'gps' && accuracy > 150) status(tr('location_rough', { m: Math.round(accuracy) }), true);
+      else status(tr(how === 'gps' ? 'location_found' : 'location_selected'));
       $('locationLink').href = mapsURL(deliveryLocation); $('locationLink').hidden = false;
       $('locationError').hidden = true;
       addressFromMap(deliveryLocation);
     };
-    if (validLocation(deliveryLocation)) choose(deliveryLocation);
+    if (validLocation(deliveryLocation)) { choose(deliveryLocation, 'saved'); status(tr('location_saved')); }
     $('useMapAddress').onclick = () => {
       if (validLocation(deliveryLocation)) addressFromMap(deliveryLocation, true);
       else $('addressStatus').textContent = tr('location_not_selected');
     };
-    map.on('click', e => choose(e.latlng));
-    $('useMapCenter').onclick = () => choose(map.getCenter());
-    $('locateMe').onclick = () => {
-      if (!navigator.geolocation) { $('locationStatus').textContent = tr('location_denied'); return; }
-      const b = $('locateMe'); b.disabled = true; $('locationStatus').textContent = tr('location_finding');
-      navigator.geolocation.getCurrentPosition(pos => {
+    // a tap far zoomed out would drop the pin kilometres away: zoom in on that spot first
+    map.on('click', (e) => {
+      if (map.getZoom() < 15) { map.setView(e.latlng, Math.min(map.getZoom() + 3, 17)); status(tr('location_zoom_more')); return; }
+      choose(e.latlng, 'tap');
+    });
+    $('useMapCenter').onclick = () => { if (map.getZoom() < 15) { map.setZoom(16); status(tr('location_zoom_more')); return; } choose(map.getCenter(), 'center'); };
+    // governorate picked → show that governorate (unless the pin is already placed)
+    $('f-city')?.addEventListener('change', (e) => { const c = GOV_CENTER[Number(e.target.value)]; if (c && !mapMarker) map.setView(c, 11); });
+    const locate = (auto) => {
+      if (!navigator.geolocation) { if (!auto) status(tr('location_denied'), true); return; }
+      const b = $('locateMe'); b.disabled = true; status(tr('location_finding'));
+      navigator.geolocation.getCurrentPosition((pos) => {
         if (!container.isConnected || checkoutMap !== map) return;
-        const p = L.latLng(pos.coords.latitude,pos.coords.longitude); choose(p); map.setView(p,17); b.disabled = false;
-      }, () => { if (container.isConnected) { b.disabled = false; $('locationStatus').textContent = tr('location_denied'); } }, {enableHighAccuracy:true,timeout:15000,maximumAge:0});
+        const p = L.latLng(pos.coords.latitude, pos.coords.longitude);
+        b.disabled = false;
+        if (Math.abs(p.lat - 26.8) > 5.5 || Math.abs(p.lng - 30.8) > 6.5) { status(tr('location_outside'), true); return; } // not in Egypt (e.g. VPN / abroad)
+        choose(p, 'gps', pos.coords.accuracy); map.setView(p, pos.coords.accuracy > 500 ? 15 : 17);
+      }, () => { if (container.isConnected) { b.disabled = false; status(tr(auto ? 'location_pick' : 'location_denied'), !auto); } }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     };
+    $('locateMe').onclick = () => locate(false);
+    // search a place, street or compound
+    const box = $('locSearch'), list = $('locResults');
+    let st = null, ctl = null;
+    const showResults = (items) => {
+      list.innerHTML = items.map((r, i) => `<li><button type="button" data-i="${i}"><b>${escapeHTML(r.t)}</b><small>${escapeHTML(r.s)}</small></button></li>`).join('') || `<li class="none">${tr('location_no_results')}</li>`;
+      list.hidden = false;
+      list.querySelectorAll('button').forEach((b) => b.onclick = () => { const r = items[+b.dataset.i]; list.hidden = true; box.value = r.t; const ll = L.latLng(r.lat, r.lng); map.setView(ll, r.street ? 17 : 16); choose(ll, 'search'); status(tr('location_search_set')); });
+    };
+    box.addEventListener('input', () => {
+      clearTimeout(st); const q = box.value.trim(); if (q.length < 3) { list.hidden = true; return; }
+      st = setTimeout(async () => {
+        ctl?.abort(); ctl = new AbortController();
+        try {
+          const c = map.getCenter();
+          const params = new URLSearchParams({ q, limit: 6, bbox: EG_BOX, lat: c.lat, lon: c.lng, ...(lang === 'ar' ? {} : { lang: 'en' }) });
+          const j = await (await fetch('https://photon.komoot.io/api/?' + params, { signal: ctl.signal })).json();
+          showResults((j.features || []).map((f) => { const p = f.properties || {}; return { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], street: !!(p.street || p.housenumber),
+            t: [p.name, p.housenumber && p.street ? p.housenumber + ' ' + p.street : p.street].filter(Boolean).join('، ') || p.city || p.state || q,
+            s: [...new Set([p.district, p.city, p.county, p.state].filter(Boolean))].join(lang === 'ar' ? '، ' : ', ') }; }));
+        } catch (e) { if (e.name !== 'AbortError') { list.innerHTML = `<li class="none">${tr('location_search_error')}</li>`; list.hidden = false; } }
+      }, 400);
+    });
+    box.addEventListener('focus', () => setTimeout(() => box.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250));
+    box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); list.querySelector('button')?.click(); } });
+    document.addEventListener('click', (e) => { if (!e.target.closest('.loc-search')) list.hidden = true; });
     requestAnimationFrame(() => { if (container.isConnected) map.invalidateSize(); });
+    // first time at checkout: try the customer's own location straight away (the browser asks for permission)
+    if (!validLocation(deliveryLocation)) locate(true); else locPrecise = true;
   } catch { if (container.isConnected) { $('locationStatus').textContent = tr('location_load_error'); $('locateMe').disabled = true; $('useMapCenter').disabled = true; } }
 }
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -252,7 +300,7 @@ function renderDrawer() {
     <div class="field"><label for="f-phone-extra">${tr('f_phone_extra')}</label><input id="f-phone-extra" type="tel" inputmode="tel" autocomplete="section-extra tel" placeholder="01xxxxxxxxx" value="${esc(saved.phone_extra)}"><span class="err" hidden></span></div>
     <div class="field"><label for="f-city">${tr('f_city')}</label><select id="f-city">${T.gov.map((g, i) => `<option value="${i}" ${String(saved.city) === String(i) ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
     <div class="field"><label for="f-addr">${tr('f_addr')}</label><textarea id="f-addr" required minlength="8" rows="3" autocomplete="street-address" aria-describedby="addressStatus" placeholder="${tr('f_addr_hint')}">${esc(saved.addr)}</textarea><p class="field-help" id="addressStatus" aria-live="polite">${tr('address_review')}</p><button class="btn" type="button" id="useMapAddress">${tr('address_use_map')}</button><span class="err" hidden></span></div>
-    <div class="field location-field"><label id="locationLabel">${tr('f_location')}</label><p class="field-help">${tr('location_hint')}</p><div class="delivery-map" id="deliveryMap" role="region" aria-labelledby="locationLabel"></div><div class="location-actions"><button class="btn" type="button" id="locateMe">${tr('location_use_mine')}</button><button class="btn" type="button" id="useMapCenter">${tr('location_center')}</button></div><p class="field-help" id="locationStatus" aria-live="polite">${tr('location_not_selected')}</p><a id="locationLink" target="_blank" rel="noopener" hidden>${tr('location_open')}</a><span class="err" id="locationError" hidden></span></div>
+    <div class="field location-field"><label id="locationLabel">${tr('f_location')}</label><p class="field-help">${tr('location_hint')}</p><div class="loc-search"><input id="locSearch" type="search" autocomplete="off" placeholder="${tr('location_search_ph')}" aria-label="${tr('location_search_ph')}"><ul id="locResults" class="loc-results" hidden></ul></div><div class="delivery-map" id="deliveryMap" role="region" aria-labelledby="locationLabel"></div><div class="location-actions"><button class="btn" type="button" id="locateMe">${tr('location_use_mine')}</button><button class="btn" type="button" id="useMapCenter">${tr('location_center')}</button></div><p class="field-help" id="locationStatus" aria-live="polite">${tr('location_not_selected')}</p><a id="locationLink" target="_blank" rel="noopener" hidden>${tr('location_open')}</a><span class="err" id="locationError" hidden></span></div>
     ${hasCustom ? '<p class="order-note">' + tr('custom_payment_notice') + ((S.instapay || S.vodafone_cash) ? '<br><b>' + tr('custom_pay_numbers', { num: S.instapay || S.vodafone_cash }) + '</b>' : '') + '</p>' : ''}
     <div class="field"><label>${tr('f_pay')}</label><div class="pay">${pays.map(([v, l], i) => `<label><input type="radio" name="pay" id="pay-${v}" value="${v}" ${i === 0 ? 'checked' : ''}> ${l}</label>`).join('')}</div><span class="err" id="paymentError" hidden></span>${!pays.length ? '<p class="err">' + tr('payment_unavailable') + '</p>' : ''}</div>
     <div class="transfer-box" id="transferBox" hidden>
@@ -300,7 +348,8 @@ async function placeOrder(btn) {
   const rules = [['f-name', (v) => v.trim().length >= 3, 'err_name'], ['f-phone', validPhone, 'err_phone'], ['f-phone-extra', v => !v.trim() || validPhone(v), 'err_phone'], ['f-addr', (v) => v.trim().length >= 8, 'err_addr']];
   let ok = true;
   rules.forEach(([id, test, msg]) => { const el = $(id), err = el.parentElement.querySelector('.err'); if (!test(el.value)) { ok = false; err.textContent = tr(msg); err.hidden = false; } else err.hidden = true; });
-  if (!validLocation(deliveryLocation)) { ok = false; $('locationError').textContent = tr('err_location'); $('locationError').hidden = false; } else $('locationError').hidden = true;
+  if (!validLocation(deliveryLocation)) { ok = false; $('locationError').textContent = tr('err_location'); $('locationError').hidden = false; }
+  else if (!locPrecise) { ok = false; $('locationError').textContent = tr('err_location_rough'); $('locationError').hidden = false; } else $('locationError').hidden = true;
   const hasCustom = cart.some(c => c.kind === 'custom');
   const payV = document.querySelector('input[name=pay]:checked')?.value;
   const allowed = {kashier:S.payments.kashier && S.orders_endpoint,cod:!hasCustom && S.payments.cod,instapay:S.payments.instapay,vodafone:S.payments.vodafone_cash};

@@ -118,7 +118,7 @@ async function initDeliveryMap() {
         if (Math.abs(p.lat - 26.8) > 5.5 || Math.abs(p.lng - 30.8) > 6.5) { if (auto && hadSaved) status(tr('location_saved')); else status(tr('location_outside'), true); return; } // not in Egypt (abroad / VPN): pick by hand
         if (auto && hadSaved && pos.coords.accuracy > 150) { status(tr('location_saved')); return; } // keep the saved spot rather than a rough fix
         choose(p, 'gps', pos.coords.accuracy); map.setView(p, pos.coords.accuracy > 500 ? 15 : 17);
-      }, (err) => { if (container.isConnected) { b.disabled = false; if (auto && hadSaved) { status(tr('location_saved')); return; } status(tr(auto ? 'location_pick' : err && err.code === 1 ? 'location_blocked' : 'location_denied'), !auto); } }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+      }, (err) => { if (container.isConnected) { b.disabled = false; if (auto && hadSaved) { status(tr('location_saved')); return; } status(tr(auto ? 'location_pick' : err && err.code === 1 ? (/iPhone|iPad|iPod/.test(navigator.userAgent) ? 'location_blocked_ios' : 'location_blocked') : 'location_denied'), !auto); } }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     };
     $('locateMe').onclick = () => locate(false);
     // search a place, street or compound

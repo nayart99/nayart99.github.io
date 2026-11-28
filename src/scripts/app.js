@@ -332,6 +332,7 @@ async function placeOrder(btn) {
         const res = await fetch(S.orders_endpoint, { method: 'POST', body, signal: ctrl.signal });
         reply = await res.json().catch(() => ({}));
         sent = res.ok && reply.ok === true;
+        if (sent && reply.duplicate_of) order.id = reply.duplicate_of; // same order sent twice: show the number of the first one
         if (reply.ok === false) break; // the server answered with a reason (and keeps a copy itself): no retry
       } catch { reply = {}; }
       clearTimeout(timer);
@@ -362,7 +363,7 @@ async function placeOrder(btn) {
     return;
   }
   showDone(order, sent && payV !== 'kashier');
-  if (payV !== 'kashier') track('purchase', { transaction_id: id, currency: 'EGP', value: t.total, shipping: t.ship, items: gaItems() });
+  if (payV !== 'kashier') track('purchase', { transaction_id: order.id, currency: 'EGP', value: t.total, shipping: t.ship, items: gaItems() });
   cart.forEach((c) => c.kind === 'custom' && dropPhoto(c.key));
   cart = []; save(); counts();
 }

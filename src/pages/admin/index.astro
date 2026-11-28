@@ -480,7 +480,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
     const DEMO = new URLSearchParams(location.search).has('demo');
     const STATUSES = ['جديد', 'تم التأكيد', 'بانتظار موافقة التصميم', 'قيد التجهيز', 'تم الشحن', 'تم التسليم', 'ملغي'];
     const COLOR = { 'جديد': 'var(--s-new)', 'تم التأكيد': 'var(--s-conf)', 'بانتظار موافقة التصميم': 'var(--s-wait)', 'قيد التجهيز': 'var(--s-prep)', 'تم الشحن': 'var(--s-ship)', 'تم التسليم': 'var(--s-done)', 'ملغي': 'var(--s-cancel)' };
-    let couriers = ['Run', 'Bosta', 'Taslem Mobasher'], failedOrders = [];
+    let couriers = ['Run', 'Bosta', 'Taslem Mobasher'], failedOrders = [], twins = {};
     /* the customer's answer to the WhatsApp message (confirm / change address / cancel) */
     const replyTag = (o) => { const r = String(o.customer_reply || ''); if (!r) return ''; return /ألغى/.test(r) ? '<span class="tag flag">❌ العميل ألغى</span>' : /عدّل/.test(r) ? `<span class="tag review">${/أكّد/.test(r) ? '✅ أكّد · ' : ''}✏️ عدّل العنوان</span>` : '<span class="tag paid">✅ العميل أكّد</span>'; };
     /* orders the website could not save automatically (network / server error): kept safe until the owner adds them */
@@ -625,6 +625,9 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
       fillSelect('fShip', 'كل شركات الشحن', [...new Set([...couriers, ...orders.map((o) => o.courier).filter(Boolean)]), NO_SHIP]);
       fillSelect('fSrc', 'كل المصادر', uniq(orders.map((o) => srcLabel(o.source))));
 
+      // same phone + same paintings within 2 hours, both still open → probably the same order sent twice
+      twins = {}; { const sig = (o) => o.items.map((i) => (enName(i.name) + '|' + (i.option || '') + '|' + i.qty).toLowerCase()).sort().join('#'); const open = orders.filter((o) => o.status !== 'ملغي').sort((a, b) => new Date(a.date) - new Date(b.date));
+        open.forEach((o, i) => { for (let j = i - 1; j >= 0; j--) { const p = open[j]; if (new Date(o.date) - new Date(p.date) > 2 * 3600e3) break; if (String(p.phone).slice(-10) === String(o.phone).slice(-10) && sig(p) === sig(o)) { twins[o.id] = p.id; break; } } }); }
       const shown = filtered();
       const ids = new Set(orders.map((o) => o.id)); [...selected].forEach((id) => { if (!ids.has(id)) selected.delete(id); });
       $('countLine').textContent = `${shown.length} طلب · ${money(shown.filter((o) => o.status !== 'ملغي').reduce((s, o) => s + Number(o.total || 0), 0))}`;
@@ -638,7 +641,7 @@ const cfg = { allProducts, site: settings, i18nDefaults: { announce_offer: STRIN
         return `<div class="ord${fresh.includes(o.id) ? ' fresh' : ''}${sel ? ' sel' : ''}" data-id="${esc(o.id)}" tabindex="0" role="button">
           <input type="checkbox" class="pick" data-pick="${esc(o.id)}" ${sel ? 'checked' : ''} aria-label="تحديد ${esc(o.id)}">
           <div class="th">${th}</div>
-          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${o.courier ? `<span class="tag ship">🚚 ${esc(o.courier)}</span>` : ''}${replyTag(o)}${custom ? '<span class="tag">من صورة العميل</span>' : ''}${dState(o) === 'ready' ? '<span class="tag dsg">🎨 ملف الطباعة جاهز</span>' : dState(o) === 'pending' ? '<span class="tag dsg-w">⏳ جارٍ التصميم</span>' : dState(o) === 'failed' ? '<span class="tag flag">التصميم فشل</span>' : ''}${review(o) && flagLvl(o) === 'bad' ? '<span class="tag flag">🔴 صورة التحويل فيها مشكلة</span>' : review(o) ? '<span class="tag review">💳 تحويل بانتظار المراجعة</span>' : unpaid(o) ? `<span class="tag unpaid">${online(o) ? 'لم يكمل الدفع الأونلاين' : 'بانتظار الدفع'}</span>` : ((custom || online(o) || transferPay(o)) && o.payment_status === 'Paid in full' ? `<span class="tag paid">${online(o) ? 'مدفوع أونلاين' : 'تم الدفع'}</span>` : '')}</div>
+          <div class="o-main"><div class="o-top"><span class="o-id num">${esc(o.id)}</span><span class="o-time">${ago(o.date)}</span>${o.courier ? `<span class="tag ship">🚚 ${esc(o.courier)}</span>` : ''}${replyTag(o)}${twins[o.id] ? `<span class="tag flag" title="نفس العميل ونفس اللوحات خلال ساعتين">⚠️ مكرر مع ${esc(twins[o.id])}</span>` : ''}${custom ? '<span class="tag">من صورة العميل</span>' : ''}${dState(o) === 'ready' ? '<span class="tag dsg">🎨 ملف الطباعة جاهز</span>' : dState(o) === 'pending' ? '<span class="tag dsg-w">⏳ جارٍ التصميم</span>' : dState(o) === 'failed' ? '<span class="tag flag">التصميم فشل</span>' : ''}${review(o) && flagLvl(o) === 'bad' ? '<span class="tag flag">🔴 صورة التحويل فيها مشكلة</span>' : review(o) ? '<span class="tag review">💳 تحويل بانتظار المراجعة</span>' : unpaid(o) ? `<span class="tag unpaid">${online(o) ? 'لم يكمل الدفع الأونلاين' : 'بانتظار الدفع'}</span>` : ((custom || online(o) || transferPay(o)) && o.payment_status === 'Paid in full' ? `<span class="tag paid">${online(o) ? 'مدفوع أونلاين' : 'تم الدفع'}</span>` : '')}</div>
             <div class="o-who">${esc(o.name)} · ${esc(o.city)}</div><div class="o-items">${esc(items)}</div></div>
           <div class="o-end"><span class="o-total num">${money(o.total)}</span>${pill(o.status)}</div></div>`;
       }).join('') : `<div class="empty"><b>${orders.length ? 'لا توجد طلبات هنا' : 'لا توجد طلبات بعد'}</b>${orders.length ? 'جرّب فلتر آخر أو امسح البحث.' : 'أول ما يطلب عميل من الموقع، سيظهر الطلب هنا فورًا.'}</div>`;

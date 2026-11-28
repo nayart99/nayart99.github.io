@@ -142,6 +142,12 @@ function saveOrderRow(o, opt) {
     const orders = sheet(ss, 'Orders', ORDERS_HEADERS);
     const items = sheet(ss, 'Order items', ITEMS_HEADERS);
     if (findRow(orders, o.id)) return { ok: true, id: o.id, duplicate: true };
+    // Same customer sending the same order again within 30 minutes (e.g. the page looked stuck and they tapped again):
+    // keep one order and give them its number instead of creating a double.
+    if (!opt.force) { const twin = findTwin(orders, o); if (twin) {
+      try { const tr = findRow(orders, twin), nt = orders.getRange(tr, C['Internal notes'] + 1); nt.setValue((String(nt.getValue() || '') + '\n🔁 ' + Utilities.formatDate(new Date(), 'Africa/Cairo', 'dd/MM HH:mm') + ': العميل بعت نفس الطلب تاني (' + o.id + ') — اتحسب أوردر واحد بس').trim()); } catch (e) {}
+      return { ok: true, id: twin, duplicate_of: twin };
+    } }
 
     const when = new Date(o.created || Date.now());
     const month = Utilities.formatDate(when, 'Africa/Cairo', 'yyyy-MM');
@@ -221,6 +227,23 @@ function saveOrderRow(o, opt) {
   } finally {
     if (locked) lock.releaseLock();
   }
+}
+
+/** An order from the same phone with the same paintings, placed in the last 30 minutes and still new → its id. */
+function findTwin(sh, o) {
+  const last = sh.getLastRow(); if (last < 2) return '';
+  const n = Math.min(60, last - 1), rows = sh.getRange(last - n + 1, 1, n, ORDERS_HEADERS.length).getValues();
+  const phone = String((o.customer || {}).phone || '').replace(/[^\d]/g, '').slice(-10);
+  const sig = function (list) { return (list || []).map(function (i) { return [String(i.name || '').trim().toLowerCase(), String(i.display || i.option || '').trim().toLowerCase(), Number(i.qty || 0)].join('|'); }).sort().join('#'); };
+  const mine = sig(o.items), now = Date.now();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const v = rows[i], when = v[C['Date']] instanceof Date ? v[C['Date']].getTime() : Date.parse(v[C['Date']]);
+    if (!when || now - when > 30 * 60e3) continue;
+    if (String(v[C['Phone']]).replace(/[^\d]/g, '').slice(-10) !== phone || v[C['Status']] !== STATUSES[0]) continue;
+    let items = []; try { items = JSON.parse(v[C['Items JSON']] || '[]'); } catch (e) {}
+    if (sig(items) === mine && Number(v[C['Total (EGP)']]) === Number(o.total || 0)) return String(v[C['Order ID']]);
+  }
+  return '';
 }
 
 /* ---------------- WhatsApp to the customer: confirm / cancel / change the address ---------------- */

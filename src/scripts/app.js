@@ -66,7 +66,24 @@ function rememberCheckout() {
 // Governorate centres (same order as T.gov) — the map jumps there when the customer picks a governorate.
 const GOV_CENTER = [[30.0444,31.2357],[30.0131,31.2089],[31.2001,29.9187],[30.3292,31.2168],[31.0409,31.3785],[30.5877,31.502],[30.7865,31.0004],[30.5972,30.9876],[31.0364,30.4706],[31.1107,30.9388],[31.4165,31.8133],[31.2653,32.3019],[30.5965,32.2715],[29.9668,32.5498],[29.3084,30.8428],[29.0661,31.0994],[28.1099,30.7503],[27.18,31.1837],[26.5591,31.6957],[26.1551,32.716],[25.6872,32.6396],[24.0889,32.8998],[27.2579,33.8116],[31.3543,27.2373],[31.1316,33.7984],[28.2364,33.6254],[25.4517,30.5455]];
 const EG_BOX = '24.6,21.9,37.1,31.8'; // lon_min,lat_min,lon_max,lat_max
-let locPrecise = false; // true once the pin was set by GPS, search, dragging, or a tap when zoomed in close
+let locPrecise = false;
+/** Pop-up with the exact steps to switch location on for this phone / browser, then "try again" or "I'll pick it myself". */
+function locHelp(kind, retry, manual) {
+  document.getElementById('locHelp')?.remove();
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
+  const app = /Instagram/.test(ua) ? 'Instagram' : /FBAN|FBAV|FB_IAB/.test(ua) ? 'Facebook' : /TikTok|musical_ly|Bytedance/i.test(ua) ? 'TikTok' : '';
+  const key = ios ? (app ? 'loc_steps_ios_app' : /CriOS/.test(ua) ? 'loc_steps_ios_chrome' : 'loc_steps_ios') : android ? (app ? 'loc_steps_android_app' : 'loc_steps_android') : 'loc_steps_desktop';
+  const steps = tr(key, { app }).split('|');
+  const d = document.createElement('div'); d.className = 'loc-help'; d.id = 'locHelp'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true');
+  d.innerHTML = `<div class="lh-box"><div class="lh-ic">📍</div><h3>${tr(kind === 'off' ? 'loc_help_t_off' : 'loc_help_t')}</h3><p>${tr('loc_help_p')}</p>
+    <ol>${(kind === 'off' ? [tr('loc_step_gps')] : []).concat(steps).map((x) => `<li>${escapeHTML(x)}</li>`).join('')}</ol>
+    <div class="lh-acts"><button type="button" class="btn btn-primary" id="lhRetry">${tr('loc_help_retry')}</button><button type="button" class="btn" id="lhManual">${tr('loc_help_manual')}</button></div></div>`;
+  document.body.appendChild(d);
+  const close = () => d.remove();
+  $('lhRetry').onclick = () => { close(); retry && retry(); };
+  $('lhManual').onclick = () => { close(); manual && manual(); };
+  d.addEventListener('click', (e) => { if (e.target === d) close(); });
+} // true once the pin was set by GPS, search, dragging, or a tap when zoomed in close
 async function initDeliveryMap() {
   const container = $('deliveryMap');
   try {
@@ -118,7 +135,15 @@ async function initDeliveryMap() {
         if (Math.abs(p.lat - 26.8) > 5.5 || Math.abs(p.lng - 30.8) > 6.5) { if (auto && hadSaved) status(tr('location_saved')); else status(tr('location_outside'), true); return; } // not in Egypt (abroad / VPN): pick by hand
         if (auto && hadSaved && pos.coords.accuracy > 150) { status(tr('location_saved')); return; } // keep the saved spot rather than a rough fix
         choose(p, 'gps', pos.coords.accuracy); map.setView(p, pos.coords.accuracy > 500 ? 15 : 17);
-      }, (err) => { if (container.isConnected) { b.disabled = false; if (auto && hadSaved) { status(tr('location_saved')); return; } status(tr(auto ? 'location_pick' : err && err.code === 1 ? (/iPhone|iPad|iPod/.test(navigator.userAgent) ? 'location_blocked_ios' : 'location_blocked') : 'location_denied'), !auto); } }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+      }, (err) => {
+        if (!container.isConnected) return;
+        b.disabled = false;
+        if (auto && hadSaved) { status(tr('location_saved')); return; }
+        status(tr(err && err.code === 1 ? 'location_off_short' : 'location_gps_off_short'), true);
+        // location blocked or GPS off: explain exactly how to turn it on for this phone/browser (once per visit when automatic)
+        let shown = false; try { shown = sessionStorage.getItem('nay-loc-help') === '1'; } catch {}
+        if (!auto || !shown) { try { sessionStorage.setItem('nay-loc-help', '1'); } catch {} locHelp(err && err.code === 1 ? 'blocked' : 'off', () => locate(false), () => $('locSearch')?.focus()); }
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     };
     $('locateMe').onclick = () => locate(false);
     // search a place, street or compound

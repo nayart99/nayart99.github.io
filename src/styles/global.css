@@ -624,3 +624,10 @@ form.checkout{display:flex;flex-direction:column;gap:14px}
 .loc-results button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:start;background:none;border:0;padding:8px 10px;border-radius:8px;font:inherit;color:var(--ink);cursor:pointer}
 .loc-results button:hover,.loc-results button:focus{background:var(--cream)}.loc-results small{color:var(--ink-soft);font-size:.78rem}.loc-results .none{padding:10px;color:var(--ink-soft);font-size:.85rem}
 #locationStatus.warn{color:#9a5b00;font-weight:600}
+
+/* "turn on location" help */
+.loc-help{position:fixed;inset:0;z-index:95;background:rgba(20,12,14,.55);display:grid;place-items:center;padding:16px}
+.loc-help .lh-box{background:var(--cream,#F7F3EC);border-radius:18px;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow:auto;padding:22px 20px;box-shadow:0 30px 70px -20px rgba(0,0,0,.6);text-align:center}
+.loc-help .lh-ic{font-size:2.2rem;line-height:1}.loc-help h3{margin:8px 0 6px;font-size:1.2rem}.loc-help p{margin:0 0 12px;color:var(--ink-soft);font-size:.92rem}
+.loc-help ol{text-align:start;margin:0 0 16px;padding-inline-start:22px;display:grid;gap:8px;font-size:.92rem;line-height:1.6}
+.loc-help .lh-acts{display:grid;gap:8px}
